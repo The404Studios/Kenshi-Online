@@ -43,18 +43,34 @@ namespace KenshiMultiplayer
                     int bytesRead = stream.Read(buffer, 0, buffer.Length);
                     if (bytesRead > 0)
                     {
-                        string jsonMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                        string encryptedMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                        string jsonMessage = EncryptionHelper.Decrypt(encryptedMessage);
+
                         GameMessage message = GameMessage.FromJson(jsonMessage);
 
-                        // Validate message before broadcasting
-                        if (ValidateMessage(message))
+                        // Handle various message types
+                        switch (message.Type)
                         {
-                            Logger.Log($"Received {message.Type} from {message.PlayerId}");
-                            BroadcastMessage(jsonMessage, client);
-                        }
-                        else
-                        {
-                            Logger.Log($"Invalid message from {message.PlayerId}: {message.Type}");
+                            case MessageType.Chat:
+                                HandleChatMessage(message, client);
+                                break;
+                            case MessageType.Reconnect:
+                                HandleReconnect(message, client);
+                                break;
+                            case MessageType.AdminKick:
+                                HandleAdminKick(message);
+                                break;
+                            default:
+                                if (ValidateMessage(message))
+                                {
+                                    Logger.Log($"Received {message.Type} from {message.PlayerId}");
+                                    BroadcastMessage(jsonMessage, client);
+                                }
+                                else
+                                {
+                                    Logger.Log($"Invalid message from {message.PlayerId}: {message.Type}");
+                                }
+                                break;
                         }
                     }
                 }
@@ -72,7 +88,8 @@ namespace KenshiMultiplayer
 
         private void BroadcastMessage(string jsonMessage, TcpClient senderClient)
         {
-            byte[] messageBuffer = Encoding.ASCII.GetBytes(jsonMessage);
+            string encryptedMessage = EncryptionHelper.Encrypt(jsonMessage);
+            byte[] messageBuffer = Encoding.ASCII.GetBytes(encryptedMessage);
 
             foreach (var client in connectedClients)
             {
@@ -84,56 +101,64 @@ namespace KenshiMultiplayer
             }
         }
 
-        // Validate message types for legitimacy
         private bool ValidateMessage(GameMessage message)
         {
-            bool isValid = false;
-
             switch (message.Type)
             {
                 case MessageType.Position:
-                    isValid = ValidatePositionMessage(message);
-                    break;
                 case MessageType.Inventory:
-                    isValid = ValidateInventoryMessage(message);
-                    break;
                 case MessageType.Combat:
-                    isValid = ValidateCombatMessage(message);
-                    break;
                 case MessageType.Health:
-                    isValid = ValidateHealthMessage(message);
-                    break;
+                    return true;
+                default:
+                    return false;
             }
-
-            if (!isValid)
-            {
-                Logger.Log($"Invalid message from {message.PlayerId}: {message.Type}");
-            }
-
-            return isValid;
         }
 
-        private bool ValidatePositionMessage(GameMessage message) => true;
-        private bool ValidateInventoryMessage(GameMessage message) => true;
-        private bool ValidateCombatMessage(GameMessage message) => true;
-        private bool ValidateHealthMessage(GameMessage message) => true;
+        private void HandleChatMessage(GameMessage message, TcpClient senderClient)
+        {
+            if (lobbies.TryGetValue(message.LobbyId, out var lobby))
+            {
+                lobby.BroadcastChatMessage($"[{message.PlayerId}]: {message.Data}", senderClient);
+            }
+        }
 
-        public void CreateLobby(string lobbyId)
+        private void HandleReconnect(GameMessage message, TcpClient client)
+        {
+            if (lobbies.TryGetValue(message.LobbyId, out var lobby))
+            {
+                lobby.ReconnectPlayer(message.PlayerId, client);
+                Logger.Log($"Player {message.PlayerId} reconnected to lobby {message.LobbyId}");
+            }
+        }
+
+        private void HandleAdminKick(GameMessage message)
+        {
+            if (lobbies.TryGetValue(message.LobbyId, out var lobby))
+            {
+                lobby.KickPlayer(message.PlayerId);
+                Logger.Log($"Player {message.PlayerId} was kicked from lobby {message.LobbyId}");
+            }
+        }
+
+        public void CreateLobby(string lobbyId, bool isPrivate, string password, int maxPlayers)
         {
             if (!lobbies.ContainsKey(lobbyId))
             {
-                lobbies[lobbyId] = new Lobby(lobbyId);
+                lobbies[lobbyId] = new Lobby(lobbyId, isPrivate, password, maxPlayers);
                 Logger.Log($"Lobby {lobbyId} created.");
             }
         }
 
-        public void JoinLobby(string lobbyId, TcpClient client)
+        public bool JoinLobby(string lobbyId, TcpClient client, string password = "")
         {
-            if (lobbies.ContainsKey(lobbyId))
+            if (lobbies.ContainsKey(lobbyId) && lobbies[lobbyId].CanJoin(password))
             {
                 lobbies[lobbyId].AddPlayer(client);
                 Logger.Log($"Client joined lobby {lobbyId}.");
+                return true;
             }
+            return false;
         }
     }
 }

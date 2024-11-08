@@ -37,6 +37,7 @@ namespace KenshiMultiplayer
             }
         }
 
+
         private void ListenForServerMessages()
         {
             byte[] buffer = new byte[1024];
@@ -45,7 +46,9 @@ namespace KenshiMultiplayer
                 int bytesRead = stream.Read(buffer, 0, buffer.Length);
                 if (bytesRead > 0)
                 {
-                    string jsonMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                    string encryptedMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                    string jsonMessage = EncryptionHelper.Decrypt(encryptedMessage);
+
                     GameMessage message = GameMessage.FromJson(jsonMessage);
                     HandleGameMessage(message);
                 }
@@ -151,10 +154,13 @@ namespace KenshiMultiplayer
             SendMessageToServer(message);
         }
 
+
+
         private void SendMessageToServer(GameMessage message)
         {
             string jsonMessage = message.ToJson();
-            byte[] messageBuffer = Encoding.ASCII.GetBytes(jsonMessage);
+            string encryptedMessage = EncryptionHelper.Encrypt(jsonMessage);
+            byte[] messageBuffer = Encoding.ASCII.GetBytes(encryptedMessage);
             stream.Write(messageBuffer, 0, messageBuffer.Length);
         }
     }
