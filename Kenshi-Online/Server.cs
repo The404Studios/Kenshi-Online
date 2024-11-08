@@ -12,18 +12,19 @@ namespace KenshiMultiplayer
     {
         private TcpListener server;
         private List<TcpClient> connectedClients = new List<TcpClient>();
+        private Dictionary<string, Lobby> lobbies = new Dictionary<string, Lobby>();
 
         public void Start()
         {
             server = new TcpListener(IPAddress.Any, 5555);
             server.Start();
-            Console.WriteLine("Server started on port 5555.");
+            Logger.Log("Server started on port 5555.");
 
             while (true)
             {
                 TcpClient client = server.AcceptTcpClient();
                 connectedClients.Add(client);
-                Console.WriteLine("Client connected.");
+                Logger.Log("Client connected.");
 
                 Thread clientThread = new Thread(() => HandleClient(client));
                 clientThread.Start();
@@ -48,19 +49,19 @@ namespace KenshiMultiplayer
                         // Validate message before broadcasting
                         if (ValidateMessage(message))
                         {
-                            Console.WriteLine($"Received {message.Type} from {message.PlayerId}");
+                            Logger.Log($"Received {message.Type} from {message.PlayerId}");
                             BroadcastMessage(jsonMessage, client);
                         }
                         else
                         {
-                            Console.WriteLine($"Invalid message from {message.PlayerId}: {message.Type}");
+                            Logger.Log($"Invalid message from {message.PlayerId}: {message.Type}");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Client disconnected: " + ex.Message);
+                Logger.Log($"Client disconnected: {ex.Message}");
             }
             finally
             {
@@ -83,46 +84,56 @@ namespace KenshiMultiplayer
             }
         }
 
-        // Simple validation logic
+        // Validate message types for legitimacy
         private bool ValidateMessage(GameMessage message)
         {
+            bool isValid = false;
+
             switch (message.Type)
             {
                 case MessageType.Position:
-                    return ValidatePositionMessage(message);
+                    isValid = ValidatePositionMessage(message);
+                    break;
                 case MessageType.Inventory:
-                    return ValidateInventoryMessage(message);
+                    isValid = ValidateInventoryMessage(message);
+                    break;
                 case MessageType.Combat:
-                    return ValidateCombatMessage(message);
+                    isValid = ValidateCombatMessage(message);
+                    break;
                 case MessageType.Health:
-                    return ValidateHealthMessage(message);
-                default:
-                    return false;
+                    isValid = ValidateHealthMessage(message);
+                    break;
+            }
+
+            if (!isValid)
+            {
+                Logger.Log($"Invalid message from {message.PlayerId}: {message.Type}");
+            }
+
+            return isValid;
+        }
+
+        private bool ValidatePositionMessage(GameMessage message) => true;
+        private bool ValidateInventoryMessage(GameMessage message) => true;
+        private bool ValidateCombatMessage(GameMessage message) => true;
+        private bool ValidateHealthMessage(GameMessage message) => true;
+
+        public void CreateLobby(string lobbyId)
+        {
+            if (!lobbies.ContainsKey(lobbyId))
+            {
+                lobbies[lobbyId] = new Lobby(lobbyId);
+                Logger.Log($"Lobby {lobbyId} created.");
             }
         }
 
-        private bool ValidatePositionMessage(GameMessage message)
+        public void JoinLobby(string lobbyId, TcpClient client)
         {
-            // Add position-specific validation
-            return true;
-        }
-
-        private bool ValidateInventoryMessage(GameMessage message)
-        {
-            // Add inventory-specific validation
-            return true;
-        }
-
-        private bool ValidateCombatMessage(GameMessage message)
-        {
-            // Add combat-specific validation
-            return true;
-        }
-
-        private bool ValidateHealthMessage(GameMessage message)
-        {
-            // Add health-specific validation
-            return true;
+            if (lobbies.ContainsKey(lobbyId))
+            {
+                lobbies[lobbyId].AddPlayer(client);
+                Logger.Log($"Client joined lobby {lobbyId}.");
+            }
         }
     }
 }

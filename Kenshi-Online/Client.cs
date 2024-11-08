@@ -11,6 +11,7 @@ namespace KenshiMultiplayer
         private TcpClient client;
         private NetworkStream stream;
         private float lastX, lastY;
+        private DateTime lastCombatTime = DateTime.MinValue;
 
         public void Connect()
         {
@@ -57,19 +58,16 @@ namespace KenshiMultiplayer
             {
                 case MessageType.Position:
                     var position = JsonSerializer.Deserialize<Position>(message.Data.ToString());
-                    Console.WriteLine($"Player {message.PlayerId} moved to ({position.X}, {position.Y})");
+                    SmoothPosition(position);
                     break;
-
                 case MessageType.Inventory:
                     var item = JsonSerializer.Deserialize<InventoryItem>(message.Data.ToString());
                     Console.WriteLine($"Player {message.PlayerId} has item: {item.ItemName} x{item.Quantity}");
                     break;
-
                 case MessageType.Combat:
                     var combatAction = JsonSerializer.Deserialize<CombatAction>(message.Data.ToString());
                     Console.WriteLine($"Player {message.PlayerId} performs {combatAction.Action} on {combatAction.TargetId}");
                     break;
-
                 case MessageType.Health:
                     var health = JsonSerializer.Deserialize<HealthStatus>(message.Data.ToString());
                     Console.WriteLine($"Player {message.PlayerId} health: {health.CurrentHealth}/{health.MaxHealth}");
@@ -98,6 +96,15 @@ namespace KenshiMultiplayer
 
         public void PerformCombatAction(string targetId, string actionType)
         {
+            TimeSpan cooldown = TimeSpan.FromSeconds(1);
+            if (DateTime.Now - lastCombatTime < cooldown)
+            {
+                Console.WriteLine("Combat action rate limit reached.");
+                return;
+            }
+
+            lastCombatTime = DateTime.Now;
+
             var combatAction = new CombatAction { TargetId = targetId, Action = actionType };
             var message = new GameMessage
             {
@@ -108,6 +115,15 @@ namespace KenshiMultiplayer
 
             SendMessageToServer(message);
         }
+
+        private void SmoothPosition(Position targetPosition)
+        {
+            float lerpFactor = 0.1f;
+            lastX += (targetPosition.X - lastX) * lerpFactor;
+            lastY += (targetPosition.Y - lastY) * lerpFactor;
+            Console.WriteLine($"Smoothed position to ({lastX}, {lastY})");
+        }
+
 
         public void UpdateInventory(string itemName, int quantity)
         {
