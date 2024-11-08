@@ -115,20 +115,86 @@ namespace KenshiMultiplayer
             }
         }
 
+        private void StartCommandLoop()
+        {
+            while (true)
+            {
+                string command = Console.ReadLine();
+                if (command.StartsWith("/kick "))
+                {
+                    string playerId = command.Split(' ')[1];
+                    KickPlayer(playerId);
+                }
+                else if (command == "/list")
+                {
+                    ListActivePlayers();
+                }
+            }
+        }
+
+        private void KickPlayer(string playerId)
+        {
+            foreach (var lobby in lobbies.Values)
+            {
+                if (lobby.PlayerConnections.TryGetValue(playerId, out var client))
+                {
+                    lobby.KickPlayer(playerId);
+                    Logger.Log($"Admin kicked player {playerId}");
+                    break;
+                }
+            }
+        }
+
+        private void ListActivePlayers()
+        {
+            foreach (var lobby in lobbies.Values)
+            {
+                Console.WriteLine($"Lobby {lobby.LobbyId}:");
+                foreach (var playerId in lobby.PlayerConnections.Keys)
+                {
+                    Console.WriteLine($"  - {playerId}");
+                }
+            }
+        }
+
+        public void UpdateLobbyCapacity(string lobbyId, int maxPlayers)
+        {
+            if (lobbies.TryGetValue(lobbyId, out var lobby))
+            {
+                lobby.SetMaxPlayers(maxPlayers);
+                Logger.Log($"Lobby {lobbyId} capacity updated to {maxPlayers}");
+            }
+        }
+
         private void HandleChatMessage(GameMessage message, TcpClient senderClient)
         {
             if (lobbies.TryGetValue(message.LobbyId, out var lobby))
             {
-                lobby.BroadcastChatMessage($"[{message.PlayerId}]: {message.Data}", senderClient);
+                string channel = message.Data.ContainsKey("channel") ? message.Data["channel"].ToString() : "general";
+                string chatMessage = message.Data.ContainsKey("message") ? message.Data["message"].ToString() : string.Empty;
+                lobby.BroadcastToChannel(channel, $"[{message.PlayerId}]: {chatMessage}", senderClient);
             }
         }
 
         private void HandleReconnect(GameMessage message, TcpClient client)
         {
+            string playerId = message.PlayerId;
             if (lobbies.TryGetValue(message.LobbyId, out var lobby))
             {
-                lobby.ReconnectPlayer(message.PlayerId, client);
-                Logger.Log($"Player {message.PlayerId} reconnected to lobby {message.LobbyId}");
+                PlayerData data = UserManager.LoadPlayerData(playerId);
+                SendMessageToClient(client, JsonSerializer.Serialize(data));
+                Logger.Log($"Player {playerId} reconnected to lobby {message.LobbyId}");
+            }
+        }
+
+        private void SendMessageToClient(TcpClient client, string message)
+        {
+            if (client != null && client.Connected)
+            {
+                string encryptedMessage = EncryptionHelper.Encrypt(message);
+                byte[] messageBuffer = Encoding.ASCII.GetBytes(encryptedMessage);
+                NetworkStream stream = client.GetStream();
+                stream.Write(messageBuffer, 0, messageBuffer.Length);
             }
         }
 

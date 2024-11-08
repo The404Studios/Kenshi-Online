@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -27,7 +28,12 @@ namespace KenshiMultiplayer
                 while (true)
                 {
                     string message = Console.ReadLine();
-                    var gameMessage = new GameMessage { Type = MessageType.Chat, PlayerId = "Player1", Data = message };
+                    var gameMessage = new GameMessage
+                    {
+                        Type = MessageType.Chat,
+                        PlayerId = "Player1",
+                        Data = new Dictionary<string, object> { { "message", message } }
+                    };
                     SendMessageToServer(gameMessage);
                 }
             }
@@ -35,6 +41,14 @@ namespace KenshiMultiplayer
             {
                 Console.WriteLine("Failed to connect to server: " + ex.Message);
             }
+        }
+
+        private void SmoothPosition(Position targetPosition)
+        {
+            float lerpFactor = 0.1f; // Adjust the smoothing factor as needed
+            lastX += (targetPosition.X - lastX) * lerpFactor;
+            lastY += (targetPosition.Y - lastY) * lerpFactor;
+            Console.WriteLine($"Smoothed position to ({lastX}, {lastY})");
         }
 
 
@@ -88,7 +102,7 @@ namespace KenshiMultiplayer
                 {
                     Type = MessageType.Position,
                     PlayerId = "Player1",
-                    Data = position
+                    Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(position))
                 };
 
                 SendMessageToServer(message);
@@ -113,20 +127,11 @@ namespace KenshiMultiplayer
             {
                 Type = MessageType.Combat,
                 PlayerId = "Player1",
-                Data = combatAction
+                Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(combatAction))
             };
 
             SendMessageToServer(message);
         }
-
-        private void SmoothPosition(Position targetPosition)
-        {
-            float lerpFactor = 0.1f;
-            lastX += (targetPosition.X - lastX) * lerpFactor;
-            lastY += (targetPosition.Y - lastY) * lerpFactor;
-            Console.WriteLine($"Smoothed position to ({lastX}, {lastY})");
-        }
-
 
         public void UpdateInventory(string itemName, int quantity)
         {
@@ -135,7 +140,7 @@ namespace KenshiMultiplayer
             {
                 Type = MessageType.Inventory,
                 PlayerId = "Player1",
-                Data = inventoryItem
+                Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(inventoryItem))
             };
 
             SendMessageToServer(message);
@@ -148,13 +153,11 @@ namespace KenshiMultiplayer
             {
                 Type = MessageType.Health,
                 PlayerId = "Player1",
-                Data = healthStatus
+                Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(healthStatus))
             };
 
             SendMessageToServer(message);
         }
-
-
 
         private void SendMessageToServer(GameMessage message)
         {

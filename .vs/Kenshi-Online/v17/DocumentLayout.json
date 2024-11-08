@@ -3,27 +3,43 @@
   "WorkspaceRootPath": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\onedrive\\documents\\tarkov-multiplayer-sit\\kenshi-online\\kenshi-online\\messagetype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\messagetype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\onedrive\\documents\\tarkov-multiplayer-sit\\kenshi-online\\kenshi-online\\gamemessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\gamemessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\onedrive\\documents\\tarkov-multiplayer-sit\\kenshi-online\\kenshi-online\\lobby.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\lobby.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\kenshi-online\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\kenshi-online\\server.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\server.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\kenshi-online\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\kenshi-online\\gamemessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\gamemessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\onedrive\\documents\\tarkov-multiplayer-sit\\kenshi-online\\kenshi-online\\encryptionhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\onedrive\\documents\\tarkov-multiplayer-sit\\kenshi-online\\kenshi-online\\usermanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\usermanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\kenshi-online\\lobby.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\lobby.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\onedrive\\documents\\tarkov-multiplayer-sit\\kenshi-online\\kenshi-online\\playerdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\playerdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\onedrive\\documents\\tarkov-multiplayer-sit\\kenshi-online\\kenshi-online\\inventoryitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\inventoryitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\onedrive\\documents\\tarkov-multiplayer-sit\\kenshi-online\\kenshi-online\\position.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\position.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\onedrive\\documents\\tarkov-multiplayer-sit\\kenshi-online\\kenshi-online\\messagetype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\messagetype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\kenshi-online\\encryptionhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\encryptionhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
@@ -42,11 +58,63 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 10,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
+              "Title": "UserManager.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\UserManager.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\UserManager.cs",
+              "ToolTip": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\UserManager.cs",
+              "RelativeToolTip": "Kenshi-Online\\UserManager.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAEQAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-08T16:57:31.084Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "PlayerData.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\PlayerData.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\PlayerData.cs",
+              "ToolTip": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\PlayerData.cs",
+              "RelativeToolTip": "Kenshi-Online\\PlayerData.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAsAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-08T16:57:14.512Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "InventoryItem.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\InventoryItem.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\InventoryItem.cs",
+              "ToolTip": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\InventoryItem.cs",
+              "RelativeToolTip": "Kenshi-Online\\InventoryItem.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-08T16:56:43.47Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Position.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Position.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\Position.cs",
+              "ToolTip": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Position.cs",
+              "RelativeToolTip": "Kenshi-Online\\Position.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-08T16:51:47.378Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
               "Title": "MessageType.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\MessageType.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\MessageType.cs",
@@ -59,20 +127,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "GameMessage.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\GameMessage.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\GameMessage.cs",
               "ToolTip": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\GameMessage.cs",
               "RelativeToolTip": "Kenshi-Online\\GameMessage.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAA8AAAAAAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABAAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-08T16:45:47.569Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 9,
               "Title": "EncryptionHelper.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\EncryptionHelper.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\EncryptionHelper.cs",
@@ -80,12 +148,11 @@
               "RelativeToolTip": "Kenshi-Online\\EncryptionHelper.cs",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAADMAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-08T16:41:09.02Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-11-08T16:41:09.02Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 10,
               "Title": "Logger.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Logger.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Logger.cs",
@@ -97,20 +164,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "Lobby.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Lobby.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Lobby.cs",
               "ToolTip": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Lobby.cs",
               "RelativeToolTip": "Kenshi-Online\\Lobby.cs",
-              "ViewState": "AQIAADsAAAAAAAAAAADwv0cAAAANAAAA",
+              "ViewState": "AQIAABEAAAAAAAAAAAAuwDQAAAAJAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-08T16:29:47.611Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 11,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Program.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Program.cs",
@@ -122,26 +189,26 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 0,
               "Title": "Client.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Client.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Client.cs",
               "ToolTip": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Client.cs",
               "RelativeToolTip": "Kenshi-Online\\Client.cs",
-              "ViewState": "AQIAABYAAAAAAAAAAAAAwC0AAABGAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAMAAAASAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-08T16:27:00.962Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 1,
               "Title": "Server.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Server.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Server.cs",
               "ToolTip": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\Server.cs",
               "RelativeToolTip": "Kenshi-Online\\Server.cs",
-              "ViewState": "AQIAAAsAAAAAAAAAAAAQwBcAAAANAAAA",
+              "ViewState": "AQIAAF8AAAAAAAAAAAAwwOYAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-08T16:26:20.119Z",
               "EditorCaption": ""

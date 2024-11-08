@@ -21,7 +21,38 @@ namespace KenshiMultiplayer
             MaxPlayers = maxPlayers;
         }
 
-        public bool CanJoin(string password = "")
+        public Dictionary<string, List<TcpClient>> ChatChannels { get; private set; } = new Dictionary<string, List<TcpClient>>
+    {
+        { "general", new List<TcpClient>() },
+        { "trade", new List<TcpClient>() },
+        { "combat", new List<TcpClient>() }
+    };
+
+        public void JoinChannel(string channel, TcpClient client)
+        {
+            if (ChatChannels.ContainsKey(channel))
+            {
+                ChatChannels[channel].Add(client);
+            }
+        }
+
+        public void BroadcastToChannel(string channel, string message, TcpClient senderClient)
+        {
+            if (ChatChannels.TryGetValue(channel, out var clients))
+            {
+                foreach (var client in clients)
+                {
+                    if (client != senderClient && client.Connected)
+                    {
+                        NetworkStream stream = client.GetStream();
+                        byte[] messageBuffer = Encoding.ASCII.GetBytes(message);
+                        stream.Write(messageBuffer, 0, messageBuffer.Length);
+                    }
+                }
+            }
+        }
+
+    public bool CanJoin(string password = "")
         {
             if (IsPrivate && Password != password) return false;
             return Players.Count < MaxPlayers;
@@ -51,6 +82,12 @@ namespace KenshiMultiplayer
                 PlayerConnections.Add(playerId, client);
                 AddPlayer(client);
             }
+        }
+
+
+        public void SetMaxPlayers(int maxPlayers)
+        {
+            MaxPlayers = maxPlayers;
         }
 
         public void BroadcastChatMessage(string message, TcpClient senderClient)
