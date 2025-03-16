@@ -195,27 +195,24 @@
   },
   "packageFolders": {
     "C:\\Users\\thewi\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {},
-    "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet\\": {}
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\KenshiMultiplayer.csproj",
+      "projectUniqueName": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\KenshiMultiplayer.csproj",
       "projectName": "KenshiMultiplayer",
-      "projectPath": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\KenshiMultiplayer.csproj",
+      "projectPath": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\KenshiMultiplayer.csproj",
       "packagesPath": "C:\\Users\\thewi\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\obj\\",
+      "outputPath": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
-        "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet\\"
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
         "C:\\Users\\thewi\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Xamarin.Offline.config"
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -240,7 +237,8 @@
         "enableAudit": "true",
         "auditLevel": "low",
         "auditMode": "direct"
-      }
+      },
+      "SdkAnalysisLevel": "9.0.200"
     },
     "frameworks": {
       "net8.0": {
@@ -275,7 +273,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.200/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
       }
     }
   },

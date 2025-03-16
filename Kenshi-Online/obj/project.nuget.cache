@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "wkC13HS1QZgM9upPiKlQjyfj72OY1rUiHYMPwTrey7iVic+Tw8MY2DqGRg9/9enC6O7CvOAj/u/7SNkA13JIgg==",
+  "dgSpecHash": "m6SV8HmCPuE=",
   "success": true,
-  "projectFilePath": "C:\\Users\\thewi\\OneDrive\\Documents\\Tarkov-Multiplayer-SIT\\Kenshi-Online\\Kenshi-Online\\KenshiMultiplayer.csproj",
+  "projectFilePath": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\KenshiMultiplayer.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\thewi\\.nuget\\packages\\fasm.net\\1.70.3\\fasm.net.1.70.3.nupkg.sha512",
     "C:\\Users\\thewi\\.nuget\\packages\\memorysharp\\1.2.0\\memorysharp.1.2.0.nupkg.sha512",
