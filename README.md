@@ -1,4 +1,4 @@
-GitHub README for "Kenshi Online"
+GitHub README for "Kenshi Online Client"
 Kenshi Online Client (this is the client)
 
 Overview
