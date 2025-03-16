@@ -1,5 +1,5 @@
 GitHub README for "Kenshi Online"
-Kenshi Online
+Kenshi Online Client (this is the client)
 
 Overview
 Welcome to the Kenshi Multiplayer Mod, a project that transforms the single-player sandbox world of Kenshi into an engaging multiplayer experience. Imagine venturing through Kenshi's rugged and unyielding world, not alone, but side-by-side with friends! This mod allows players to join each other's adventures, synchronize their characters, and share in the struggles and triumphs of Kenshi's unforgiving wasteland.
