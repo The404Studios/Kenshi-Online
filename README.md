@@ -46,7 +46,7 @@ We're actively developing new features to enhance your multiplayer experience:
 ## 🚀 Installation Guide
 
 ### Prerequisites
-- Kenshi (Game Version X.XX or higher)
+- Kenshi (Game Version "19.X.X or higher) 
 - All players must have the same game version and mod configuration
 
 ### Client Installation
