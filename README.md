@@ -86,7 +86,7 @@ We welcome contributions to improve Kenshi Online! Whether you're fixing bugs, a
 4. Push to the branch (`git push origin https://github.com/The404Studios/Kenshi-Online.git`)
 5. Open a Pull Request
 
-See our [Contributing Guidelines](CONTRIBUTING.md) for more details.
+there is no guidelines to this.
 
 ## 📝 License
 
