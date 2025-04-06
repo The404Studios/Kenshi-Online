@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -7,91 +8,229 @@ using System.Threading;
 
 namespace KenshiMultiplayer
 {
-    public class Client
+    public class EnhancedClient
     {
         private TcpClient client;
         private NetworkStream stream;
+        private string authToken;
+        private Dictionary<string, GameFileInfo> cachedFileInfo = new Dictionary<string, GameFileInfo>();
+        private string localCachePath;
         private float lastX, lastY;
         private DateTime lastCombatTime = DateTime.MinValue;
-
-        public void Connect()
+        
+        public event EventHandler<GameMessage> MessageReceived;
+        
+        public EnhancedClient(string cachePath)
+        {
+            localCachePath = cachePath;
+            Directory.CreateDirectory(localCachePath);
+        }
+        
+        public bool Login(string serverAddress, int port, string username, string password)
         {
             try
             {
-                client = new TcpClient("127.0.0.1", 5555);
+                client = new TcpClient(serverAddress, port);
                 stream = client.GetStream();
-                Console.WriteLine("Connected to server.");
-
-                Thread readThread = new Thread(ListenForServerMessages);
-                readThread.Start();
-
-                while (true)
+                
+                // Create login message
+                var loginMessage = new GameMessage
                 {
-                    string message = Console.ReadLine();
-                    var gameMessage = new GameMessage
-                    {
-                        Type = MessageType.Chat,
-                        PlayerId = "Player1",
-                        Data = new Dictionary<string, object> { { "message", message } }
-                    };
-                    SendMessageToServer(gameMessage);
+                    Type = MessageType.Login,
+                    Data = new Dictionary<string, object> 
+                    { 
+                        { "username", username },
+                        { "password", password }
+                    }
+                };
+                
+                SendMessageToServer(loginMessage);
+                
+                // Wait for response
+                GameMessage response = ReceiveMessageFromServer();
+                
+                if (response.Type == MessageType.Authentication && 
+                    response.Data.ContainsKey("success") &&
+                    (bool)response.Data["success"] &&
+                    response.Data.ContainsKey("token"))
+                {
+                    authToken = response.Data["token"].ToString();
+                    
+                    // Start listener thread
+                    Thread readThread = new Thread(ListenForServerMessages);
+                    readThread.IsBackground = true;
+                    readThread.Start();
+                    
+                    return true;
                 }
+                
+                return false;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Failed to connect to server: " + ex.Message);
+                Console.WriteLine("Login failed: " + ex.Message);
+                return false;
             }
         }
-
-        private void SmoothPosition(Position targetPosition)
+        
+        public bool Register(string serverAddress, int port, string username, string password, string email)
         {
-            float lerpFactor = 0.1f; // Adjust the smoothing factor as needed
-            lastX += (targetPosition.X - lastX) * lerpFactor;
-            lastY += (targetPosition.Y - lastY) * lerpFactor;
-            Console.WriteLine($"Smoothed position to ({lastX}, {lastY})");
-        }
-
-
-        private void ListenForServerMessages()
-        {
-            byte[] buffer = new byte[1024];
-            while (true)
+            try
             {
-                int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                if (bytesRead > 0)
+                client = new TcpClient(serverAddress, port);
+                stream = client.GetStream();
+                
+                var registerMessage = new GameMessage
                 {
-                    string encryptedMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                    string jsonMessage = EncryptionHelper.Decrypt(encryptedMessage);
-
-                    GameMessage message = GameMessage.FromJson(jsonMessage);
-                    HandleGameMessage(message);
+                    Type = MessageType.Register,
+                    Data = new Dictionary<string, object> 
+                    { 
+                        { "username", username },
+                        { "password", password },
+                        { "email", email }
+                    }
+                };
+                
+                SendMessageToServer(registerMessage);
+                
+                GameMessage response = ReceiveMessageFromServer();
+                
+                if (response.Type == MessageType.Authentication && 
+                    response.Data.ContainsKey("success") &&
+                    (bool)response.Data["success"])
+                {
+                    // Registration successful
+                    return true;
                 }
+                
+                return false;
             }
-        }
-
-        private void HandleGameMessage(GameMessage message)
-        {
-            switch (message.Type)
+            catch (Exception ex)
             {
-                case MessageType.Position:
-                    var position = JsonSerializer.Deserialize<Position>(message.Data.ToString());
-                    SmoothPosition(position);
-                    break;
-                case MessageType.Inventory:
-                    var item = JsonSerializer.Deserialize<InventoryItem>(message.Data.ToString());
-                    Console.WriteLine($"Player {message.PlayerId} has item: {item.ItemName} x{item.Quantity}");
-                    break;
-                case MessageType.Combat:
-                    var combatAction = JsonSerializer.Deserialize<CombatAction>(message.Data.ToString());
-                    Console.WriteLine($"Player {message.PlayerId} performs {combatAction.Action} on {combatAction.TargetId}");
-                    break;
-                case MessageType.Health:
-                    var health = JsonSerializer.Deserialize<HealthStatus>(message.Data.ToString());
-                    Console.WriteLine($"Player {message.PlayerId} health: {health.CurrentHealth}/{health.MaxHealth}");
-                    break;
+                Console.WriteLine("Registration failed: " + ex.Message);
+                return false;
             }
         }
-
+        
+        public byte[] RequestGameFile(string relativePath)
+        {
+            // Check if we already have this file cached
+            string cachePath = Path.Combine(localCachePath, relativePath);
+            
+            if (File.Exists(cachePath) && cachedFileInfo.TryGetValue(relativePath, out var fileInfo))
+            {
+                // We have it cached, return the file
+                return File.ReadAllBytes(cachePath);
+            }
+            
+            // Request the file from server
+            var fileRequest = new GameMessage
+            {
+                Type = "file_request",
+                Data = new Dictionary<string, object> 
+                { 
+                    { "path", relativePath }
+                },
+                SessionId = authToken
+            };
+            
+            SendMessageToServer(fileRequest);
+            
+            // Wait for response
+            // In a real implementation, this would be asynchronous with callbacks
+            GameMessage response = null;
+            
+            // Create a signal to wait for the response
+            var responseSignal = new ManualResetEvent(false);
+            
+            // Event handler to capture the response
+            EventHandler<GameMessage> responseHandler = null;
+            responseHandler = (sender, msg) => {
+                if (msg.Type == "file_data")
+                {
+                    response = msg;
+                    responseSignal.Set();
+                }
+            };
+            
+            // Register the event handler
+            MessageReceived += responseHandler;
+            
+            // Wait for the response with a timeout
+            bool gotResponse = responseSignal.WaitOne(TimeSpan.FromSeconds(30));
+            
+            // Unregister the event handler
+            MessageReceived -= responseHandler;
+            
+            if (!gotResponse || response == null)
+            {
+                throw new TimeoutException("Timeout waiting for file data");
+            }
+            
+            if (response.Data.ContainsKey("data") && response.Data.ContainsKey("fileInfo"))
+            {
+                byte[] fileData = Convert.FromBase64String(response.Data["data"].ToString());
+                GameFileInfo info = JsonSerializer.Deserialize<GameFileInfo>(
+                    response.Data["fileInfo"].ToString());
+                
+                // Ensure directory exists
+                Directory.CreateDirectory(Path.GetDirectoryName(cachePath));
+                
+                // Cache the file
+                File.WriteAllBytes(cachePath, fileData);
+                cachedFileInfo[relativePath] = info;
+                
+                return fileData;
+            }
+            
+            throw new Exception("Failed to download file: " + relativePath);
+        }
+        
+        public List<GameFileInfo> RequestFileList(string directory = "")
+        {
+            var fileListRequest = new GameMessage
+            {
+                Type = "file_list_request",
+                Data = new Dictionary<string, object> 
+                { 
+                    { "directory", directory }
+                },
+                SessionId = authToken
+            };
+            
+            SendMessageToServer(fileListRequest);
+            
+            // Wait for response
+            GameMessage response = null;
+            var responseSignal = new ManualResetEvent(false);
+            
+            EventHandler<GameMessage> responseHandler = null;
+            responseHandler = (sender, msg) => {
+                if (msg.Type == "file_list")
+                {
+                    response = msg;
+                    responseSignal.Set();
+                }
+            };
+            
+            MessageReceived += responseHandler;
+            bool gotResponse = responseSignal.WaitOne(TimeSpan.FromSeconds(30));
+            MessageReceived -= responseHandler;
+            
+            if (!gotResponse || response == null)
+            {
+                throw new TimeoutException("Timeout waiting for file list");
+            }
+            
+            if (response.Data.ContainsKey("files"))
+            {
+                return JsonSerializer.Deserialize<List<GameFileInfo>>(
+                    response.Data["files"].ToString());
+            }
+            
+            return new List<GameFileInfo>();
+        }
+        
         public void UpdatePosition(float newX, float newY)
         {
             float threshold = 0.5f;
@@ -101,8 +240,9 @@ namespace KenshiMultiplayer
                 var message = new GameMessage
                 {
                     Type = MessageType.Position,
-                    PlayerId = "Player1",
-                    Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(position))
+                    PlayerId = "Player1",  // This would be set from login response
+                    Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(position)),
+                    SessionId = authToken
                 };
 
                 SendMessageToServer(message);
@@ -110,7 +250,7 @@ namespace KenshiMultiplayer
                 lastY = newY;
             }
         }
-
+        
         public void PerformCombatAction(string targetId, string actionType)
         {
             TimeSpan cooldown = TimeSpan.FromSeconds(1);
@@ -126,37 +266,103 @@ namespace KenshiMultiplayer
             var message = new GameMessage
             {
                 Type = MessageType.Combat,
-                PlayerId = "Player1",
-                Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(combatAction))
+                PlayerId = "Player1",  // This would be set from login response
+                Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(combatAction)),
+                SessionId = authToken
             };
 
             SendMessageToServer(message);
         }
-
+        
         public void UpdateInventory(string itemName, int quantity)
         {
             var inventoryItem = new InventoryItem { ItemName = itemName, Quantity = quantity };
             var message = new GameMessage
             {
                 Type = MessageType.Inventory,
-                PlayerId = "Player1",
-                Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(inventoryItem))
+                PlayerId = "Player1",  // This would be set from login response
+                Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(inventoryItem)),
+                SessionId = authToken
             };
 
             SendMessageToServer(message);
         }
-
+        
         public void UpdateHealth(int currentHealth, int maxHealth)
         {
             var healthStatus = new HealthStatus { CurrentHealth = currentHealth, MaxHealth = maxHealth };
             var message = new GameMessage
             {
                 Type = MessageType.Health,
-                PlayerId = "Player1",
-                Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(healthStatus))
+                PlayerId = "Player1",  // This would be set from login response
+                Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(healthStatus)),
+                SessionId = authToken
             };
 
             SendMessageToServer(message);
+        }
+        
+        private void ListenForServerMessages()
+        {
+            byte[] buffer = new byte[16384]; // Larger buffer for file transfers
+            while (true)
+            {
+                try 
+                {
+                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                    if (bytesRead > 0)
+                    {
+                        string encryptedMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                        string jsonMessage = EncryptionHelper.Decrypt(encryptedMessage);
+
+                        GameMessage message = GameMessage.FromJson(jsonMessage);
+                        
+                        // Raise the event with the received message
+                        MessageReceived?.Invoke(this, message);
+                        
+                        // Process based on message type
+                        HandleGameMessage(message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in message listener: {ex.Message}");
+                    break;
+                }
+            }
+        }
+        
+        private void HandleGameMessage(GameMessage message)
+        {
+            switch (message.Type)
+            {
+                case MessageType.Position:
+                    var position = JsonSerializer.Deserialize<Position>(JsonSerializer.Serialize(message.Data));
+                    // Handle position update
+                    break;
+                case MessageType.Inventory:
+                    var item = JsonSerializer.Deserialize<InventoryItem>(JsonSerializer.Serialize(message.Data));
+                    Console.WriteLine($"Player {message.PlayerId} has item: {item.ItemName} x{item.Quantity}");
+                    break;
+                case MessageType.Combat:
+                    var combatAction = JsonSerializer.Deserialize<CombatAction>(JsonSerializer.Serialize(message.Data));
+                    Console.WriteLine($"Player {message.PlayerId} performs {combatAction.Action} on {combatAction.TargetId}");
+                    break;
+                case MessageType.Health:
+                    var health = JsonSerializer.Deserialize<HealthStatus>(JsonSerializer.Serialize(message.Data));
+                    Console.WriteLine($"Player {message.PlayerId} health: {health.CurrentHealth}/{health.MaxHealth}");
+                    break;
+                // Add other message types as needed
+            }
+        }
+        
+        private GameMessage ReceiveMessageFromServer()
+        {
+            byte[] buffer = new byte[8192];
+            int bytesRead = stream.Read(buffer, 0, buffer.Length);
+            string encryptedMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+            string jsonMessage = EncryptionHelper.Decrypt(encryptedMessage);
+            return GameMessage.FromJson(jsonMessage);
         }
 
         private void SendMessageToServer(GameMessage message)
@@ -165,6 +371,14 @@ namespace KenshiMultiplayer
             string encryptedMessage = EncryptionHelper.Encrypt(jsonMessage);
             byte[] messageBuffer = Encoding.ASCII.GetBytes(encryptedMessage);
             stream.Write(messageBuffer, 0, messageBuffer.Length);
+        }
+        
+        public void Disconnect()
+        {
+            if (client != null && client.Connected)
+            {
+                client.Close();
+            }
         }
     }
 }
