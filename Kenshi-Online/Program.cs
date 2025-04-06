@@ -1,125 +1,32 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
+using System.Threading.Tasks;
 
 namespace KenshiMultiplayer
 {
-    class EnhancedProgram
+    class Program
     {
-        static void Main(string[] args)
+        private static KenshiOnlinePlugin plugin;
+        
+        static async Task Main(string[] args)
         {
+            Console.Title = "Kenshi Online";
+            
             DisplayHeader();
-            
-            Console.WriteLine("Kenshi Multiplayer Server/Client");
+            Console.WriteLine("Kenshi Multiplayer Client");
             Console.WriteLine("---------------------------------");
-            Console.WriteLine("1. Start Server");
-            Console.WriteLine("2. Start Client");
-            Console.Write("Select option: ");
             
-            string input = Console.ReadLine()?.Trim();
-            
-            if (input == "1")
+            // Initialize the plugin
+            plugin = new KenshiOnlinePlugin();
+            if (!plugin.Initialize())
             {
-                StartServer();
-            }
-            else if (input == "2")
-            {
-                StartClient();
-            }
-            else
-            {
-                Console.WriteLine("Invalid option.");
-            }
-        }
-        
-        static void DisplayHeader()
-        {
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine(@"
-  _  __                _     _   ____        _ _            
- | |/ /   _ _ __  ___| |__ (_) / ___| _ __ | (_)_ __   ___ 
- | ' / | | | '_ \/ __| '_ \| | \___ \| '_ \| | | '_ \ / _ \
- | . \ |_| | | | \__ \ | | | |  ___) | | | | | | | | |  __/
- |_|\_\__,_|_| |_|___/_| |_|_| |____/|_| |_|_|_|_| |_|\___|
-                                                            
-");
-            Console.ResetColor();
-        }
-        
-        static void StartServer()
-        {
-            Console.Write("Enter Kenshi installation path (e.g. C:\\Steam\\steamapps\\common\\Kenshi): ");
-            string kenshiPath = Console.ReadLine()?.Trim();
-            
-            if (string.IsNullOrEmpty(kenshiPath) || !Directory.Exists(kenshiPath))
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Invalid Kenshi path. Path does not exist.");
-                Console.ResetColor();
+                Console.WriteLine("Failed to initialize plugin. Press any key to exit.");
+                Console.ReadKey();
                 return;
             }
             
-            Console.Write("Server port [5555]: ");
-            string portInput = Console.ReadLine()?.Trim();
-            int port = string.IsNullOrEmpty(portInput) ? 5555 : int.Parse(portInput);
-            
-            try
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("Starting Kenshi Multiplayer server...");
-                Console.WriteLine($"Using Kenshi installation at: {kenshiPath}");
-                Console.WriteLine($"Server will listen on port: {port}");
-                Console.ResetColor();
-                
-                var server = new EnhancedServer(kenshiPath);
-                server.Start(port);
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Failed to start server: {ex.Message}");
-                Console.ResetColor();
-            }
-        }
-        
-        static void StartClient()
-        {
-            Console.Write("Enter cache directory path [./cache]: ");
-            string cachePath = Console.ReadLine()?.Trim();
-            
-            if (string.IsNullOrEmpty(cachePath))
-            {
-                cachePath = "./cache";
-            }
-            
-            Directory.CreateDirectory(cachePath);
-            
-            Console.Write("Server address [localhost]: ");
-            string serverAddress = Console.ReadLine()?.Trim();
-            if (string.IsNullOrEmpty(serverAddress))
-            {
-                serverAddress = "localhost";
-            }
-            
-            Console.Write("Server port [5555]: ");
-            string portInput = Console.ReadLine()?.Trim();
-            int port = string.IsNullOrEmpty(portInput) ? 5555 : int.Parse(portInput);
-            
-            // Initialize client
-            var client = new EnhancedClient(cachePath);
-            
-            // Register message handler
-            client.MessageReceived += (sender, msg) => {
-                if (msg.Type == MessageType.Chat || msg.Type == MessageType.SystemMessage)
-                {
-                    string chatMessage = msg.Data.ContainsKey("message") ? msg.Data["message"].ToString() : "";
-                    Console.WriteLine($"[{msg.PlayerId}]: {chatMessage}");
-                }
-            };
-            
-            while (true)
+            // Main menu loop
+            bool exit = false;
+            while (!exit)
             {
                 Console.Clear();
                 DisplayHeader();
@@ -132,313 +39,214 @@ namespace KenshiMultiplayer
                 
                 string input = Console.ReadLine()?.Trim();
                 
-                if (input == "1")
+                switch (input)
                 {
-                    // Login
-                    Console.Write("Username: ");
-                    string username = Console.ReadLine();
-                    
-                    Console.Write("Password: ");
-                    string password = ReadPassword();
-                    
-                    Console.WriteLine("\nLogging in...");
-                    
-                    if (client.Login(serverAddress, port, username, password))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("Login successful!");
-                        Console.ResetColor();
-                        ClientMainMenu(client);
+                    case "1":
+                        await LoginMenu();
                         break;
-                    }
-                    else
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("Login failed.");
-                        Console.ResetColor();
-                        Thread.Sleep(2000);
-                    }
+                    
+                    case "2":
+                        await RegisterMenu();
+                        break;
+                    
+                    case "3":
+                        exit = true;
+                        break;
+                    
+                    default:
+                        Console.WriteLine("Invalid option. Press any key to continue.");
+                        Console.ReadKey();
+                        break;
                 }
-                else if (input == "2")
-                {
-                    // Register
-                    Console.Write("Username: ");
-                    string username = Console.ReadLine();
-                    
-                    Console.Write("Password: ");
-                    string password = ReadPassword();
-                    
-                    Console.Write("\nEmail: ");
-                    string email = Console.ReadLine();
-                    
-                    Console.WriteLine("Registering...");
-                    
-                    if (client.Register(serverAddress, port, username, password, email))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("Registration successful! You can now login.");
-                        Console.ResetColor();
-                        Thread.Sleep(2000);
-                    }
-                    else
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("Registration failed.");
-                        Console.ResetColor();
-                        Thread.Sleep(2000);
-                    }
-                }
-                else if (input == "3")
-                {
-                    break;
-                }
+            }
+            
+            Console.WriteLine("Exiting Kenshi Multiplayer Client. Press any key to close.");
+            Console.ReadKey();
+        }
+        
+        private static void DisplayHeader()
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine(@"
+  _  __                _     _   ____        _ _            
+ | |/ /   _ _ __  ___| |__ (_) / ___| _ __ | (_)_ __   ___ 
+ | ' / | | | '_ \/ __| '_ \| | \___ \| '_ \| | | '_ \ / _ \
+ | . \ |_| | | | \__ \ | | | |  ___) | | | | | | | | |  __/
+ |_|\_\__,_|_| |_|___/_| |_|_| |____/|_| |_|_|_|_| |_|\___|
+                                                           
+");
+            Console.ResetColor();
+        }
+        
+        private static async Task LoginMenu()
+        {
+            Console.Clear();
+            DisplayHeader();
+            Console.WriteLine("Login to Kenshi Online");
+            Console.WriteLine("---------------------------------");
+            
+            Console.Write("Username: ");
+            string username = Console.ReadLine();
+            
+            Console.Write("Password: ");
+            string password = ReadPassword();
+            
+            Console.WriteLine("\nConnecting to server...");
+            
+            bool success = await plugin.Connect(username, password);
+            
+            if (success)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Login successful!");
+                Console.ResetColor();
+                
+                // Enter the main game interface
+                await MainGameInterface();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Login failed. Press any key to return to main menu.");
+                Console.ResetColor();
+                Console.ReadKey();
             }
         }
         
-        static void ClientMainMenu(EnhancedClient client)
+        private static async Task RegisterMenu()
         {
-            while (true)
+            Console.Clear();
+            DisplayHeader();
+            Console.WriteLine("Register a New Account");
+            Console.WriteLine("---------------------------------");
+            
+            Console.Write("Username: ");
+            string username = Console.ReadLine();
+            
+            Console.Write("Password: ");
+            string password = ReadPassword();
+            
+            Console.Write("\nEmail: ");
+            string email = Console.ReadLine();
+            
+            Console.WriteLine("Registering account...");
+            
+            bool success = await plugin.Register(username, password, email);
+            
+            if (success)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Registration successful! You can now login. Press any key to continue.");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Registration failed. Press any key to continue.");
+                Console.ResetColor();
+            }
+            
+            Console.ReadKey();
+        }
+        
+        private static async Task MainGameInterface()
+        {
+            bool exit = false;
+            while (!exit)
             {
                 Console.Clear();
                 DisplayHeader();
-                Console.WriteLine("Kenshi Multiplayer Client - Connected");
+                Console.WriteLine("Kenshi Online - Connected");
                 Console.WriteLine("---------------------------------");
-                Console.WriteLine("1. Download Game Files");
-                Console.WriteLine("2. Chat");
-                Console.WriteLine("3. Disconnect");
+                Console.WriteLine("1. Send Chat Message");
+                Console.WriteLine("2. Player List");
+                Console.WriteLine("3. Help");
+                Console.WriteLine("4. Disconnect");
                 Console.Write("Select option: ");
                 
                 string input = Console.ReadLine()?.Trim();
                 
-                if (input == "1")
+                switch (input)
                 {
-                    DownloadFilesMenu(client);
-                }
-                else if (input == "2")
-                {
-                    ChatMenu(client);
-                }
-                else if (input == "3")
-                {
-                    client.Disconnect();
-                    break;
+                    case "1":
+                        ChatInterface();
+                        break;
+                    
+                    case "2":
+                        PlayerListInterface();
+                        break;
+                    
+                    case "3":
+                        HelpInterface();
+                        break;
+                    
+                    case "4":
+                        exit = true;
+                        plugin.Disconnect();
+                        break;
+                    
+                    default:
+                        Console.WriteLine("Invalid option. Press any key to continue.");
+                        Console.ReadKey();
+                        break;
                 }
             }
         }
         
-        static void DownloadFilesMenu(EnhancedClient client)
-        {
-            try
-            {
-                Console.Clear();
-                Console.WriteLine("Downloading file list...");
-                
-                var files = client.RequestFileList();
-                
-                Console.Clear();
-                Console.WriteLine("Game Files");
-                Console.WriteLine("---------------------------------");
-                
-                // Group files by directory
-                var directories = files
-                    .Select(f => Path.GetDirectoryName(f.RelativePath).Replace('\\', '/'))
-                    .Distinct()
-                    .OrderBy(d => d)
-                    .ToList();
-                
-                int index = 1;
-                foreach (var dir in directories)
-                {
-                    Console.WriteLine($"{index}. {dir}/");
-                    index++;
-                }
-                
-                Console.WriteLine($"{index}. Back to main menu");
-                Console.Write("Select directory to browse or download: ");
-                
-                string input = Console.ReadLine()?.Trim();
-                if (int.TryParse(input, out int selection) && selection >= 1 && selection <= directories.Count)
-                {
-                    string selectedDir = directories[selection - 1];
-                    BrowseDirectory(client, selectedDir);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error: {ex.Message}");
-                Console.ResetColor();
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
-            }
-        }
-        
-        static void BrowseDirectory(EnhancedClient client, string directory)
-        {
-            try
-            {
-                Console.Clear();
-                Console.WriteLine($"Browsing: {directory}");
-                Console.WriteLine("---------------------------------");
-                
-                var files = client.RequestFileList(directory)
-                    .OrderBy(f => Path.GetFileName(f.RelativePath))
-                    .ToList();
-                
-                int index = 1;
-                foreach (var file in files)
-                {
-                    string fileName = Path.GetFileName(file.RelativePath);
-                    Console.WriteLine($"{index}. {fileName} ({GetFileSizeString(file.Size)})");
-                    index++;
-                }
-                
-                Console.WriteLine($"{index}. Download all files");
-                Console.WriteLine($"{index + 1}. Back");
-                Console.Write("Select file to download or action: ");
-                
-                string input = Console.ReadLine()?.Trim();
-                if (int.TryParse(input, out int selection))
-                {
-                    if (selection >= 1 && selection <= files.Count)
-                    {
-                        // Download specific file
-                        var fileToDownload = files[selection - 1];
-                        DownloadFile(client, fileToDownload.RelativePath);
-                    }
-                    else if (selection == files.Count + 1)
-                    {
-                        // Download all files
-                        DownloadMultipleFiles(client, files);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error: {ex.Message}");
-                Console.ResetColor();
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
-            }
-        }
-        
-        static void DownloadFile(EnhancedClient client, string relativePath)
-        {
-            try
-            {
-                Console.Clear();
-                Console.WriteLine($"Downloading: {relativePath}");
-                Console.WriteLine("Please wait...");
-                
-                byte[] fileData = client.RequestGameFile(relativePath);
-                
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"Downloaded {GetFileSizeString(fileData.Length)} successfully!");
-                Console.ResetColor();
-                
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Download error: {ex.Message}");
-                Console.ResetColor();
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
-            }
-        }
-        
-        static void DownloadMultipleFiles(EnhancedClient client, List<GameFileInfo> files)
+        private static void ChatInterface()
         {
             Console.Clear();
-            Console.WriteLine($"Downloading {files.Count} files");
-            Console.WriteLine("Progress: 0%");
-            
-            int totalFiles = files.Count;
-            int filesDownloaded = 0;
-            
-            foreach (var file in files)
-            {
-                try
-                {
-                    int percent = (int)((double)filesDownloaded / totalFiles * 100);
-                    Console.SetCursorPosition(10, 1);
-                    Console.Write($"{percent}%");
-                    
-                    Console.SetCursorPosition(0, 2);
-                    Console.Write($"Current: {file.RelativePath.PadRight(40)}");
-                    
-                    byte[] fileData = client.RequestGameFile(file.RelativePath);
-                    filesDownloaded++;
-                }
-                catch (Exception ex)
-                {
-                    Console.SetCursorPosition(0, 3);
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Error: {ex.Message}".PadRight(50));
-                    Console.ResetColor();
-                }
-            }
-            
-            Console.SetCursorPosition(10, 1);
-            Console.Write("100%");
-            
-            Console.SetCursorPosition(0, 4);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Downloaded {filesDownloaded} of {totalFiles} files");
-            Console.ResetColor();
-            
-            Console.WriteLine("Press any key to continue...");
-            Console.ReadKey();
-        }
-        
-        static void ChatMenu(EnhancedClient client)
-        {
-            Console.Clear();
-            Console.WriteLine("Chat");
+            DisplayHeader();
+            Console.WriteLine("Chat Interface");
             Console.WriteLine("---------------------------------");
-            Console.WriteLine("Type your messages (type /exit to return to menu)");
-            Console.WriteLine("---------------------------------");
+            Console.WriteLine("Type your message (or 'exit' to return to menu):");
             
             while (true)
             {
-                string message = Console.ReadLine()?.Trim();
+                Console.Write("> ");
+                string message = Console.ReadLine();
                 
-                if (message == "/exit")
-                {
+                if (string.IsNullOrEmpty(message))
+                    continue;
+                
+                if (message.ToLower() == "exit")
                     break;
-                }
                 
-                if (!string.IsNullOrEmpty(message))
-                {
-                    // Create a chat message
-                    var chatMessage = new GameMessage
-                    {
-                        Type = MessageType.Chat,
-                        Data = new Dictionary<string, object> 
-                        { 
-                            { "message", message }
-                        }
-                    };
-                    
-                    try
-                    {
-                        client.SendMessageToServer(chatMessage);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"Error sending message: {ex.Message}");
-                        Console.ResetColor();
-                    }
-                }
+                // Send the chat message
+                plugin.SendChatMessage(message);
             }
         }
         
-        // Helper method to read password without showing characters
-        static string ReadPassword()
+        private static void PlayerListInterface()
+        {
+            Console.Clear();
+            DisplayHeader();
+            Console.WriteLine("Player List");
+            Console.WriteLine("---------------------------------");
+            Console.WriteLine("This feature is not yet implemented.");
+            Console.WriteLine("\nPress any key to return to menu.");
+            Console.ReadKey();
+        }
+        
+        private static void HelpInterface()
+        {
+            Console.Clear();
+            DisplayHeader();
+            Console.WriteLine("Help & Information");
+            Console.WriteLine("---------------------------------");
+            Console.WriteLine("Kenshi Online allows you to play Kenshi with other players.");
+            Console.WriteLine("\nUsage:");
+            Console.WriteLine("1. Make sure Kenshi is running before connecting");
+            Console.WriteLine("2. Use the chat interface to communicate with other players");
+            Console.WriteLine("3. Other players will appear in your game world automatically");
+            Console.WriteLine("\nControls:");
+            Console.WriteLine("- Play the game normally with Kenshi's controls");
+            Console.WriteLine("- All actions are automatically synchronized with other players");
+            Console.WriteLine("\nPress any key to return to menu.");
+            Console.ReadKey();
+        }
+        
+        private static string ReadPassword()
         {
             string password = "";
             ConsoleKeyInfo key;
@@ -461,19 +269,6 @@ namespace KenshiMultiplayer
             while (key.Key != ConsoleKey.Enter);
             
             return password;
-        }
-        
-        // Helper method to format file size
-        static string GetFileSizeString(long byteCount)
-        {
-            string[] suf = { "B", "KB", "MB", "GB" };
-            if (byteCount == 0)
-                return "0" + suf[0];
-                
-            long bytes = Math.Abs(byteCount);
-            int place = Convert.ToInt32(Math.Floor(Math.Log(bytes, 1024)));
-            double num = Math.Round(bytes / Math.Pow(1024, place), 1);
-            return $"{(Math.Sign(byteCount) * num).ToString("0.##")} {suf[place]}";
         }
     }
 }
