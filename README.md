@@ -1,4 +1,4 @@
-# Kenshi Online
+# Kenshi Online (WIP)
 
 ![Kenshi Online Banner](https://via.placeholder.com/800x200?text=Kenshi+Online+Multiplayer+Mod)
 
