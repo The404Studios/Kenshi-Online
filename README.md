@@ -80,10 +80,11 @@ For more detailed troubleshooting, visit our [Wiki](https://github.com/The404Stu
 
 We welcome contributions to improve Kenshi Online! Whether you're fixing bugs, adding features, or improving documentation:
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b https://github.com/The404Studios/Kenshi-Online.git`)
-3. Commit your changes (`git commit -m https://github.com/The404Studios/Kenshi-Online.git'`)
-4. Push to the branch (`git push origin https://github.com/The404Studios/Kenshi-Online.git`)
+1. Fork the repository (`git clone https://github.com/YOUR_USERNAME/Kenshi-Online.git
+cd Kenshi-Online`)
+2. Create your feature branch (`git checkout -b your-feature-name origin/pr`)
+3. Commit your changes (`git add . git commit -m "Describe your changes here"'`)
+4. Push to the branch (`git push origin your-feature-name`)
 5. Open a Pull Request
 
 there is no guidelines to this.
