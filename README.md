@@ -1,106 +1,230 @@
-# Kenshi Online (WIP)
+# Kenshi Online - Installation and Usage Tutorial
 
 ![Kenshi Online Banner](https://via.placeholder.com/800x200?text=Kenshi+Online+Multiplayer+Mod)
 
-[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Discord](https://img.shields.io/discord/YOUR_DISCORD_ID?color=7289DA&label=Discord&logo=discord&logoColor=white)]([https://discord.gg/yxMxFKD](https://discord.gg/rGkxuWK2))
-[![GitHub Stars](https://img.shields.io/github/stars/The404Studios/Kenshi-Online?style=social)](https://github.com/The404Studios/Kenshi-Online)
+Join our [Discord server](https://discord.gg/62aDDmtkgb) for support and updates!
 
-## 🌟 Overview
+## Introduction
 
-**Kenshi Online** transforms the harsh single-player world of Kenshi into a shared multiplayer experience. Venture through Kenshi's unforgiving wasteland with friends by your side, building communities, engaging in combat, and writing your own stories together in this expansive sandbox world.
+This tutorial will guide you through setting up and using Kenshi Online, a multiplayer mod for Kenshi that lets you play with friends in the same world. This guide is intended for both server hosts and players who want to connect to existing servers.
 
-## ✨ Key Features
+## Table of Contents
 
-### 🎮 True Multiplayer Experience
-- Play with up to X friends in a single persistent world
-- Real-time gameplay synchronization across all connected players
-- Shared world state with persistent changes
+1. [Requirements](#requirements)
+2. [Installation Guide](#installation-guide)
+   - [Server Installation](#server-installation)
+   - [Client Installation](#client-installation)
+3. [Hosting a Server](#hosting-a-server)
+4. [Connecting to a Server](#connecting-to-a-server)
+5. [Playing with Friends](#playing-with-friends)
+6. [Troubleshooting](#troubleshooting)
 
-### 🔄 Seamless Character Synchronization
-- Real-time tracking of player movements and actions
-- Synchronized inventories, stats, and character development
-- See your friends' battles unfold in real-time
+## Requirements
 
-### 🎯 Collaborative & Competitive Gameplay
-- Form alliances to conquer the wasteland together
-- Share resources and build joint settlements
-- Compete for territory and resources if you choose
-- Trade, strategize, or betray - forge your own path in the wasteland
+### For Server Hosts
+- Windows 10/11 (64-bit)
+- .NET 8.0 Runtime or SDK
+- Kenshi game installation (version 1.0.59+)
+- Minimum 16GB RAM recommended
+- Port forwarding capabilities on your router
+- Static IP address (recommended) or dynamic DNS service
 
-### 🌐 Enhanced Social Features
-- In-game chat system for communication
-- Player trading system
-- Formation and squad commands for coordinated gameplay
+### For Players
+- Windows 10/11 (64-bit)
+- Kenshi game (version 1.0.59+)
+- Minimum 8GB RAM
+- Internet connection
 
-## 📋 Roadmap
+## Installation Guide
 
-We're actively developing new features to enhance your multiplayer experience:
+### Server Installation
 
-- **NPC Interaction Improvements**: Synchronized NPC dialogues and reactions
-- **Player Customization**: Unique player colors and custom banners
-- **Cooperative Quests**: Multiplayer-specific quests and rewards
-- **Faction System**: Create and manage player factions with shared objectives
-- **Server Administration Tools**: Better tools for server hosts
+1. **Download the Server Package**
+   - Download the latest release from [GitHub Releases](https://github.com/The404Studios/Kenshi-Online/releases)
+   - Extract the ZIP file to a directory of your choice
 
-## 🚀 Installation Guide
+2. **Verify .NET Installation**
+   - Make sure you have .NET 8.0 Runtime installed
+   - You can download it from the [Microsoft .NET download page](https://dotnet.microsoft.com/download/dotnet/8.0)
+   - Verify installation by running `dotnet --version` in a command prompt
 
-### Prerequisites
-- Kenshi (Game Version "19.X.X or higher) 
-- All players must have the same game version and mod configuration
+3. **Initial Setup**
+   - Navigate to the extracted server directory
+   - Run `KenshiMultiplayer.exe`
+   - The first launch will create necessary configuration files
 
 ### Client Installation
-1. **Download** the latest release from the [Releases page](https://github.com/The404Studios/Kenshi-Online/releases)
-2. **Extract** the mod files to your Kenshi game directory
-3. **Launch** Kenshi and open the Mod Manager
-4. **Activate** the Kenshi Multiplayer Mod in your mod list
 
-### Joining a Game
-1. Launch Kenshi with the mod activated
-2. Select "Join Multiplayer" from the main menu
-3. Enter the host's IP address
-4. Create or select your character
+1. **Download the Client Mod**
+   - Download the client package from [GitHub Releases](https://github.com/The404Studios/Kenshi-Online/releases)
+   - Extract the contents to a temporary location
 
-### Hosting a Game
-1. Ensure port forwarding is properly configured (Port: XXXX)
-2. Launch the server application
-3. Configure server settings as desired
-4. Share your IP address with friends
+2. **Install the Mod**
+   - Locate your Kenshi installation directory:
+     - Steam: Right-click on Kenshi in Steam → Properties → Local Files → Browse
+     - GOG: Find the installation folder you chose during installation
+   - Navigate to the `mods` folder in your Kenshi directory
+     - If the folder doesn't exist, create it
+   - Create a new folder named `KenshiOnline` in the `mods` directory
+   - Copy all files from the client package into this folder
 
-## 🔧 Troubleshooting
+3. **Configure the Mod**
+   - Launch Kenshi
+   - At the main menu, click on "Mods"
+   - Enable "Kenshi Online" in the mod list
+   - Apply changes and restart the game when prompted
 
-**Common Issues:**
-- **Connection Failed**: Verify port forwarding and firewall settings
-- **Desync Issues**: Ensure all players have identical mod configurations
-- **Performance Problems**: Reduce server player limit or adjust synchronization settings
+## Hosting a Server
 
-For more detailed troubleshooting, visit our [Wiki](https://github.com/The404Studios/Kenshi-Online/wiki).
+1. **Start the Server**
+   - Run `KenshiMultiplayer.exe` from the server package
+   - Select option `1` to start the server
+   - Enter the path to your Kenshi installation when prompted
+   - Choose a port number (default: 5555)
 
-## 👥 Contributing
+2. **Configure Port Forwarding**
+   - Access your router's configuration page (typically 192.168.1.1 or 192.168.0.1)
+   - Log in with your credentials
+   - Find the port forwarding section (may be under Advanced Settings)
+   - Create a new rule:
+     - Protocol: TCP
+     - External port: 5555 (or your chosen port)
+     - Internal port: 5555 (or your chosen port)
+     - Internal IP: Your computer's local IP address
+   - Save the changes
 
-We welcome contributions to improve Kenshi Online! Whether you're fixing bugs, adding features, or improving documentation:
+3. **Find Your IP Address**
+   - Visit [whatismyip.com](https://www.whatismyip.com/) to find your external IP
+   - This is the address players will use to connect to your server
+   - If you have a dynamic IP, consider using a dynamic DNS service
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b https://github.com/The404Studios/Kenshi-Online.git`)
-3. Commit your changes (`git commit -m https://github.com/The404Studios/Kenshi-Online.git'`)
-4. Push to the branch (`git push origin https://github.com/The404Studios/Kenshi-Online.git`)
-5. Open a Pull Request
+4. **Server Administration**
+   - The server console supports various commands for administration:
+     - `/help` - Show list of commands
+     - `/list` - Show connected players
+     - `/kick <username>` - Kick a player from the server
+     - `/ban <username> <hours>` - Ban a player for the specified hours
+     - `/create-lobby <id> <isPrivate> <password> <maxPlayers>` - Create a new lobby
+     - `/list-lobbies` - List all active lobbies
+     - `/broadcast <message>` - Send a message to all connected players
 
-there is no guidelines to this.
+## Connecting to a Server
 
-## 📝 License
+1. **Launch Kenshi with the Mod**
+   - Start Kenshi with the Kenshi Online mod enabled
+   - From the main menu, you'll see a new option: "Multiplayer"
+   - Click on "Multiplayer" to access the multiplayer menu
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+2. **Register or Login**
+   - If it's your first time, select "Register" to create an account
+   - Fill in your desired username, password, and email
+   - If you already have an account, select "Login"
+   - Enter your credentials and connect
 
-## 📞 Contact & Community
+3. **Enter Server Details**
+   - Enter the server's IP address (provided by the server host)
+   - Enter the port (default: 5555, or as specified by the host)
+   - Click "Connect" to join the server
 
-- **Email**: [the404studios@gmail.com](mailto:the404studios@gmail.com)
-- **Discord**: Join our [community server](https://discord.gg/yxMxFKD) for support, feedback, and to connect with other players
-- **Issues**: Report bugs via [GitHub Issues](https://github.com/The404Studios/Kenshi-Online/issues)
+4. **Character Creation/Selection**
+   - Create a new character or select an existing one
+   - The character creation process works similarly to the base game
+   - Once your character is ready, click "Play" to enter the world
+
+## Playing with Friends
+
+1. **In-Game Communication**
+   - Open the chat window by pressing `Enter`
+   - Type messages to communicate with other players
+   - Chat commands:
+     - `/g <message>` - Global chat visible to all players
+     - `/p <message>` - Proximity chat for nearby players
+     - `/w <username> <message>` - Whisper to a specific player
+     - `/f <message>` - Faction chat (if you're in a faction)
+
+2. **Meeting Up**
+   - Coordinate your location with friends via chat
+   - Use the `/coords` command to share your current map coordinates
+   - The map is the same as in single-player, so familiar landmarks can help
+
+3. **Forming a Squad**
+   - Approach another player and press the `F` key to interact
+   - Select "Invite to Squad" from the interaction menu
+   - The other player must accept your invitation
+   - Squad members will appear with a special indicator above their characters
+
+4. **Shared Gameplay**
+   - Build bases together by placing structures near each other
+   - Share resources by dropping them on the ground or using containers
+   - Fight together against enemies with coordinated combat
+   - Research and craft items to help each other
+
+## Troubleshooting
+
+### Connection Issues
+
+**Problem**: Can't connect to the server
+**Solutions**:
+- Verify the server is running
+- Double-check the IP address and port
+- Ensure the mod is properly installed and enabled
+- Check if your firewall is blocking the connection
+- Verify port forwarding is correctly set up (for server hosts)
+
+**Problem**: Disconnecting frequently
+**Solutions**:
+- Check your internet connection stability
+- Reduce the number of players on the server
+- Ensure your computer meets the minimum requirements
+- Try restarting both the client and server
+
+### Gameplay Issues
+
+**Problem**: Character desynchronization
+**Solutions**:
+- Use the `/resync` command to force a state update
+- Log out and log back in
+- Ask the server host to restart the server
+
+**Problem**: Missing items or inventory issues
+**Solutions**:
+- Use the `/fixinventory` command
+- Log out and log back in
+- Check if there are any known issues on the Discord server
+
+**Problem**: Can't see other players
+**Solutions**:
+- Make sure you're in the same game world/lobby
+- Use `/playerlist` to see if others are connected
+- Try teleporting to a major city as a meeting point
+
+### Server Issues
+
+**Problem**: Server won't start
+**Solutions**:
+- Verify .NET 8.0 is installed correctly
+- Check that the path to Kenshi is correct
+- Run the server as Administrator
+- Look for error messages in `server_log.txt`
+
+**Problem**: High server lag
+**Solutions**:
+- Reduce the maximum number of players
+- Ensure your server machine meets the recommended specs
+- Close unnecessary applications
+- Consider upgrading your RAM if you're experiencing memory issues
+
+## Additional Resources
+
+- **Discord Support**: Join our [Discord server](https://discord.gg/62aDDmtkgb) for live support
+- **GitHub Issues**: Report bugs on our [GitHub Issues page](https://github.com/The404Studios/Kenshi-Online/issues)
+- **Wiki**: Check our [community wiki](https://github.com/The404Studios/Kenshi-Online/wiki) for more guides
 
 ---
 
+Thank you for using Kenshi Online! We hope you enjoy exploring the wasteland with your friends.
+
 <div align="center">
-  <img src="https://via.placeholder.com/60" alt="The404Studios Logo">
-  <p><i>Developed with ❤️ by The404Studios</i></p>
+  <p><i>Developed by The404Studios</i></p>
+  <p><small>Kenshi is a property of Lo-Fi Games. This modification is unofficial and not affiliated with Lo-Fi Games.</small></p>
 </div>
