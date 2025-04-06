@@ -1,6 +1,6 @@
-# Kenshi Online
+# Kenshi Online (WIP)
 
-![Kenshi Online Banner](https://steamuserimages-a.akamaihd.net/ugc/2031732367597903060/7C1A14D6BAF9F5FAB3642F65BBAB8B3AC0DB5231/)
+![Kenshi Online Banner](https://via.placeholder.com/1200x300?text=Kenshi+Online+Multiplayer+Experience)
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/discord/962745762938572870?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/62aDDmtkgb)
@@ -10,7 +10,7 @@
 
 **Kenshi Online** transforms the harsh single-player world of Kenshi into a shared multiplayer experience. Venture through Kenshi's unforgiving wasteland with friends by your side, building communities, engaging in combat, and writing your own stories together in this expansive sandbox world.
 
-![Kenshi Wasteland](https://steamuserimages-a.akamaihd.net/ugc/1809887313585419213/AD27DF1D3D09EB8A10C9EC9E20D56C21EFEFF34F/)
+![Kenshi Wasteland](https://via.placeholder.com/800x400?text=Kenshi+Harsh+Wasteland+Environment)
 
 ## ✨ Key Features
 
@@ -26,7 +26,7 @@
 - See your friends' battles unfold in real-time
 - Character persistence across server sessions
 
-![Kenshi Skeletons](https://steamuserimages-a.akamaihd.net/ugc/1017194670134266640/EDA0AEF6C8CA682FD69DCFF0EC10A9EBCAA1F764/)
+![Kenshi Skeletons](https://via.placeholder.com/800x400?text=Kenshi+Skeleton+Characters+in+Combat)
 
 ### 🎯 Collaborative & Competitive Gameplay
 - Form alliances to conquer the wasteland together
@@ -41,7 +41,7 @@
 - Formation and squad commands for coordinated gameplay
 - Friend finder to locate allies in the vast wasteland
 
-![Kenshi Desert Base](https://steamuserimages-a.akamaihd.net/ugc/772853828102591885/2B78066A1DF7A48D42E0A1E67A0FE4D2CB8D0DD9/)
+![Kenshi Desert Base](https://via.placeholder.com/800x400?text=Kenshi+Player+Settlement+in+Desert)
 
 ## 📋 Roadmap
 
@@ -75,7 +75,7 @@ We're actively developing new features to enhance your multiplayer experience:
 4. Create or select your character
 5. Start your shared adventure!
 
-![Kenshi Combat](https://steamuserimages-a.akamaihd.net/ugc/770608335950892539/4EF6F0B47FFBAA32EF1AFEFF0AEE9B91EF14A5E2/)
+![Kenshi Combat](https://via.placeholder.com/800x400?text=Kenshi+Multiplayer+Combat+Scene)
 
 ### Hosting a Game
 1. Ensure port forwarding is properly configured (Port: 25565)
@@ -118,12 +118,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Issues**: Report bugs via [GitHub Issues](https://github.com/The404Studios/Kenshi-Online/issues)
 - **Twitter**: Follow us [@KenshiOnline](https://twitter.com/KenshiOnline) for updates
 
-![Kenshi Group](https://steamuserimages-a.akamaihd.net/ugc/779614711132416358/CC2DA5432AA4E85C1D0EA62F34F21FF99E4DC027/)
+![Kenshi Group](https://via.placeholder.com/800x400?text=Kenshi+Multiplayer+Group+Adventure)
 
 ---
 
 <div align="center">
-  <img src="https://i.imgur.com/dXWADbw.png" alt="The404Studios Logo" width="80">
+  <img src="https://via.placeholder.com/80?text=404" alt="The404Studios Logo">
   <p><i>Developed with ❤️ by The404Studios</i></p>
   <p><small>Kenshi is a property of Lo-Fi Games. This modification is unofficial and not affiliated with Lo-Fi Games.</small></p>
 </div>
