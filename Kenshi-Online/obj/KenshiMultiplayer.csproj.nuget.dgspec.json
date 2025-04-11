@@ -51,13 +51,25 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "Fasm.NET": {
+              "target": "Package",
+              "version": "[1.70.3, )"
+            },
             "MemorySharp": {
               "target": "Package",
               "version": "[1.2.0, )"
             },
+            "Microsoft.IdentityModel.Tokens": {
+              "target": "Package",
+              "version": "[6.32.1, )"
+            },
             "Newtonsoft.Json": {
               "target": "Package",
               "version": "[13.0.3, )"
+            },
+            "System.IdentityModel.Tokens.Jwt": {
+              "target": "Package",
+              "version": "[6.32.1, )"
             },
             "System.Text.Json": {
               "target": "Package",

@@ -17,53 +17,53 @@ namespace KenshiMultiplayer
         private string localCachePath;
         private float lastX, lastY;
         private DateTime lastCombatTime = DateTime.MinValue;
-        
+
         public event EventHandler<GameMessage> MessageReceived;
-        
+
         public EnhancedClient(string cachePath)
         {
             localCachePath = cachePath;
             Directory.CreateDirectory(localCachePath);
         }
-        
+
         public bool Login(string serverAddress, int port, string username, string password)
         {
             try
             {
                 client = new TcpClient(serverAddress, port);
                 stream = client.GetStream();
-                
+
                 // Create login message
                 var loginMessage = new GameMessage
                 {
                     Type = MessageType.Login,
-                    Data = new Dictionary<string, object> 
-                    { 
+                    Data = new Dictionary<string, object>
+                    {
                         { "username", username },
                         { "password", password }
                     }
                 };
-                
+
                 SendMessageToServer(loginMessage);
-                
+
                 // Wait for response
                 GameMessage response = ReceiveMessageFromServer();
-                
-                if (response.Type == MessageType.Authentication && 
+
+                if (response.Type == MessageType.Authentication &&
                     response.Data.ContainsKey("success") &&
                     (bool)response.Data["success"] &&
                     response.Data.ContainsKey("token"))
                 {
                     authToken = response.Data["token"].ToString();
-                    
+
                     // Start listener thread
                     Thread readThread = new Thread(ListenForServerMessages);
                     readThread.IsBackground = true;
                     readThread.Start();
-                    
+
                     return true;
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -72,37 +72,37 @@ namespace KenshiMultiplayer
                 return false;
             }
         }
-        
+
         public bool Register(string serverAddress, int port, string username, string password, string email)
         {
             try
             {
                 client = new TcpClient(serverAddress, port);
                 stream = client.GetStream();
-                
+
                 var registerMessage = new GameMessage
                 {
                     Type = MessageType.Register,
-                    Data = new Dictionary<string, object> 
-                    { 
+                    Data = new Dictionary<string, object>
+                    {
                         { "username", username },
                         { "password", password },
                         { "email", email }
                     }
                 };
-                
+
                 SendMessageToServer(registerMessage);
-                
+
                 GameMessage response = ReceiveMessageFromServer();
-                
-                if (response.Type == MessageType.Authentication && 
+
+                if (response.Type == MessageType.Authentication &&
                     response.Data.ContainsKey("success") &&
                     (bool)response.Data["success"])
                 {
                     // Registration successful
                     return true;
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -111,38 +111,38 @@ namespace KenshiMultiplayer
                 return false;
             }
         }
-        
+
         public byte[] RequestGameFile(string relativePath)
         {
             // Check if we already have this file cached
             string cachePath = Path.Combine(localCachePath, relativePath);
-            
+
             if (File.Exists(cachePath) && cachedFileInfo.TryGetValue(relativePath, out var fileInfo))
             {
                 // We have it cached, return the file
                 return File.ReadAllBytes(cachePath);
             }
-            
+
             // Request the file from server
             var fileRequest = new GameMessage
             {
                 Type = "file_request",
-                Data = new Dictionary<string, object> 
-                { 
+                Data = new Dictionary<string, object>
+                {
                     { "path", relativePath }
                 },
                 SessionId = authToken
             };
-            
+
             SendMessageToServer(fileRequest);
-            
+
             // Wait for response
             // In a real implementation, this would be asynchronous with callbacks
             GameMessage response = null;
-            
+
             // Create a signal to wait for the response
             var responseSignal = new ManualResetEvent(false);
-            
+
             // Event handler to capture the response
             EventHandler<GameMessage> responseHandler = null;
             responseHandler = (sender, msg) => {
@@ -152,58 +152,58 @@ namespace KenshiMultiplayer
                     responseSignal.Set();
                 }
             };
-            
+
             // Register the event handler
             MessageReceived += responseHandler;
-            
+
             // Wait for the response with a timeout
             bool gotResponse = responseSignal.WaitOne(TimeSpan.FromSeconds(30));
-            
+
             // Unregister the event handler
             MessageReceived -= responseHandler;
-            
+
             if (!gotResponse || response == null)
             {
                 throw new TimeoutException("Timeout waiting for file data");
             }
-            
+
             if (response.Data.ContainsKey("data") && response.Data.ContainsKey("fileInfo"))
             {
                 byte[] fileData = Convert.FromBase64String(response.Data["data"].ToString());
                 GameFileInfo info = JsonSerializer.Deserialize<GameFileInfo>(
                     response.Data["fileInfo"].ToString());
-                
+
                 // Ensure directory exists
                 Directory.CreateDirectory(Path.GetDirectoryName(cachePath));
-                
+
                 // Cache the file
                 File.WriteAllBytes(cachePath, fileData);
                 cachedFileInfo[relativePath] = info;
-                
+
                 return fileData;
             }
-            
+
             throw new Exception("Failed to download file: " + relativePath);
         }
-        
+
         public List<GameFileInfo> RequestFileList(string directory = "")
         {
             var fileListRequest = new GameMessage
             {
                 Type = "file_list_request",
-                Data = new Dictionary<string, object> 
-                { 
+                Data = new Dictionary<string, object>
+                {
                     { "directory", directory }
                 },
                 SessionId = authToken
             };
-            
+
             SendMessageToServer(fileListRequest);
-            
+
             // Wait for response
             GameMessage response = null;
             var responseSignal = new ManualResetEvent(false);
-            
+
             EventHandler<GameMessage> responseHandler = null;
             responseHandler = (sender, msg) => {
                 if (msg.Type == "file_list")
@@ -212,25 +212,25 @@ namespace KenshiMultiplayer
                     responseSignal.Set();
                 }
             };
-            
+
             MessageReceived += responseHandler;
             bool gotResponse = responseSignal.WaitOne(TimeSpan.FromSeconds(30));
             MessageReceived -= responseHandler;
-            
+
             if (!gotResponse || response == null)
             {
                 throw new TimeoutException("Timeout waiting for file list");
             }
-            
+
             if (response.Data.ContainsKey("files"))
             {
                 return JsonSerializer.Deserialize<List<GameFileInfo>>(
                     response.Data["files"].ToString());
             }
-            
+
             return new List<GameFileInfo>();
         }
-        
+
         public void UpdatePosition(float newX, float newY)
         {
             float threshold = 0.5f;
@@ -250,7 +250,7 @@ namespace KenshiMultiplayer
                 lastY = newY;
             }
         }
-        
+
         public void PerformCombatAction(string targetId, string actionType)
         {
             TimeSpan cooldown = TimeSpan.FromSeconds(1);
@@ -273,7 +273,7 @@ namespace KenshiMultiplayer
 
             SendMessageToServer(message);
         }
-        
+
         public void UpdateInventory(string itemName, int quantity)
         {
             var inventoryItem = new InventoryItem { ItemName = itemName, Quantity = quantity };
@@ -287,7 +287,7 @@ namespace KenshiMultiplayer
 
             SendMessageToServer(message);
         }
-        
+
         public void UpdateHealth(int currentHealth, int maxHealth)
         {
             var healthStatus = new HealthStatus { CurrentHealth = currentHealth, MaxHealth = maxHealth };
@@ -301,13 +301,13 @@ namespace KenshiMultiplayer
 
             SendMessageToServer(message);
         }
-        
+
         private void ListenForServerMessages()
         {
             byte[] buffer = new byte[16384]; // Larger buffer for file transfers
             while (true)
             {
-                try 
+                try
                 {
                     int bytesRead = stream.Read(buffer, 0, buffer.Length);
                     if (bytesRead > 0)
@@ -316,10 +316,10 @@ namespace KenshiMultiplayer
                         string jsonMessage = EncryptionHelper.Decrypt(encryptedMessage);
 
                         GameMessage message = GameMessage.FromJson(jsonMessage);
-                        
+
                         // Raise the event with the received message
                         MessageReceived?.Invoke(this, message);
-                        
+
                         // Process based on message type
                         HandleGameMessage(message);
                     }
@@ -331,7 +331,7 @@ namespace KenshiMultiplayer
                 }
             }
         }
-        
+
         private void HandleGameMessage(GameMessage message)
         {
             switch (message.Type)
@@ -352,10 +352,10 @@ namespace KenshiMultiplayer
                     var health = JsonSerializer.Deserialize<HealthStatus>(JsonSerializer.Serialize(message.Data));
                     Console.WriteLine($"Player {message.PlayerId} health: {health.CurrentHealth}/{health.MaxHealth}");
                     break;
-                // Add other message types as needed
+                    // Add other message types as needed
             }
         }
-        
+
         private GameMessage ReceiveMessageFromServer()
         {
             byte[] buffer = new byte[8192];
@@ -365,14 +365,15 @@ namespace KenshiMultiplayer
             return GameMessage.FromJson(jsonMessage);
         }
 
-        private void SendMessageToServer(GameMessage message)
+        // Changed from 'private' to 'internal' to allow access from other classes in the same assembly
+        internal void SendMessageToServer(GameMessage message)
         {
             string jsonMessage = message.ToJson();
             string encryptedMessage = EncryptionHelper.Encrypt(jsonMessage);
             byte[] messageBuffer = Encoding.ASCII.GetBytes(encryptedMessage);
             stream.Write(messageBuffer, 0, messageBuffer.Length);
         }
-        
+
         public void Disconnect()
         {
             if (client != null && client.Connected)
