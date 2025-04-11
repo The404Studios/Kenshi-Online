@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -18,18 +19,45 @@ namespace KenshiMultiplayer
         private float lastX, lastY;
         private DateTime lastCombatTime = DateTime.MinValue;
 
+        // New fields for features
+        private FriendsManager friendsManager;
+        private MarketplaceManager marketplaceManager;
+        private TradeManager tradeManager;
+        private STUNClient stunClient;
+        private bool isWebInterfaceEnabled = false;
+        private WebUIController webUI;
+
+        // Client configuration
+        public string ServerAddress { get; private set; }
+        public int ServerPort { get; private set; }
+        public string CurrentUsername { get; private set; }
+        public string AuthToken => authToken;
+        public bool IsLoggedIn => !string.IsNullOrEmpty(authToken);
+        public bool IsWebInterfaceEnabled => isWebInterfaceEnabled;
+
         public event EventHandler<GameMessage> MessageReceived;
 
         public EnhancedClient(string cachePath)
         {
             localCachePath = cachePath;
             Directory.CreateDirectory(localCachePath);
+
+            // Initialize feature managers
+            friendsManager = new FriendsManager(this, cachePath);
+            marketplaceManager = new MarketplaceManager(this, cachePath);
+            tradeManager = new TradeManager(this, cachePath);
+            stunClient = new STUNClient();
         }
 
         public bool Login(string serverAddress, int port, string username, string password)
         {
             try
             {
+                // Store for reconnection
+                ServerAddress = serverAddress;
+                ServerPort = port;
+                CurrentUsername = username;
+
                 client = new TcpClient(serverAddress, port);
                 stream = client.GetStream();
 
@@ -111,6 +139,76 @@ namespace KenshiMultiplayer
                 return false;
             }
         }
+
+        public void EnableWebInterface(int port = 8080)
+        {
+            if (!isWebInterfaceEnabled)
+            {
+                try
+                {
+                    string webRootPath = Path.Combine(localCachePath, "webui");
+                    webUI = new WebUIController(webRootPath, port);
+                    webUI.SetClient(this);
+                    webUI.Start();
+
+                    isWebInterfaceEnabled = true;
+                    Console.WriteLine($"Web interface enabled at http://localhost:{port}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to enable web interface: {ex.Message}");
+                }
+            }
+        }
+
+        public void DisableWebInterface()
+        {
+            if (isWebInterfaceEnabled && webUI != null)
+            {
+                webUI.Stop();
+                isWebInterfaceEnabled = false;
+                Console.WriteLine("Web interface disabled");
+            }
+        }
+
+        // Friend System Methods
+        public bool SendFriendRequest(string username) => friendsManager.SendFriendRequest(username);
+        public bool AcceptFriendRequest(string username) => friendsManager.AcceptFriendRequest(username);
+        public bool DeclineFriendRequest(string username) => friendsManager.DeclineFriendRequest(username);
+        public bool RemoveFriend(string username) => friendsManager.RemoveFriend(username);
+        public bool BlockUser(string username) => friendsManager.BlockUser(username);
+        public List<FriendRelation> GetFriends() => friendsManager.GetFriends();
+        public List<FriendRelation> GetBlockedUsers() => friendsManager.GetBlockedUsers();
+        public List<string> GetIncomingFriendRequests() => friendsManager.GetIncomingRequests(CurrentUsername);
+        public List<string> GetOutgoingFriendRequests() => friendsManager.GetOutgoingRequests(CurrentUsername);
+
+        // Marketplace Methods
+        public bool CreateMarketListing(string itemId, string itemName, int quantity, int price, float condition = 1.0f) =>
+            marketplaceManager.CreateListing(itemId, itemName, quantity, price, condition);
+        public bool PurchaseMarketListing(string listingId) => marketplaceManager.PurchaseListing(listingId);
+        public bool CancelMarketListing(string listingId) => marketplaceManager.CancelListing(listingId);
+        public List<MarketListing> GetActiveMarketListings() => marketplaceManager.GetActiveListings();
+        public List<MarketListing> GetMyMarketListings() => marketplaceManager.GetMyListings();
+        public List<MarketListing> GetMyPurchases() => marketplaceManager.GetMyPurchases();
+        public List<MarketListing> SearchMarketListings(string searchTerm) => marketplaceManager.SearchListings(searchTerm);
+
+        // Trading Methods
+        public bool InitiateTrade(string targetUsername) => tradeManager.InitiateTrade(targetUsername);
+        public bool AcceptTradeRequest(string tradeId) => tradeManager.AcceptTradeRequest(tradeId);
+        public bool DeclineTradeRequest(string tradeId) => tradeManager.DeclineTradeRequest(tradeId);
+        public bool AddItemToTrade(string itemId, string itemName, int quantity, float condition = 1.0f) =>
+            tradeManager.AddItemToTrade(itemId, itemName, quantity, condition);
+        public bool RemoveItemFromTrade(string itemId) => tradeManager.RemoveItemFromTrade(itemId);
+        public bool UpdateItemQuantity(string itemId, int quantity) => tradeManager.UpdateItemQuantity(itemId, quantity);
+        public bool ConfirmTradeOffer() => tradeManager.ConfirmTradeOffer();
+        public bool CancelTrade() => tradeManager.CancelTrade();
+        public List<TradeSession> GetIncomingTradeRequests() => tradeManager.GetIncomingTradeRequests();
+        public List<TradeSession> GetOutgoingTradeRequests() => tradeManager.GetOutgoingTradeRequests();
+        public List<TradeSession> GetTradeHistory(int limit = 10) => tradeManager.GetTradeHistory(limit);
+        public TradeSession GetCurrentTrade() => tradeManager.GetCurrentTrade();
+
+        // STUN related methods
+        public async Task<IPEndPoint> GetPublicEndpoint(int localPort = 0) => await stunClient.GetPublicEndPointAsync(localPort);
 
         public byte[] RequestGameFile(string relativePath)
         {
@@ -240,7 +338,7 @@ namespace KenshiMultiplayer
                 var message = new GameMessage
                 {
                     Type = MessageType.Position,
-                    PlayerId = "Player1",  // This would be set from login response
+                    PlayerId = CurrentUsername,
                     Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(position)),
                     SessionId = authToken
                 };
@@ -266,7 +364,7 @@ namespace KenshiMultiplayer
             var message = new GameMessage
             {
                 Type = MessageType.Combat,
-                PlayerId = "Player1",  // This would be set from login response
+                PlayerId = CurrentUsername,
                 Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(combatAction)),
                 SessionId = authToken
             };
@@ -280,7 +378,7 @@ namespace KenshiMultiplayer
             var message = new GameMessage
             {
                 Type = MessageType.Inventory,
-                PlayerId = "Player1",  // This would be set from login response
+                PlayerId = CurrentUsername,
                 Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(inventoryItem)),
                 SessionId = authToken
             };
@@ -294,7 +392,7 @@ namespace KenshiMultiplayer
             var message = new GameMessage
             {
                 Type = MessageType.Health,
-                PlayerId = "Player1",  // This would be set from login response
+                PlayerId = CurrentUsername,
                 Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(healthStatus)),
                 SessionId = authToken
             };
@@ -376,6 +474,8 @@ namespace KenshiMultiplayer
 
         public void Disconnect()
         {
+            DisableWebInterface();
+
             if (client != null && client.Connected)
             {
                 client.Close();
