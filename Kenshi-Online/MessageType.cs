@@ -11,8 +11,6 @@
         public const string Reconnect = "reconnect";
         public const string AdminKick = "adminkick";
 
-        // Enhanced message types
-
         // Authentication & session management
         public const string Login = "login";
         public const string Logout = "logout";
@@ -34,12 +32,33 @@
         public const string FactionInvite = "faction_invite";
         public const string FactionRelation = "faction_relation";
 
+        // Friends system
+        public const string FriendRequest = "friend_request";
+        public const string FriendAccept = "friend_accept";
+        public const string FriendDecline = "friend_decline";
+        public const string FriendRemove = "friend_remove";
+        public const string FriendBlock = "friend_block";
+        public const string FriendStatus = "friend_status";
+
+        // Marketplace system
+        public const string MarketplaceCreate = "marketplace_create";
+        public const string MarketplaceCancel = "marketplace_cancel";
+        public const string MarketplacePurchase = "marketplace_purchase";
+        public const string MarketplaceUpdate = "marketplace_update";
+        public const string MarketplaceQuery = "marketplace_query";
+
+        // Trading system
+        public const string TradeRequest = "trade_request";
+        public const string TradeAccept = "trade_accept";
+        public const string TradeDecline = "trade_decline";
+        public const string TradeUpdate = "trade_update";
+        public const string TradeCancel = "trade_cancel";
+        public const string TradeComplete = "trade_complete";
+
         // Advanced inventory & trading
         public const string InventoryDetailed = "inventory_detailed";
         public const string Equipment = "equipment";
         public const string TradeOffer = "trade_offer";
-        public const string TradeAccept = "trade_accept";
-        public const string TradeDecline = "trade_decline";
 
         // Advanced combat
         public const string CombatAction = "combat_action";
@@ -69,6 +88,11 @@
         public const string Warning = "warning";
         public const string Notification = "notification";
         public const string SystemMessage = "system";
+
+        // WebSocket communication
+        public const string WebSocketConnect = "ws_connect";
+        public const string WebSocketDisconnect = "ws_disconnect";
+        public const string WebSocketUpdate = "ws_update";
 
         // Ping/heartbeat for connection validation
         public const string Ping = "ping";

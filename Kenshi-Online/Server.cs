@@ -15,43 +15,43 @@ namespace KenshiMultiplayer
         private Dictionary<string, Lobby> lobbies = new Dictionary<string, Lobby>();
         private GameFileManager fileManager;
         private Dictionary<string, string> activeUserSessions = new Dictionary<string, string>(); // Maps authToken to username
-        
+
         public EnhancedServer(string kenshiRootPath)
         {
             fileManager = new GameFileManager(kenshiRootPath);
         }
-        
+
         public void Start(int port = 5555)
         {
             server = new TcpListener(IPAddress.Any, port);
             server.Start();
             Logger.Log($"Enhanced server started on port {port}.");
-            
+
             // Start admin console thread
             Thread adminThread = new Thread(StartCommandLoop);
             adminThread.IsBackground = true;
             adminThread.Start();
-            
+
             // Main client acceptance loop
             while (true)
             {
                 TcpClient client = server.AcceptTcpClient();
                 connectedClients.Add(client);
                 Logger.Log("Client connected.");
-                
+
                 Thread clientThread = new Thread(() => HandleClient(client));
                 clientThread.IsBackground = true;
                 clientThread.Start();
             }
         }
-        
+
         private void HandleClient(TcpClient client)
         {
             NetworkStream stream = client.GetStream();
             byte[] buffer = new byte[16384]; // Larger buffer for file transfers
             string authenticatedUser = null;
             string authToken = null;
-            
+
             try
             {
                 while (true)
@@ -61,9 +61,9 @@ namespace KenshiMultiplayer
                     {
                         string encryptedMessage = Encoding.ASCII.GetString(buffer, 0, bytesRead);
                         string jsonMessage = EncryptionHelper.Decrypt(encryptedMessage);
-                        
+
                         GameMessage message = GameMessage.FromJson(jsonMessage);
-                        
+
                         // Handle authentication
                         if (message.Type == MessageType.Login)
                         {
@@ -109,7 +109,7 @@ namespace KenshiMultiplayer
                         {
                             authenticatedUser = username;
                             authToken = message.SessionId;
-                            
+
                             // Handle various message types
                             switch (message.Type)
                             {
@@ -154,39 +154,39 @@ namespace KenshiMultiplayer
                 {
                     activeUserSessions.Remove(authToken);
                 }
-                
+
                 connectedClients.Remove(client);
                 client.Close();
                 Logger.Log($"Client connection closed. {connectedClients.Count} clients remaining.");
             }
         }
-        
+
         private void HandleLogin(GameMessage message, TcpClient client)
         {
             string username = message.Data["username"].ToString();
             string password = message.Data["password"].ToString();
-            
+
             var (success, sessionId, errorMessage) = UserManager.Login(username, password);
-            
+
             if (success)
             {
                 // Generate JWT token
                 string token = AuthManager.GenerateJWT(username);
-                
+
                 // Store active session
                 activeUserSessions[token] = username;
-                
+
                 var response = new GameMessage
                 {
                     Type = MessageType.Authentication,
-                    Data = new Dictionary<string, object> 
-                    { 
+                    Data = new Dictionary<string, object>
+                    {
                         { "success", true },
                         { "token", token },
                         { "username", username }
                     }
                 };
-                
+
                 SendMessageToClient(client, response.ToJson());
                 Logger.Log($"User {username} authenticated successfully");
             }
@@ -195,38 +195,38 @@ namespace KenshiMultiplayer
                 var response = new GameMessage
                 {
                     Type = MessageType.Authentication,
-                    Data = new Dictionary<string, object> 
-                    { 
+                    Data = new Dictionary<string, object>
+                    {
                         { "success", false },
                         { "error", errorMessage }
                     }
                 };
-                
+
                 SendMessageToClient(client, response.ToJson());
                 Logger.Log($"Authentication failed for {username}: {errorMessage}");
             }
         }
-        
+
         private void HandleRegistration(GameMessage message, TcpClient client)
         {
             string username = message.Data["username"].ToString();
             string password = message.Data["password"].ToString();
             string email = message.Data["email"].ToString();
-            
+
             var (success, errorMessage) = UserManager.RegisterUser(username, password, email);
-            
+
             var response = new GameMessage
             {
                 Type = MessageType.Authentication,
-                Data = new Dictionary<string, object> 
-                { 
+                Data = new Dictionary<string, object>
+                {
                     { "success", success },
                     { "error", errorMessage ?? "" }
                 }
             };
-            
+
             SendMessageToClient(client, response.ToJson());
-            
+
             if (success)
             {
                 Logger.Log($"New user registered: {username}");
@@ -236,28 +236,28 @@ namespace KenshiMultiplayer
                 Logger.Log($"Registration failed for {username}: {errorMessage}");
             }
         }
-        
+
         private void HandleFileRequest(GameMessage message, TcpClient client)
         {
             string relativePath = message.Data["path"].ToString();
-            
+
             try
             {
                 // Get file data
                 byte[] fileData = fileManager.GetFileData(relativePath);
                 GameFileInfo fileInfo = fileManager.GetFileInfo(relativePath);
-                
+
                 // Create response
                 var response = new GameMessage
                 {
                     Type = "file_data",
-                    Data = new Dictionary<string, object> 
-                    { 
+                    Data = new Dictionary<string, object>
+                    {
                         { "data", Convert.ToBase64String(fileData) },
                         { "fileInfo", JsonSerializer.Serialize(fileInfo) }
                     }
                 };
-                
+
                 SendMessageToClient(client, response.ToJson());
                 Logger.Log($"Sent file {relativePath} ({fileData.Length} bytes)");
             }
@@ -266,27 +266,27 @@ namespace KenshiMultiplayer
                 SendErrorToClient(client, $"File request failed: {ex.Message}");
             }
         }
-        
+
         private void HandleFileListRequest(GameMessage message, TcpClient client)
         {
-            string directory = message.Data.ContainsKey("directory") 
-                ? message.Data["directory"].ToString() 
+            string directory = message.Data.ContainsKey("directory")
+                ? message.Data["directory"].ToString()
                 : "";
-            
+
             try
             {
                 List<GameFileInfo> files = fileManager.GetDirectoryContents(directory);
-                
+
                 var response = new GameMessage
                 {
                     Type = "file_list",
-                    Data = new Dictionary<string, object> 
-                    { 
+                    Data = new Dictionary<string, object>
+                    {
                         { "files", JsonSerializer.Serialize(files) },
                         { "directory", directory }
                     }
                 };
-                
+
                 SendMessageToClient(client, response.ToJson());
                 Logger.Log($"Sent file list for {directory} ({files.Count} files)");
             }
@@ -295,27 +295,27 @@ namespace KenshiMultiplayer
                 SendErrorToClient(client, $"File list request failed: {ex.Message}");
             }
         }
-        
+
         private bool ValidateAuthToken(string token, out string username)
         {
             username = null;
-            
+
             if (string.IsNullOrEmpty(token))
                 return false;
-                
+
             if (activeUserSessions.TryGetValue(token, out username))
                 return true;
-                
+
             if (AuthManager.ValidateJWT(token, out username))
             {
                 // If valid but not in active sessions, add it
                 activeUserSessions[token] = username;
                 return true;
             }
-            
+
             return false;
         }
-        
+
         private void BroadcastMessage(string jsonMessage, TcpClient senderClient)
         {
             string encryptedMessage = EncryptionHelper.Encrypt(jsonMessage);
@@ -337,7 +337,7 @@ namespace KenshiMultiplayer
                 }
             }
         }
-        
+
         private bool ValidateMessage(GameMessage message)
         {
             switch (message.Type)
@@ -352,7 +352,7 @@ namespace KenshiMultiplayer
                     return false;
             }
         }
-        
+
         private void SendErrorToClient(TcpClient client, string errorMessage)
         {
             var response = new GameMessage
@@ -360,10 +360,10 @@ namespace KenshiMultiplayer
                 Type = MessageType.Error,
                 Data = new Dictionary<string, object> { { "message", errorMessage } }
             };
-            
+
             SendMessageToClient(client, response.ToJson());
         }
-        
+
         private void SendMessageToClient(TcpClient client, string message)
         {
             if (client != null && client.Connected)
@@ -381,13 +381,13 @@ namespace KenshiMultiplayer
                 }
             }
         }
-        
+
         private void HandleChatMessage(GameMessage message, TcpClient senderClient)
         {
             // Extract user info from token
             string username = null;
             ValidateAuthToken(message.SessionId, out username);
-            
+
             if (message.LobbyId != null && lobbies.TryGetValue(message.LobbyId, out var lobby))
             {
                 string channel = message.Data.ContainsKey("channel") ? message.Data["channel"].ToString() : "general";
@@ -399,22 +399,22 @@ namespace KenshiMultiplayer
             {
                 // Global chat
                 string chatMessage = message.Data.ContainsKey("message") ? message.Data["message"].ToString() : string.Empty;
-                
+
                 var broadcastMessage = new GameMessage
                 {
                     Type = MessageType.Chat,
                     PlayerId = username,
-                    Data = new Dictionary<string, object> 
-                    { 
+                    Data = new Dictionary<string, object>
+                    {
                         { "message", chatMessage }
                     }
                 };
-                
+
                 BroadcastMessage(broadcastMessage.ToJson(), senderClient);
                 Logger.Log($"Global chat: {username}: {chatMessage}");
             }
         }
-        
+
         private void StartCommandLoop()
         {
             while (true)
@@ -424,7 +424,7 @@ namespace KenshiMultiplayer
                     string command = Console.ReadLine();
                     if (string.IsNullOrEmpty(command))
                         continue;
-                        
+
                     if (command.StartsWith("/help"))
                     {
                         Console.WriteLine("Available commands:");
@@ -465,7 +465,7 @@ namespace KenshiMultiplayer
                             bool isPrivate = bool.Parse(parts[1]);
                             string password = parts[2];
                             int maxPlayers = int.Parse(parts[3]);
-                            
+
                             CreateLobby(lobbyId, isPrivate, password, maxPlayers);
                             Console.WriteLine($"Lobby {lobbyId} created");
                         }
@@ -495,20 +495,20 @@ namespace KenshiMultiplayer
                 }
             }
         }
-        
+
         private void ListActivePlayers()
         {
             Console.WriteLine("Active players:");
-            
+
             // List all players from active sessions
             foreach (var username in activeUserSessions.Values)
             {
                 Console.WriteLine($"- {username}");
             }
-            
+
             Console.WriteLine($"Total players: {activeUserSessions.Count}");
         }
-        
+
         private void KickPlayer(string username)
         {
             // Find user's auth token
@@ -521,17 +521,17 @@ namespace KenshiMultiplayer
                     break;
                 }
             }
-            
+
             if (tokenToRemove != null)
             {
                 activeUserSessions.Remove(tokenToRemove);
-                
+
                 // Also check for user in lobbies
                 foreach (var lobby in lobbies.Values)
                 {
                     lobby.KickPlayer(username);
                 }
-                
+
                 Logger.Log($"Player {username} was kicked");
                 Console.WriteLine($"Player {username} was kicked");
             }
@@ -540,11 +540,11 @@ namespace KenshiMultiplayer
                 Console.WriteLine($"Player {username} not found");
             }
         }
-        
+
         private void BanPlayer(string username, int hours)
         {
             bool success = UserManager.BanUser("admin", username, TimeSpan.FromHours(hours), $"Banned by admin for {hours} hours");
-            
+
             if (success)
             {
                 // Also kick the player
@@ -557,22 +557,22 @@ namespace KenshiMultiplayer
                 Console.WriteLine($"Failed to ban player {username}");
             }
         }
-        
+
         private void ListLobbies()
         {
             Console.WriteLine("Active lobbies:");
-            
+
             foreach (var kvp in lobbies)
             {
                 string lobbyId = kvp.Key;
                 Lobby lobby = kvp.Value;
-                
+
                 Console.WriteLine($"- {lobbyId} (Players: {lobby.Players.Count}/{lobby.MaxPlayers}, Private: {lobby.IsPrivate})");
             }
-            
+
             Console.WriteLine($"Total lobbies: {lobbies.Count}");
         }
-        
+
         private void BroadcastSystemMessage(string message)
         {
             var systemMessage = new GameMessage
@@ -581,15 +581,15 @@ namespace KenshiMultiplayer
                 PlayerId = "SYSTEM",
                 Data = new Dictionary<string, object> { { "message", message } }
             };
-            
+
             foreach (var client in connectedClients)
             {
                 SendMessageToClient(client, systemMessage.ToJson());
             }
-            
+
             Logger.Log($"System broadcast: {message}");
         }
-        
+
         public void CreateLobby(string lobbyId, bool isPrivate, string password, int maxPlayers)
         {
             if (!lobbies.ContainsKey(lobbyId))
@@ -598,7 +598,7 @@ namespace KenshiMultiplayer
                 Logger.Log($"Lobby {lobbyId} created.");
             }
         }
-        
+
         public bool JoinLobby(string lobbyId, TcpClient client, string password = "")
         {
             if (lobbies.ContainsKey(lobbyId) && lobbies[lobbyId].CanJoin(password))
@@ -609,5 +609,6 @@ namespace KenshiMultiplayer
             }
             return false;
         }
+
     }
 }
