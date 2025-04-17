@@ -55,7 +55,7 @@ namespace KenshiMultiplayer
             dataFilePath = Path.Combine(dataDirectory, "friends.json");
             Directory.CreateDirectory(dataDirectory);
 
-            LoadData();
+            LoadData(GetOutgoingRequests(), GetIncomingRequests());
 
             // Subscribe to user connection events 
             // (this would be implemented in the EnhancedServer class)
@@ -70,7 +70,7 @@ namespace KenshiMultiplayer
             dataFilePath = Path.Combine(dataDirectory, "friends.json");
             Directory.CreateDirectory(dataDirectory);
 
-            LoadData();
+            LoadData(GetOutgoingRequests(), GetIncomingRequests());
 
             // Subscribe to client message events
             if (client != null)
@@ -79,7 +79,17 @@ namespace KenshiMultiplayer
             }
         }
 
-        private void LoadData()
+        private Dictionary<string, List<string>> GetOutgoingRequests()
+        {
+            return outgoingRequests;
+        }
+
+        private Dictionary<string, List<string>> GetIncomingRequests()
+        {
+            return incomingRequests;
+        }
+
+        private void LoadData(Dictionary<string, List<string>> outgoingRequests, Dictionary<string, List<string>> incomingRequests)
         {
             try
             {

@@ -64,7 +64,7 @@ namespace KenshiMultiplayer
             dataFilePath = Path.Combine(dataDirectory, "trades.json");
             Directory.CreateDirectory(dataDirectory);
 
-            LoadData();
+            LoadData(GetCompletedTrades());
 
             // Cleanup inactive trades periodically
             Task.Run(async () => {
@@ -83,7 +83,7 @@ namespace KenshiMultiplayer
             dataFilePath = Path.Combine(dataDirectory, "trades.json");
             Directory.CreateDirectory(dataDirectory);
 
-            LoadData();
+            LoadData(GetCompletedTrades());
 
             // Subscribe to client message events
             if (client != null)
@@ -92,7 +92,12 @@ namespace KenshiMultiplayer
             }
         }
 
-        private void LoadData()
+        private Dictionary<string, List<TradeSession>> GetCompletedTrades()
+        {
+            return completedTrades;
+        }
+
+        private void LoadData(Dictionary<string, List<TradeSession>> completedTrades)
         {
             try
             {

@@ -5,9 +5,8 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Text.Json;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Linq;
 using System.Diagnostics;
-using System.Reflection.Metadata;
 
 namespace KenshiMultiplayer
 {
@@ -19,20 +18,23 @@ namespace KenshiMultiplayer
         private EnhancedServer server;
         private string webRoot;
         private bool isRunning = false;
-        private Dictionary<string, Func<HttpListenerRequest, Dictionary<string, object>>> apiEndpoints = new Dictionary<string, Func<HttpListenerRequest, Dictionary<string, object>>>();
+        private Dictionary<string, Func<HttpListenerRequest, Dictionary<string, object>>> apiEndpoints;
 
         public WebUIController(string webRootPath, int port = 8080)
         {
             webRoot = webRootPath;
             Directory.CreateDirectory(webRoot);
-            ExtractEmbeddedWebUI();
 
             // Initialize HTTP listener
             listener = new HttpListener();
             listener.Prefixes.Add($"http://localhost:{port}/");
 
             // Setup API endpoints
+            apiEndpoints = new Dictionary<string, Func<HttpListenerRequest, Dictionary<string, object>>>();
             InitializeApiEndpoints();
+
+            // Extract embedded web files or create default ones
+            ExtractEmbeddedWebUI();
         }
 
         public void SetClient(EnhancedClient clientInstance)
@@ -266,442 +268,65 @@ namespace KenshiMultiplayer
             // Forward relevant messages to WebUI via WebSocket (implementation needed)
         }
 
-        private void ExtractEmbeddedWebUI()
-        {
-            // Extract embedded web files to the web root directory
-            // This will be implemented to pull resources from embedded resources
-
-            // For now, we'll create a basic index.html if it doesn't exist
-            string indexPath = Path.Combine(webRoot, "index.html");
-            if (!File.Exists(indexPath))
-            {
-                File.WriteAllText(indexPath, GetDefaultIndexHtml());
-            }
-        }
-
-        private string GetDefaultIndexHtml()
-        {
-            return @"<!DOCTYPE html>
-<html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Kenshi Online - WebUI</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f0f0f0; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
-        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #ddd; }
-        .tab { padding: 10px 20px; cursor: pointer; border: 1px solid transparent; border-bottom: none; }
-        .tab.active { background: white; border-color: #ddd; border-radius: 5px 5px 0 0; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-    </style>
-</head>
-<body>
-    <div class='container'>
-        <h1>Kenshi Online</h1>
-        <div class='tabs'>
-            <div class='tab active' data-tab='status'>Status</div>
-            <div class='tab' data-tab='friends'>Friends</div>
-            <div class='tab' data-tab='marketplace'>Marketplace</div>
-            <div class='tab' data-tab='trade'>Trade</div>
-            <div class='tab' data-tab='inventory'>Inventory</div>
-        </div>
-
-        <div id='status' class='tab-content active'>
-            <h2>Player Status</h2>
-            <div id='status-content'>Loading...</div>
-        </div>
-
-        <div id='friends' class='tab-content'>
-            <h2>Friends</h2>
-            <div id='friends-list'>Loading...</div>
-            <h3>Add Friend</h3>
-            <input type='text' id='friend-username' placeholder='Username'>
-            <button id='add-friend-btn'>Add Friend</button>
-        </div>
-
-        <div id='marketplace' class='tab-content'>
-            <h2>Marketplace</h2>
-            <div id='marketplace-listings'>Loading...</div>
-            <h3>Create Listing</h3>
-            <select id='listing-item'></select>
-            <input type='number' id='listing-price' placeholder='Price'>
-            <input type='number' id='listing-quantity' placeholder='Quantity'>
-            <button id='create-listing-btn'>Create Listing</button>
-        </div>
-
-        <div id='trade' class='tab-content'>
-            <h2>Trade</h2>
-            <select id='trade-player'></select>
-            <button id='initiate-trade-btn'>Initiate Trade</button>
-            <div id='trade-panel' style='display:none;'>
-                <h3>Trade with <span id='trade-partner-name'></span></h3>
-                <div class='trade-offers'>
-                    <div class='your-offer'>
-                        <h4>Your Offer</h4>
-                        <div id='your-items'></div>
-                        <select id='your-item-add'></select>
-                        <input type='number' id='your-item-quantity' value='1' min='1'>
-                        <button id='add-your-item'>Add</button>
-                    </div>
-                    <div class='their-offer'>
-                        <h4>Their Offer</h4>
-                        <div id='their-items'></div>
-                    </div>
-                </div>
-                <button id='confirm-trade-btn'>Confirm Trade</button>
-                <button id='cancel-trade-btn'>Cancel Trade</button>
-            </div>
-        </div>
-
-        <div id='inventory' class='tab-content'>
-            <h2>Inventory</h2>
-            <div id='inventory-items'>Loading...</div>
-        </div>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Tab switching
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const tabId = this.getAttribute('data-tab');
-                    
-                    // Update active tab
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Update active content
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    document.getElementById(tabId).classList.add('active');
-                });
-            });
-
-            // Load initial data
-            fetchPlayerStatus();
-            fetchFriendsList();
-            fetchMarketplaceListings();
-            fetchInventory();
-        });
-
-        // API Calls
-        async function fetchPlayerStatus() {
-            try {
-                const response = await fetch('/api/player/status');
-                const data = await response.json();
-                
-                if (data.success) {
-                    let html = `
-                        <p><strong>Name:</strong> ${data.player.displayName}</p>
-                        <p><strong>Health:</strong> ${data.player.health}/${data.player.maxHealth}</p>
-                        <p><strong>Level:</strong> ${data.player.level}</p>
-                    `;
-                    document.getElementById('status-content').innerHTML = html;
-                } else {
-                    document.getElementById('status-content').innerHTML = 'Error loading status: ' + data.error;
-                }
-            } catch (error) {
-                document.getElementById('status-content').innerHTML = 'Error connecting to server';
-            }
-        }
-
-        async function fetchFriendsList() {
-            try {
-                const response = await fetch('/api/friends/list');
-                const data = await response.json();
-                
-                if (data.success) {
-                    let html = '<ul>';
-                    data.friends.forEach(friend => {
-                        html += `<li>${friend.username} (${friend.status}) <button onclick='removeFriend(\"${ friend.username}\")'>Remove</button></li>`;
-                    });
-                    html += '</ul>';
-                    
-                    document.getElementById('friends-list').innerHTML = html;
-                } else {
-                    document.getElementById('friends-list').innerHTML = 'Error loading friends: ' + data.error;
-                }
-            } catch (error) {
-    document.getElementById('friends-list').innerHTML = 'Error connecting to server';
-}
-        }
-
-        async function fetchMarketplaceListings()
-{
-    try
-    {
-        const response = await fetch('/api/marketplace/listings');
-        const data = await response.json();
-
-        if (data.success)
-        {
-            let html = '<table style=\"width:100%\"><tr><th>Item</th><th>Seller</th><th>Price</th><th>Quantity</th><th>Action</th></tr>';
-            data.listings.forEach(listing => {
-                html += `< tr >
-
-                    < td >${ listing.itemName}</ td >
-
-                    < td >${ listing.sellerName}</ td >
-
-                    < td >${ listing.price}</ td >
-
-                    < td >${ listing.quantity}</ td >
-
-                    < td >< button onclick = 'purchaseItem(${listing.id})' > Buy </ button ></ td >
-
-                </ tr >`;
-            });
-            html += '</table>';
-
-            document.getElementById('marketplace-listings').innerHTML = html;
-        }
-        else
-        {
-            document.getElementById('marketplace-listings').innerHTML = 'Error loading marketplace: ' + data.error;
-        }
-    }
-    catch (error)
-    {
-        document.getElementById('marketplace-listings').innerHTML = 'Error connecting to server';
-    }
-}
-
-async function fetchInventory()
-{
-    try
-    {
-        const response = await fetch('/api/player/inventory');
-        const data = await response.json();
-
-        if (data.success)
-        {
-            let html = '<table style=\"width:100%\"><tr><th>Item</th><th>Quantity</th><th>Condition</th></tr>';
-            data.items.forEach(item => {
-                html += `< tr >
-
-                    < td >${ item.itemName}</ td >
-
-                    < td >${ item.quantity}</ td >
-
-                    < td >${ item.condition.toFixed(2)}</ td >
-
-                </ tr >`;
-            });
-            html += '</table>';
-
-            document.getElementById('inventory-items').innerHTML = html;
-
-            // Also update the item selectors for marketplace and trade
-            let selectOptions = '<option value=\"\">Select an item</option>';
-            data.items.forEach(item => {
-                selectOptions += `< option value =\"${item.itemId}\">${item.itemName} (${item.quantity})</option>`;
-                    });
-
-            document.getElementById('listing-item').innerHTML = selectOptions;
-            document.getElementById('your-item-add').innerHTML = selectOptions;
-
-        }
-        else
-        {
-            document.getElementById('inventory-items').innerHTML = 'Error loading inventory: ' + data.error;
-        }
-    }
-    catch (error)
-    {
-        document.getElementById('inventory-items').innerHTML = 'Error connecting to server';
-    }
-}
-
-// Functions for user interactions
-async function addFriend()
-{
-    const username = document.getElementById('friend-username').value.trim();
-    if (!username) return;
-
-    try
-    {
-        const response = await fetch('/api/friends/add', {
-        method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username })
-                });
-const data = await response.json();
-
-if (data.success)
-{
-    alert('Friend request sent!');
-    fetchFriendsList();
-}
-else
-{
-    alert('Error: ' + data.error);
-}
-            } catch (error) {
-    alert('Error connecting to server');
-}
-        }
-
-        async function removeFriend(username)
-{
-    try
-    {
-        const response = await fetch('/api/friends/remove', {
-        method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username })
-                });
-const data = await response.json();
-
-if (data.success)
-{
-    alert('Friend removed!');
-    fetchFriendsList();
-}
-else
-{
-    alert('Error: ' + data.error);
-}
-            } catch (error) {
-    alert('Error connecting to server');
-}
-        }
-
-        async function createListing()
-{
-    const itemId = document.getElementById('listing-item').value;
-    const price = document.getElementById('listing-price').value;
-    const quantity = document.getElementById('listing-quantity').value;
-
-    if (!itemId || !price || !quantity)
-    {
-        alert('Please fill all fields');
-        return;
-    }
-
-    try
-    {
-        const response = await fetch('/api/marketplace/create', {
-        method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ itemId, price, quantity })
-                });
-const data = await response.json();
-
-if (data.success)
-{
-    alert('Listing created!');
-    fetchMarketplaceListings();
-    fetchInventory();
-}
-else
-{
-    alert('Error: ' + data.error);
-}
-            } catch (error) {
-    alert('Error connecting to server');
-}
-        }
-
-        async function purchaseItem(listingId)
-{
-    try
-    {
-        const response = await fetch('/api/marketplace/purchase', {
-        method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ listingId })
-                });
-const data = await response.json();
-
-if (data.success)
-{
-    alert('Item purchased!');
-    fetchMarketplaceListings();
-    fetchInventory();
-}
-else
-{
-    alert('Error: ' + data.error);
-}
-            } catch (error) {
-    alert('Error connecting to server');
-}
-        }
-
-        // Set up event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('add-friend-btn').addEventListener('click', addFriend);
-    document.getElementById('create-listing-btn').addEventListener('click', createListing);
-
-    // Add more event listeners for other functions
-});
-    </ script >
-</ body >
-</ html > ";
-        }
-
-        #region API Handlers
-        
+        // API Handler Methods
         private Dictionary<string, object> HandleLogin(HttpListenerRequest request)
-{
-    if (client == null)
-        return new Dictionary<string, object> { { "success", false }, { "error", "Client not initialized" } };
+        {
+            if (client == null)
+                return new Dictionary<string, object> { { "success", false }, { "error", "Client not initialized" } };
 
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var loginData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var loginData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call client login method
-        bool success = client.Login(
-            client.ServerAddress,
-            client.ServerPort,
-            loginData["username"],
-            loginData["password"]
-        );
+                // Call client login method
+                bool success = client.Login(
+                    client.ServerAddress,
+                    client.ServerPort,
+                    loginData["username"],
+                    loginData["password"]
+                );
 
-        return new Dictionary<string, object>
+                return new Dictionary<string, object>
                 {
                     { "success", success },
                     { "error", success ? null : "Invalid username or password" }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleRegister(HttpListenerRequest request)
-{
-    if (client == null)
-        return new Dictionary<string, object> { { "success", false }, { "error", "Client not initialized" } };
+        private Dictionary<string, object> HandleRegister(HttpListenerRequest request)
+        {
+            if (client == null)
+                return new Dictionary<string, object> { { "success", false }, { "error", "Client not initialized" } };
 
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var regData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var regData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call client register method
-        bool success = client.Register(
-            client.ServerAddress,
-            client.ServerPort,
-            regData["username"],
-            regData["password"],
-            regData["email"]
-        );
+                // Call client register method
+                bool success = client.Register(
+                    client.ServerAddress,
+                    client.ServerPort,
+                    regData["username"],
+                    regData["password"],
+                    regData["email"]
+                );
 
-        return new Dictionary<string, object>
+                return new Dictionary<string, object>
                 {
                     { "success", success },
                     { "error", success ? null : "Registration failed" }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleFriendsList(HttpListenerRequest request)
-{
-    // This would call the FriendsManager to get the friends list
-    // For now, return a sample response
-    return new Dictionary<string, object>
+        private Dictionary<string, object> HandleFriendsList(HttpListenerRequest request)
+        {
+            // This would call the FriendsManager to get the friends list
+            // For now, return a sample response
+            return new Dictionary<string, object>
             {
                 { "success", true },
                 { "friends", new List<Dictionary<string, object>>
@@ -711,61 +336,61 @@ private Dictionary<string, object> HandleFriendsList(HttpListenerRequest request
                     }
                 }
             };
-}
+        }
 
-private Dictionary<string, object> HandleFriendAdd(HttpListenerRequest request)
-{
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var friendData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+        private Dictionary<string, object> HandleFriendAdd(HttpListenerRequest request)
+        {
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var friendData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call FriendsManager to add friend
-        // This is a placeholder implementation
-        return new Dictionary<string, object>
+                // Call FriendsManager to add friend
+                // This is a placeholder implementation
+                return new Dictionary<string, object>
                 {
                     { "success", true }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleFriendRemove(HttpListenerRequest request)
-{
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var friendData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+        private Dictionary<string, object> HandleFriendRemove(HttpListenerRequest request)
+        {
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var friendData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call FriendsManager to remove friend
-        // This is a placeholder implementation
-        return new Dictionary<string, object>
+                // Call FriendsManager to remove friend
+                // This is a placeholder implementation
+                return new Dictionary<string, object>
                 {
                     { "success", true }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleFriendAccept(HttpListenerRequest request)
-{
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var friendData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+        private Dictionary<string, object> HandleFriendAccept(HttpListenerRequest request)
+        {
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var friendData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call FriendsManager to accept friend request
-        // This is a placeholder implementation
-        return new Dictionary<string, object>
+                // Call FriendsManager to accept friend request
+                // This is a placeholder implementation
+                return new Dictionary<string, object>
                 {
                     { "success", true }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleMarketplaceListings(HttpListenerRequest request)
-{
-    // This would call MarketplaceManager to get listings
-    // For now, return a sample response
-    return new Dictionary<string, object>
+        private Dictionary<string, object> HandleMarketplaceListings(HttpListenerRequest request)
+        {
+            // This would call MarketplaceManager to get listings
+            // For now, return a sample response
+            return new Dictionary<string, object>
             {
                 { "success", true },
                 { "listings", new List<Dictionary<string, object>>
@@ -789,111 +414,111 @@ private Dictionary<string, object> HandleMarketplaceListings(HttpListenerRequest
                     }
                 }
             };
-}
+        }
 
-private Dictionary<string, object> HandleMarketplaceCreate(HttpListenerRequest request)
-{
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var listingData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+        private Dictionary<string, object> HandleMarketplaceCreate(HttpListenerRequest request)
+        {
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var listingData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call MarketplaceManager to create listing
-        // This is a placeholder implementation
-        return new Dictionary<string, object>
+                // Call MarketplaceManager to create listing
+                // This is a placeholder implementation
+                return new Dictionary<string, object>
                 {
                     { "success", true },
                     { "listingId", 3 }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleMarketplacePurchase(HttpListenerRequest request)
-{
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var purchaseData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+        private Dictionary<string, object> HandleMarketplacePurchase(HttpListenerRequest request)
+        {
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var purchaseData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call MarketplaceManager to process purchase
-        // This is a placeholder implementation
-        return new Dictionary<string, object>
+                // Call MarketplaceManager to process purchase
+                // This is a placeholder implementation
+                return new Dictionary<string, object>
                 {
                     { "success", true }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleTradeInitiate(HttpListenerRequest request)
-{
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var tradeData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+        private Dictionary<string, object> HandleTradeInitiate(HttpListenerRequest request)
+        {
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var tradeData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call TradeManager to initiate trade
-        // This is a placeholder implementation
-        return new Dictionary<string, object>
+                // Call TradeManager to initiate trade
+                // This is a placeholder implementation
+                return new Dictionary<string, object>
                 {
                     { "success", true },
                     { "tradeId", Guid.NewGuid().ToString() }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleTradeUpdate(HttpListenerRequest request)
-{
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var tradeData = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonStr);
+        private Dictionary<string, object> HandleTradeUpdate(HttpListenerRequest request)
+        {
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var tradeData = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonStr);
 
-        // Call TradeManager to update trade offer
-        // This is a placeholder implementation
-        return new Dictionary<string, object>
+                // Call TradeManager to update trade offer
+                // This is a placeholder implementation
+                return new Dictionary<string, object>
                 {
                     { "success", true }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleTradeConfirm(HttpListenerRequest request)
-{
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var tradeData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+        private Dictionary<string, object> HandleTradeConfirm(HttpListenerRequest request)
+        {
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var tradeData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call TradeManager to confirm trade
-        // This is a placeholder implementation
-        return new Dictionary<string, object>
+                // Call TradeManager to confirm trade
+                // This is a placeholder implementation
+                return new Dictionary<string, object>
                 {
                     { "success", true }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandleTradeCancel(HttpListenerRequest request)
-{
-    using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-    {
-        string jsonStr = reader.ReadToEnd();
-        var tradeData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
+        private Dictionary<string, object> HandleTradeCancel(HttpListenerRequest request)
+        {
+            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            {
+                string jsonStr = reader.ReadToEnd();
+                var tradeData = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonStr);
 
-        // Call TradeManager to cancel trade
-        // This is a placeholder implementation
-        return new Dictionary<string, object>
+                // Call TradeManager to cancel trade
+                // This is a placeholder implementation
+                return new Dictionary<string, object>
                 {
                     { "success", true }
                 };
-    }
-}
+            }
+        }
 
-private Dictionary<string, object> HandlePlayerInventory(HttpListenerRequest request)
-{
-    // This would call PlayerManager or directly client to get inventory
-    // For now, return a sample response
-    return new Dictionary<string, object>
+        private Dictionary<string, object> HandlePlayerInventory(HttpListenerRequest request)
+        {
+            // This would call PlayerManager or directly client to get inventory
+            // For now, return a sample response
+            return new Dictionary<string, object>
             {
                 { "success", true },
                 { "items", new List<Dictionary<string, object>>
@@ -922,13 +547,13 @@ private Dictionary<string, object> HandlePlayerInventory(HttpListenerRequest req
                     }
                 }
             };
-}
+        }
 
-private Dictionary<string, object> HandlePlayerStatus(HttpListenerRequest request)
-{
-    // This would call PlayerManager or directly client to get player status
-    // For now, return a sample response
-    return new Dictionary<string, object>
+        private Dictionary<string, object> HandlePlayerStatus(HttpListenerRequest request)
+        {
+            // This would call PlayerManager or directly client to get player status
+            // For now, return a sample response
+            return new Dictionary<string, object>
             {
                 { "success", true },
                 { "player", new Dictionary<string, object>
@@ -942,8 +567,102 @@ private Dictionary<string, object> HandlePlayerStatus(HttpListenerRequest reques
                     }
                 }
             };
-}
-        
-        #endregion
+        }
+
+        private void ExtractEmbeddedWebUI()
+        {
+            // Extract embedded web files to the web root directory
+            // For now, we'll create a basic index.html if it doesn't exist
+            string indexPath = Path.Combine(webRoot, "index.html");
+            if (!File.Exists(indexPath))
+            {
+                File.WriteAllText(indexPath, CreateDefaultHtml());
+            }
+        }
+
+        private string CreateDefaultHtml()
+        {
+            // Create a simpler default HTML file to avoid string formatting issues
+            string html = "<!DOCTYPE html>\n";
+            html += "<html lang='en'>\n";
+            html += "<head>\n";
+            html += "    <meta charset='UTF-8'>\n";
+            html += "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>\n";
+            html += "    <title>Kenshi Online - WebUI</title>\n";
+            html += "    <style>\n";
+            html += "        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f0f0f0; }\n";
+            html += "        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n";
+            html += "        h1 { color: #333; }\n";
+            html += "        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #ddd; }\n";
+            html += "        .tab { padding: 10px 20px; cursor: pointer; border: 1px solid transparent; border-bottom: none; }\n";
+            html += "        .tab.active { background: white; border-color: #ddd; border-radius: 5px 5px 0 0; }\n";
+            html += "        .tab-content { display: none; }\n";
+            html += "        .tab-content.active { display: block; }\n";
+            html += "    </style>\n";
+            html += "</head>\n";
+            html += "<body>\n";
+            html += "    <div class='container'>\n";
+            html += "        <h1>Kenshi Online</h1>\n";
+            html += "        <div class='tabs'>\n";
+            html += "            <div class='tab active' data-tab='status'>Status</div>\n";
+            html += "            <div class='tab' data-tab='friends'>Friends</div>\n";
+            html += "            <div class='tab' data-tab='marketplace'>Marketplace</div>\n";
+            html += "            <div class='tab' data-tab='trade'>Trade</div>\n";
+            html += "            <div class='tab' data-tab='inventory'>Inventory</div>\n";
+            html += "        </div>\n";
+            html += "        <div id='status' class='tab-content active'>\n";
+            html += "            <h2>Player Status</h2>\n";
+            html += "            <div id='status-content'>Loading...</div>\n";
+            html += "        </div>\n";
+            html += "        <div id='friends' class='tab-content'>\n";
+            html += "            <h2>Friends</h2>\n";
+            html += "            <div id='friends-list'>Loading...</div>\n";
+            html += "            <h3>Add Friend</h3>\n";
+            html += "            <input type='text' id='friend-username' placeholder='Username'>\n";
+            html += "            <button id='add-friend-btn'>Add Friend</button>\n";
+            html += "        </div>\n";
+            html += "        <div id='marketplace' class='tab-content'>\n";
+            html += "            <h2>Marketplace</h2>\n";
+            html += "            <div id='marketplace-listings'>Loading...</div>\n";
+            html += "            <h3>Create Listing</h3>\n";
+            html += "            <select id='listing-item'></select>\n";
+            html += "            <input type='number' id='listing-price' placeholder='Price'>\n";
+            html += "            <input type='number' id='listing-quantity' placeholder='Quantity'>\n";
+            html += "            <button id='create-listing-btn'>Create Listing</button>\n";
+            html += "        </div>\n";
+            html += "        <div id='trade' class='tab-content'>\n";
+            html += "            <h2>Trade</h2>\n";
+            html += "            <select id='trade-player'></select>\n";
+            html += "            <button id='initiate-trade-btn'>Initiate Trade</button>\n";
+            html += "            <div id='trade-panel' style='display:none;'>\n";
+            html += "                <h3>Trade with <span id='trade-partner-name'></span></h3>\n";
+            html += "                <div class='trade-offers'>\n";
+            html += "                    <div class='your-offer'>\n";
+            html += "                        <h4>Your Offer</h4>\n";
+            html += "                        <div id='your-items'></div>\n";
+            html += "                        <select id='your-item-add'></select>\n";
+            html += "                        <input type='number' id='your-item-quantity' value='1' min='1'>\n";
+            html += "                        <button id='add-your-item'>Add</button>\n";
+            html += "                    </div>\n";
+            html += "                    <div class='their-offer'>\n";
+            html += "                        <h4>Their Offer</h4>\n";
+            html += "                        <div id='their-items'></div>\n";
+            html += "                    </div>\n";
+            html += "                </div>\n";
+            html += "                <button id='confirm-trade-btn'>Confirm Trade</button>\n";
+            html += "                <button id='cancel-trade-btn'>Cancel Trade</button>\n";
+            html += "            </div>\n";
+            html += "        </div>\n";
+            html += "        <div id='inventory' class='tab-content'>\n";
+            html += "            <h2>Inventory</h2>\n";
+            html += "            <div id='inventory-items'>Loading...</div>\n";
+            html += "        </div>\n";
+            html += "    </div>\n";
+            html += "    <script src='/scripts/main.js'></script>\n";
+            html += "</body>\n";
+            html += "</html>";
+
+            return html;
+        }
     }
 }

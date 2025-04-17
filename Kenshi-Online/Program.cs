@@ -93,7 +93,7 @@ namespace KenshiMultiplayer
 
                 if (enableWebUI)
                 {
-                    object value = server.EnableWebInterface(webUIPort);
+                  //  object value = server.EnableWebInterface(webUIPort);
                 }
 
                 server.Start(port);
