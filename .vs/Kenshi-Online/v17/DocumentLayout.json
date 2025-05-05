@@ -7,6 +7,26 @@
       "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\friendsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\gamefilemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\gamefilemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\encryptionhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\encryptionhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\websocketmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\websocketmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\webuicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\webuicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\gamemodmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\gamemodmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -27,20 +47,8 @@
       "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\server.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\websocketmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\websocketmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\webuicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\webuicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\stunclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\stunclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\gamefilemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\gamefilemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -53,10 +61,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\combataction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\combataction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\encryptionhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|solutionrelative:kenshi-online\\encryptionhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}|Kenshi-Online\\KenshiMultiplayer.csproj|c:\\users\\thewi\\documents\\github\\kenshi-online\\kenshi-online\\logger.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -102,63 +106,102 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 12,
+          "SelectedChildIndex": 5,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 5,
+              "Title": "GameModManager.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\GameModManager.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\GameModManager.cs",
+              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\GameModManager.cs",
+              "RelativeToolTip": "Kenshi-Online\\GameModManager.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAAAsBAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-05T04:20:53.722Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "WebUIController.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\WebUIController.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\WebUIController.cs",
+              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\WebUIController.cs",
+              "RelativeToolTip": "Kenshi-Online\\WebUIController.cs",
+              "ViewState": "AgIAAIoBAAAAAAAAAADwv5IBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-11T01:12:45.112Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "EncryptionHelper.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\EncryptionHelper.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\EncryptionHelper.cs",
+              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\EncryptionHelper.cs",
+              "RelativeToolTip": "Kenshi-Online\\EncryptionHelper.cs",
+              "ViewState": "AgIAAJYAAAAAAAAAAAAowKsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-08T16:41:09.02Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "WebSocketManager.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\WebSocketManager.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\WebSocketManager.cs",
               "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\WebSocketManager.cs",
               "RelativeToolTip": "Kenshi-Online\\WebSocketManager.cs",
-              "ViewState": "AgIAABMAAAAAAAAAAAAgwCQAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAEQAAAAAAAAAAAD4v04AAAAmAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-04-11T01:18:20.241Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "TradeManager.cs",
-              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\TradeManager.cs",
-              "RelativeDocumentMoniker": "Kenshi-Online\\TradeManager.cs",
-              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\TradeManager.cs",
-              "RelativeToolTip": "Kenshi-Online\\TradeManager.cs",
-              "ViewState": "AgIAALMCAAAAAAAAAAAiwH0AAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-11T01:16:00.463Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "MarketplaceManager.cs",
-              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\MarketplaceManager.cs",
-              "RelativeDocumentMoniker": "Kenshi-Online\\MarketplaceManager.cs",
-              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\MarketplaceManager.cs",
-              "RelativeToolTip": "Kenshi-Online\\MarketplaceManager.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAHQAAAAsAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-11T01:15:32.089Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "GameFileManager.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\GameFileManager.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\GameFileManager.cs",
+              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\GameFileManager.cs",
+              "RelativeToolTip": "Kenshi-Online\\GameFileManager.cs",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAQwHwAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-11T00:36:10.277Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "FriendsManager.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\FriendsManager.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\FriendsManager.cs",
+              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\FriendsManager.cs",
+              "RelativeToolTip": "Kenshi-Online\\FriendsManager.cs",
+              "ViewState": "AgIAAEoAAAAAAAAAAAAswFsAAABLAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-11T01:15:09.591Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\Program.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Program.cs",
               "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\Program.cs",
               "RelativeToolTip": "Kenshi-Online\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAF8AAAAUAAAAAAAAAA==",
+              "ViewState": "AgIAAHgAAAAAAAAAAAAAwIcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-08T16:27:27.9Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 11,
               "Title": "STUNClient.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\STUNClient.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\STUNClient.cs",
@@ -166,38 +209,35 @@
               "RelativeToolTip": "Kenshi-Online\\STUNClient.cs",
               "ViewState": "AgIAAF8AAAAAAAAAAAAUwOgAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-11T01:14:28.987Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-04-11T01:14:28.987Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "WebUIController.cs",
-              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\WebUIController.cs",
-              "RelativeDocumentMoniker": "Kenshi-Online\\WebUIController.cs",
-              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\WebUIController.cs",
-              "RelativeToolTip": "Kenshi-Online\\WebUIController.cs",
-              "ViewState": "AgIAAB0CAAAAAAAAAAAmwJsCAAABAAAAAAAAAA==",
+              "DocumentIndex": 8,
+              "Title": "MarketplaceManager.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\MarketplaceManager.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\MarketplaceManager.cs",
+              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\MarketplaceManager.cs",
+              "RelativeToolTip": "Kenshi-Online\\MarketplaceManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAHQAAAAsAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-11T01:12:45.112Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-04-11T01:15:32.089Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 9,
-              "Title": "GameFileManager.cs",
-              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\GameFileManager.cs",
-              "RelativeDocumentMoniker": "Kenshi-Online\\GameFileManager.cs",
-              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\GameFileManager.cs",
-              "RelativeToolTip": "Kenshi-Online\\GameFileManager.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAHwAAAAFAAAAAAAAAA==",
+              "Title": "TradeManager.cs",
+              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\TradeManager.cs",
+              "RelativeDocumentMoniker": "Kenshi-Online\\TradeManager.cs",
+              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\TradeManager.cs",
+              "RelativeToolTip": "Kenshi-Online\\TradeManager.cs",
+              "ViewState": "AgIAALMCAAAAAAAAAAAiwH0AAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-11T00:36:10.277Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-04-11T01:16:00.463Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 14,
               "Title": "CombatAction.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\CombatAction.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\CombatAction.cs",
@@ -209,7 +249,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "PlayerState.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\PlayerState.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\PlayerState.cs",
@@ -221,7 +261,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 18,
               "Title": "UserManager.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\UserManager.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\UserManager.cs",
@@ -233,7 +273,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 10,
               "Title": "Server.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\Server.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Server.cs",
@@ -241,12 +281,11 @@
               "RelativeToolTip": "Kenshi-Online\\Server.cs",
               "ViewState": "AgIAAEcCAAAAAAAAAAAgwGMCAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-08T16:26:20.119Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-11-08T16:26:20.119Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 7,
               "Title": "MessageType.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\MessageType.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\MessageType.cs",
@@ -254,25 +293,11 @@
               "RelativeToolTip": "Kenshi-Online\\MessageType.cs",
               "ViewState": "AgIAAE0AAAAAAAAAAAAQwGQAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-08T16:45:54.624Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-11-08T16:45:54.624Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "FriendsManager.cs",
-              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\FriendsManager.cs",
-              "RelativeDocumentMoniker": "Kenshi-Online\\FriendsManager.cs",
-              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\FriendsManager.cs",
-              "RelativeToolTip": "Kenshi-Online\\FriendsManager.cs",
-              "ViewState": "AgIAAFEAAAAAAAAAAAA9wGwAAAAZAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-11T01:15:09.591Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 20,
               "Title": "HealthStatus.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\HealthStatus.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\HealthStatus.cs",
@@ -284,7 +309,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 13,
               "Title": "AuthManager.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\AuthManager.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\AuthManager.cs",
@@ -296,7 +321,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 22,
               "Title": "PlayerData.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\PlayerData.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\PlayerData.cs",
@@ -308,7 +333,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 21,
               "Title": "InventoryItem.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\InventoryItem.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\InventoryItem.cs",
@@ -320,7 +345,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 17,
               "Title": "Position.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\Position.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Position.cs",
@@ -332,7 +357,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 19,
               "Title": "GameMessage.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\GameMessage.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\GameMessage.cs",
@@ -344,19 +369,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "EncryptionHelper.cs",
-              "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\EncryptionHelper.cs",
-              "RelativeDocumentMoniker": "Kenshi-Online\\EncryptionHelper.cs",
-              "ToolTip": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\EncryptionHelper.cs",
-              "RelativeToolTip": "Kenshi-Online\\EncryptionHelper.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAKsAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-08T16:41:09.02Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "Logger.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\Logger.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Logger.cs",
@@ -368,7 +381,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 23,
               "Title": "Lobby.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\Lobby.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Lobby.cs",
@@ -380,7 +393,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 12,
               "Title": "Client.cs",
               "DocumentMoniker": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\Client.cs",
               "RelativeDocumentMoniker": "Kenshi-Online\\Client.cs",
@@ -389,10 +402,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAOQBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-08T16:27:00.962Z"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
             }
           ]
         }

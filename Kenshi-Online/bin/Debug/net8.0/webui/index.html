@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kenshi Online - Web Interface</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Kenshi Online</h1>
+            <div id="user-status">
+                <span id="status-message">Connecting...</span>
+                <button id="login-btn" style="display: none;">Login</button>
+                <button id="logout-btn" style="display: none;">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <!-- Login Form -->
+            <div id="login-form" class="card" style="display: none;">
+                <h2>Login</h2>
+                <form id="form-login">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit">Login</button>
+                        <button type="button" id="register-link">Register</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Registration Form -->
+            <div id="register-form" class="card" style="display: none;">
+                <h2>Register</h2>
+                <form id="form-register">
+                    <div class="form-group">
+                        <label for="reg-username">Username</label>
+                        <input type="text" id="reg-username" name="username" required>
+                        <small>Must be at least 3 characters long</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Password</label>
+                        <input type="password" id="reg-password" name="password" required>
+                        <small>Must be at least 8 characters long</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Email</label>
+                        <input type="email" id="reg-email" name="email" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit">Register</button>
+                        <button type="button" id="login-link">Back to Login</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Dashboard -->
+            <div id="dashboard" style="display: none;">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="status">Status</button>
+                    <button class="tab-btn" data-tab="friends">Friends</button>
+                    <button class="tab-btn" data-tab="marketplace">Marketplace</button>
+                    <button class="tab-btn" data-tab="trade">Trade</button>
+                    <button class="tab-btn" data-tab="inventory">Inventory</button>
+                    <button class="tab-btn" data-tab="mods">Mods</button>
+                </div>
+
+                <!-- Status Tab -->
+                <div id="tab-status" class="tab-content active">
+                    <div class="card">
+                        <h2>Player Status</h2>
+                        <div id="player-status">Loading...</div>
+                    </div>
+                    <div class="card">
+                        <h2>Server Status</h2>
+                        <div id="server-status">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Friends Tab -->
+                <div id="tab-friends" class="tab-content">
+                    <div class="card">
+                        <h2>Friends List</h2>
+                        <div id="friends-list">Loading...</div>
+                    </div>
+                    <div class="card">
+                        <h2>Friend Requests</h2>
+                        <div id="friend-requests">Loading...</div>
+                    </div>
+                    <div class="card">
+                        <h2>Add Friend</h2>
+                        <form id="form-add-friend">
+                            <div class="form-group">
+                                <label for="friend-username">Username</label>
+                                <input type="text" id="friend-username" name="username" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit">Send Request</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Marketplace Tab -->
+                <div id="tab-marketplace" class="tab-content">
+                    <div class="card">
+                        <h2>Marketplace Listings</h2>
+                        <div id="marketplace-listings">Loading...</div>
+                    </div>
+                    <div class="card">
+                        <h2>My Listings</h2>
+                        <div id="my-listings">Loading...</div>
+                    </div>
+                    <div class="card">
+                        <h2>Create Listing</h2>
+                        <form id="form-create-listing">
+                            <div class="form-group">
+                                <label for="listing-item-id">Item ID</label>
+                                <select id="listing-item-id" name="itemId" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="listing-item-name">Item Name</label>
+                                <input type="text" id="listing-item-name" name="itemName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="listing-quantity">Quantity</label>
+                                <input type="number" id="listing-quantity" name="quantity" min="1" value="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="listing-price">Price (per item)</label>
+                                <input type="number" id="listing-price" name="price" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="listing-condition">Condition</label>
+                                <input type="range" id="listing-condition" name="condition" min="0" max="1" step="0.01" value="1">
+                                <span id="condition-value">100%</span>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit">Create Listing</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Trade Tab -->
+                <div id="tab-trade" class="tab-content">
+                    <div class="card">
+                        <h2>Current Trade</h2>
+                        <div id="current-trade">No active trade</div>
+                    </div>
+                    <div class="card">
+                        <h2>Trade Requests</h2>
+                        <div id="trade-requests">Loading...</div>
+                    </div>
+                    <div class="card">
+                        <h2>Initiate Trade</h2>
+                        <form id="form-initiate-trade">
+                            <div class="form-group">
+                                <label for="trade-username">Username</label>
+                                <select id="trade-username" name="targetUsername" required></select>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit">Initiate Trade</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Inventory Tab -->
+                <div id="tab-inventory" class="tab-content">
+                    <div class="card">
+                        <h2>Inventory</h2>
+                        <div id="inventory-items">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Mods Tab -->
+                <div id="tab-mods" class="tab-content">
+                    <div class="card">
+                        <h2>Installed Mods</h2>
+                        <div id="installed-mods">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Kenshi Online Web Interface v1.0.1</p>
+        </div>
+    </footer>
+
+    <!-- Notification System -->
+    <div id="notification-container"></div>
+
+    <script src="/scripts/main.js"></script>
+</body>
+</html>

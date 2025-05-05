@@ -26,7 +26,12 @@ C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Ken
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\KenshiMultiplayer.pdb
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Fasm.NET.dll
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\MemorySharp.dll
+C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
+C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Newtonsoft.Json.dll
+C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\obj\Debug\net8.0\KenshiMultiplayer.csproj.AssemblyReference.cache
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\obj\Debug\net8.0\KenshiMultiplayer.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\obj\Debug\net8.0\KenshiMultiplayer.AssemblyInfoInputs.cache
@@ -39,8 +44,3 @@ C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\obj\Debug\net8.0\ref
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\obj\Debug\net8.0\KenshiMultiplayer.pdb
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\obj\Debug\net8.0\KenshiMultiplayer.genruntimeconfig.cache
 C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\obj\Debug\net8.0\ref\KenshiMultiplayer.dll
-C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
-C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
-C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
-C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
-C:\Users\thewi\Documents\GitHub\Kenshi-Online\Kenshi-Online\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll

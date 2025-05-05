@@ -50,14 +50,11 @@ namespace KenshiMultiplayer
 
         static void StartServer()
         {
-            Console.Write("Enter Kenshi installation path (e.g. C:\\Steam\\steamapps\\common\\Kenshi): ");
-            string kenshiPath = Console.ReadLine()?.Trim();
+            string kenshiPath = FindKenshiInstallationPath();
 
-            if (string.IsNullOrEmpty(kenshiPath) || !Directory.Exists(kenshiPath))
+            if (string.IsNullOrEmpty(kenshiPath))
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Invalid Kenshi path. Path does not exist.");
-                Console.ResetColor();
+                Console.WriteLine("Cannot start server without a valid Kenshi installation path.");
                 return;
             }
 
@@ -89,11 +86,25 @@ namespace KenshiMultiplayer
                 }
                 Console.ResetColor();
 
+                // Load mods
+                GameModManager modManager = new GameModManager(kenshiPath);
+                var activeMods = modManager.GetActiveMods();
+
+                Console.WriteLine($"Detected {modManager.GetAllMods().Count} mods, {activeMods.Count} active");
+                foreach (var mod in activeMods)
+                {
+                    Console.WriteLine($"  - {mod.Name} {(string.IsNullOrEmpty(mod.Version) ? "" : $"v{mod.Version}")}");
+                }
+
                 var server = new EnhancedServer(kenshiPath);
 
                 if (enableWebUI)
                 {
-                  //  object value = server.EnableWebInterface(webUIPort);
+                    // Initialize WebUI
+                    string webRootPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "webui");
+                    var webUI = new WebUIController(webRootPath, webUIPort);
+                    webUI.SetServer(server);
+                    webUI.Start();
                 }
 
                 server.Start(port);
@@ -107,6 +118,7 @@ namespace KenshiMultiplayer
                 Console.WriteLine("/create-lobby <id> <isPrivate> <password> <maxPlayers> - Create a lobby");
                 Console.WriteLine("/list-lobbies - List all lobbies");
                 Console.WriteLine("/broadcast <message> - Send message to all players");
+                Console.WriteLine("/list-mods - List all detected mods");
                 if (enableWebUI)
                 {
                     Console.WriteLine("/webui-disable - Disable WebUI");
@@ -120,6 +132,50 @@ namespace KenshiMultiplayer
                 Console.WriteLine($"Failed to start server: {ex.Message}");
                 Console.ResetColor();
             }
+        }
+
+
+        static string FindKenshiInstallationPath()
+        {
+            Console.WriteLine("Detecting Kenshi installation...");
+
+            string kenshiPath = GameModManager.FindKenshiInstallation();
+
+            if (kenshiPath != null)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"Kenshi installation detected at: {kenshiPath}");
+                Console.ResetColor();
+                return kenshiPath;
+            }
+
+            // If automatic detection failed, ask user
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("Could not automatically detect Kenshi installation.");
+            Console.ResetColor();
+
+            Console.Write("Enter Kenshi installation path (e.g. C:\\Steam\\steamapps\\common\\Kenshi): ");
+            string userPath = Console.ReadLine()?.Trim();
+
+            if (string.IsNullOrEmpty(userPath) || !Directory.Exists(userPath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Invalid path. Kenshi installation not found.");
+                Console.ResetColor();
+                return null;
+            }
+
+            // Validate the path by checking for kenshi_x64.exe
+            string exePath = Path.Combine(userPath, "kenshi_x64.exe");
+            if (!File.Exists(exePath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Kenshi executable not found at the specified path.");
+                Console.ResetColor();
+                return null;
+            }
+
+            return userPath;
         }
 
         static void StartClient()
