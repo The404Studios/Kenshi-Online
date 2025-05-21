@@ -3,7 +3,7 @@
 ![Kenshi Online Banner](https://via.placeholder.com/1200x300?text=Kenshi+Online+Multiplayer+Experience)
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Discord](https://img.shields.io/discord/962745762938572870?color=7289DA&label=Discord&logo=discord&logoColor=white)]((https://discord.gg/s4zDPQMp))
+[![Discord](https://img.shields.io/discord/962745762938572870?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/s4zDPQMp)
 [![GitHub Stars](https://img.shields.io/github/stars/The404Studios/Kenshi-Online?style=social)](https://github.com/The404Studios/Kenshi-Online)
 
 ## 🌟 Overview
