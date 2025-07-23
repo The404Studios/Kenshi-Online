@@ -20,7 +20,7 @@ We take the security of our project seriously. If you discover a security vulner
 ### How to Report
 
 1. **DO NOT** create a public GitHub issue for security vulnerabilities
-2. Email your findings to **security@example.com**
+2. Email your findings to **the404studios@gmail.com**
 3. Include the following information:
    - Type of vulnerability
    - Full paths of source file(s) related to the vulnerability
