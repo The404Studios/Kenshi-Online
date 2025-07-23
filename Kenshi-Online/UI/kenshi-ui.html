@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kenshi Online - Multiplayer Hub</title>
+    <style>
+        /* Kenshi-inspired theme */
+        :root {
+            --kenshi-brown: #3d2f1f;
+            --kenshi-dark: #1a1612;
+            --kenshi-light: #8b7355;
+            --kenshi-accent: #d4a574;
+            --kenshi-red: #8b0000;
+            --kenshi-green: #4a5d23;
+            --ui-border: #5a4a3a;
+            --text-primary: #d4c5b9;
+            --text-secondary: #9b8c7d;
+            --bg-panel: rgba(26, 22, 18, 0.95);
+            --bg-hover: rgba(139, 115, 85, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0908;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)),
+                url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="%23222"/><path d="M0 0L50 50L0 100M50 0L100 50L50 100" stroke="%23333" stroke-width="0.5" fill="none"/></svg>');
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* Main Layout */
+        .sidebar {
+            width: 300px;
+            background: var(--bg-panel);
+            border-right: 2px solid var(--ui-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: var(--kenshi-dark);
+            border-bottom: 2px solid var(--ui-border);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: var(--kenshi-accent);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            letter-spacing: 2px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--kenshi-green);
+            box-shadow: 0 0 10px var(--kenshi-green);
+        }
+
+        .status-indicator.offline {
+            background: var(--kenshi-red);
+            box-shadow: 0 0 10px var(--kenshi-red);
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            background: var(--kenshi-dark);
+            border-bottom: 2px solid var(--ui-border);
+        }
+
+        .nav-tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-tab:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .nav-tab.active {
+            color: var(--kenshi-accent);
+            background: var(--kenshi-brown);
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--kenshi-accent);
+        }
+
+        /* Content Panels */
+        .tab-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Kenshi Panel Style */
+        .kenshi-panel {
+            background: var(--bg-panel);
+            border: 2px solid var(--ui-border);
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .kenshi-panel::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, transparent 30%, var(--kenshi-accent) 50%, transparent 70%);
+            opacity: 0;
+            z-index: -1;
+            transition: opacity 0.3s;
+        }
+
+        .kenshi-panel:hover::before {
+            opacity: 0.1;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--ui-border);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            color: var(--kenshi-accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Player List */
+        .player-list {
+            list-style: none;
+        }
+
+        .player-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--ui-border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .player-item:hover {
+            background: var(--bg-hover);
+            border-color: var(--kenshi-accent);
+        }
+
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            background: var(--kenshi-brown);
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--kenshi-accent);
+        }
+
+        .player-info {
+            flex: 1;
+        }
+
+        .player-name {
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .player-status {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .player-health {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .health-bar {
+            width: 100px;
+            height: 8px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--ui-border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--kenshi-red) 0%, var(--kenshi-accent) 100%);
+            transition: width 0.3s;
+        }
+
+        /* Action Buttons */
+        .kenshi-btn {
+            background: var(--kenshi-brown);
+            color: var(--text-primary);
+            border: 2px solid var(--ui-border);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 12px;
+        }
+
+        .kenshi-btn:hover {
+            background: var(--kenshi-light);
+            border-color: var(--kenshi-accent);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        .kenshi-btn.primary {
+            background: var(--kenshi-accent);
+            color: var(--kenshi-dark);
+        }
+
+        .kenshi-btn.danger {
+            background: var(--kenshi-red);
+        }
+
+        /* Chat */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--ui-border);
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+
+        .chat-message {
+            margin: 5px 0;
+            padding: 5px;
+        }
+
+        .chat-message .timestamp {
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .chat-message .username {
+            color: var(--kenshi-accent);
+            font-weight: bold;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid var(--ui-border);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--kenshi-accent);
+        }
+
+        /* Events */
+        .event-card {
+            background: rgba(0,0,0,0.3);
+            border: 2px solid var(--ui-border);
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .event-card:hover {
+            border-color: var(--kenshi-accent);
+            transform: translateX(5px);
+        }
+
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .event-type {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--kenshi-brown);
+            border-radius: 4px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--kenshi-accent);
+        }
+
+        .event-participants {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        /* Stats */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--ui-border);
+            border-radius: 4px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--kenshi-accent);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Inventory Grid */
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 5px;
+        }
+
+        .inventory-slot {
+            aspect-ratio: 1;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid var(--ui-border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .inventory-slot:hover {
+            border-color: var(--kenshi-accent);
+            transform: scale(1.05);
+        }
+
+        .inventory-slot.occupied {
+            background: rgba(139, 115, 85, 0.2);
+        }
+
+        .item-count {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: var(--kenshi-dark);
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-size: 10px;
+            color: var(--kenshi-accent);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--kenshi-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--kenshi-brown);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--kenshi-light);
+        }
+
+        /* Notification Badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--kenshi-red);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        /* Notification Bell */
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+            padding: 5px;
+            margin-right: 20px;
+            transition: all 0.3s;
+        }
+
+        .notification-bell:hover {
+            color: var(--kenshi-accent);
+        }
+
+        /* Notification Dropdown */
+        .notification-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 10px;
+            width: 350px;
+            background: var(--bg-panel);
+            border: 2px solid var(--ui-border);
+            border-radius: 4px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            display: none;
+            z-index: 1000;
+        }
+
+        .notification-dropdown.active {
+            display: block;
+        }
+
+        .notification-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .notification-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--ui-border);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .notification-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .notification-item.unread {
+            background: rgba(212, 165, 116, 0.1);
+        }
+
+        .notification-item .notification-title {
+            font-weight: bold;
+            color: var(--kenshi-accent);
+            margin-bottom: 4px;
+        }
+
+        .notification-item .notification-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .notification-item .notification-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .notification-actions button {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        /* Quick Actions Bar */
+        .quick-actions {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-panel);
+            border: 2px solid var(--ui-border);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        }
+
+        .quick-action-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            background: var(--kenshi-brown);
+            border: 2px solid var(--ui-border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--kenshi-light);
+            border-color: var(--kenshi-accent);
+            transform: translateY(-5px);
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--kenshi-dark);
+            color: var(--text-primary);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            margin-bottom: 5px;
+        }
+
+        .quick-action-btn:hover .tooltip {
+            opacity: 1;
+        }
+
+        /* Reputation System Styles */
+        .faction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .faction-card {
+            background: rgba(0,0,0,0.3);
+            border: 2px solid var(--ui-border);
+            border-radius: 4px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .faction-card:hover {
+            border-color: var(--kenshi-accent);
+            transform: translateY(-2px);
+        }
+
+        .faction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .reputation-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .reputation-value.positive {
+            color: var(--kenshi-green);
+        }
+
+        .reputation-value.negative {
+            color: var(--kenshi-red);
+        }
+
+        .reputation-value.neutral {
+            color: var(--text-secondary);
+        }
+
+        .reputation-bar {
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--ui-border);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .reputation-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .reputation-fill.hostile {
+            background: linear-gradient(90deg, var(--kenshi-red), #FF6347);
+        }
+
+        .reputation-fill.friendly {
+            background: linear-gradient(90deg, #4169E1, #87CEEB);
+        }
+
+        .reputation-fill.allied {
+            background: linear-gradient(90deg, var(--kenshi-green), #90EE90);
+        }
+
+        .reputation-fill.neutral {
+            background: linear-gradient(90deg, #696969, #A9A9A9);
+        }
+
+        .reputation-marker {
+            position: absolute;
+            top: -2px;
+            bottom: -2px;
+            width: 2px;
+            background: var(--kenshi-accent);
+        }
+
+        .reputation-label {
+            text-align: center;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .faction-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .reputation-history {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .reputation-event {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid var(--ui-border);
+        }
+
+        .reputation-event .timestamp {
+            color: var(--text-secondary);
+            margin-right: 10px;
+        }
+
+        .reputation-event .event-description {
+            flex: 1;
+        }
+
+        .reputation-change {
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .reputation-change.positive {
+            color: var(--kenshi-green);
+        }
+
+        .reputation-change.negative {
+            color: var(--kenshi-red);
+        }
+
+        /* Map Styles */
+        .map-container {
+            position: relative;
+            height: 600px;
+            background: var(--kenshi-dark);
+            border: 2px solid var(--ui-border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        #world-map {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(26, 22, 18, 0.9);
+            border: 1px solid var(--ui-border);
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .map-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .map-info div {
+            margin: 5px 0;
+        }
+
+        .map-info span {
+            color: var(--kenshi-accent);
+            font-weight: bold;
+        }
+
+        .waypoint-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .waypoint-list h4 {
+            color: var(--kenshi-accent);
+            margin-bottom: 10px;
+        }
+
+        .waypoint-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--ui-border);
+            border-radius: 4px;
+            margin-bottom: 5px;
+            transition: all 0.3s;
+        }
+
+        .waypoint-item:hover {
+            background: var(--bg-hover);
+            border-color: var(--kenshi-accent);
+        }
+
+        .waypoint-icon {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+
+        .waypoint-info {
+            flex: 1;
+        }
+
+        .waypoint-name {
+            display: block;
+            font-weight: bold;
+        }
+
+        .waypoint-distance {
+            display: block;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="header">
+            <h1>KENSHI ONLINE</h1>
+        </div>
+        
+        <!-- Player Info -->
+        <div class="kenshi-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">My Character</h3>
+            </div>
+            <div class="player-item">
+                <div class="player-avatar">JD</div>
+                <div class="player-info">
+                    <div class="player-name">John Doe</div>
+                    <div class="player-status">Level 15 Wanderer</div>
+                    <div class="player-health">
+                        <span>HP:</span>
+                        <div class="health-bar">
+                            <div class="health-fill" style="width: 75%"></div>
+                        </div>
+                        <span>75/100</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Party Panel -->
+        <div class="kenshi-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Party</h3>
+                <button class="kenshi-btn">Create</button>
+            </div>
+            <ul class="player-list" id="party-list">
+                <li class="player-item">
+                    <div class="player-avatar">SA</div>
+                    <div class="player-info">
+                        <div class="player-name">Sarah Anderson</div>
+                        <div class="player-status">Leader • Samurai</div>
+                        <div class="player-health">
+                            <span>HP:</span>
+                            <div class="health-bar">
+                                <div class="health-fill" style="width: 90%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <li class="player-item">
+                    <div class="player-avatar">MK</div>
+                    <div class="player-info">
+                        <div class="player-name">Mike Knight</div>
+                        <div class="player-status">Member • Engineer</div>
+                        <div class="player-health">
+                            <span>HP:</span>
+                            <div class="health-bar">
+                                <div class="health-fill" style="width: 60%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Friends Online -->
+        <div class="kenshi-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Friends Online</h3>
+                <span class="notification-badge">3</span>
+            </div>
+            <ul class="player-list" id="friends-list">
+                <li class="player-item">
+                    <div class="player-avatar">TW</div>
+                    <div class="player-info">
+                        <div class="player-name">Tom Wilson</div>
+                        <div class="player-status">In Combat • The Hub</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="header">
+            <div>
+                <h2>Multiplayer Hub</h2>
+            </div>
+            <div class="connection-status">
+                <div class="notification-bell" onclick="toggleNotifications()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="notification-badge" id="notification-count">3</span>
+                    
+                    <!-- Notification Dropdown -->
+                    <div class="notification-dropdown" id="notification-dropdown">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Notifications</h3>
+                            <button class="kenshi-btn" onclick="clearAllNotifications()">Clear All</button>
+                        </div>
+                        <div class="notification-list" id="notification-list">
+                            <div class="notification-item unread">
+                                <div class="notification-title">Friend Request</div>
+                                <div class="notification-message">Alex Chen wants to be your friend</div>
+                                <div class="notification-actions">
+                                    <button class="kenshi-btn primary">Accept</button>
+                                    <button class="kenshi-btn">Decline</button>
+                                </div>
+                                <div class="notification-time">2 minutes ago</div>
+                            </div>
+                            <div class="notification-item unread">
+                                <div class="notification-title">Base Under Attack!</div>
+                                <div class="notification-message">Your outpost near Squin is under attack by Dust Bandits!</div>
+                                <div class="notification-actions">
+                                    <button class="kenshi-btn danger">Teleport to Base</button>
+                                </div>
+                                <div class="notification-time">5 minutes ago</div>
+                            </div>
+                            <div class="notification-item">
+                                <div class="notification-title">Trade Completed</div>
+                                <div class="notification-message">Successfully traded with Tom Wilson</div>
+                                <div class="notification-time">10 minutes ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <span>Connected to Server</span>
+                <div class="status-indicator"></div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="overview">Overview</button>
+            <button class="nav-tab" data-tab="events">Events & Raids</button>
+            <button class="nav-tab" data-tab="marketplace">Marketplace</button>
+            <button class="nav-tab" data-tab="reputation">Reputation</button>
+            <button class="nav-tab" data-tab="map">Map</button>
+            <button class="nav-tab" data-tab="chat">Chat</button>
+            <button class="nav-tab" data-tab="stats">Statistics</button>
+            <button class="nav-tab" data-tab="settings">Settings</button>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="tab-content active" id="overview">
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Server Status</h3>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">47</div>
+                        <div class="stat-label">Players Online</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">8</div>
+                        <div class="stat-label">Active Events</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">23</div>
+                        <div class="stat-label">Active Trades</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">156</div>
+                        <div class="stat-label">Market Listings</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Recent Activity</h3>
+                </div>
+                <div class="activity-feed">
+                    <div class="activity-item">
+                        <span class="timestamp">[14:32]</span>
+                        <span class="username">Sarah Anderson</span> defeated the Dust Bandit Leader
+                    </div>
+                    <div class="activity-item">
+                        <span class="timestamp">[14:28]</span>
+                        <span class="username">Mike Knight</span> completed trade with Tom Wilson
+                    </div>
+                    <div class="activity-item">
+                        <span class="timestamp">[14:25]</span>
+                        New event started: <strong>Defend Squin from Raid</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="events">
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Active Events</h3>
+                    <button class="kenshi-btn primary">Create Event</button>
+                </div>
+                
+                <div class="event-card">
+                    <div class="event-header">
+                        <div>
+                            <h4>Defend Squin from Raid</h4>
+                            <span class="event-type">Base Defense</span>
+                        </div>
+                        <button class="kenshi-btn">Join</button>
+                    </div>
+                    <p>Holy Nation forces are approaching Squin. Help defend the town!</p>
+                    <div class="event-participants">
+                        <span>Participants: 12/20</span>
+                        <div class="health-bar" style="width: 150px;">
+                            <div class="health-fill" style="width: 60%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="event-card">
+                    <div class="event-header">
+                        <div>
+                            <h4>Trade Caravan to Heft</h4>
+                            <span class="event-type">Trading</span>
+                        </div>
+                        <button class="kenshi-btn">Join</button>
+                    </div>
+                    <p>Escort the merchant caravan safely through bandit territory.</p>
+                    <div class="event-participants">
+                        <span>Participants: 5/8</span>
+                        <div class="health-bar" style="width: 150px;">
+                            <div class="health-fill" style="width: 62.5%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Scheduled Events</h3>
+                </div>
+                <div class="event-card">
+                    <div class="event-header">
+                        <div>
+                            <h4>Fogmen Hunting Party</h4>
+                            <span class="event-type">Bounty Hunt</span>
+                        </div>
+                        <span>Starts in 2h 15m</span>
+                    </div>
+                    <p>Clear the Fog Islands of Fogmen princes. High danger, high reward!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="marketplace">
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Market Listings</h3>
+                    <button class="kenshi-btn primary">Create Listing</button>
+                </div>
+                
+                <table style="width: 100%; color: var(--text-primary);">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--ui-border);">
+                            <th style="text-align: left; padding: 10px;">Item</th>
+                            <th style="text-align: left; padding: 10px;">Quantity</th>
+                            <th style="text-align: left; padding: 10px;">Price</th>
+                            <th style="text-align: left; padding: 10px;">Seller</th>
+                            <th style="text-align: left; padding: 10px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid var(--ui-border);">
+                            <td style="padding: 10px;">Edge Type 1 Katana</td>
+                            <td style="padding: 10px;">1</td>
+                            <td style="padding: 10px;">15,000 cats</td>
+                            <td style="padding: 10px;">Tom Wilson</td>
+                            <td style="padding: 10px;"><button class="kenshi-btn">Buy</button></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--ui-border);">
+                            <td style="padding: 10px;">Iron Plates</td>
+                            <td style="padding: 10px;">50</td>
+                            <td style="padding: 10px;">100 cats/ea</td>
+                            <td style="padding: 10px;">Mike Knight</td>
+                            <td style="padding: 10px;"><button class="kenshi-btn">Buy</button></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--ui-border);">
+                            <td style="padding: 10px;">Cactus Rum</td>
+                            <td style="padding: 10px;">20</td>
+                            <td style="padding: 10px;">150 cats/ea</td>
+                            <td style="padding: 10px;">Sarah Anderson</td>
+                            <td style="padding: 10px;"><button class="kenshi-btn">Buy</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-content" id="chat">
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Global Chat</h3>
+                </div>
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-message">
+                            <span class="timestamp">[14:32]</span>
+                            <span class="username">Tom Wilson:</span>
+                            Anyone want to team up for a UC raid?
+                        </div>
+                        <div class="chat-message">
+                            <span class="timestamp">[14:33]</span>
+                            <span class="username">Sarah Anderson:</span>
+                            I'm in! Meet at Sho-Battai?
+                        </div>
+                        <div class="chat-message">
+                            <span class="timestamp">[14:34]</span>
+                            <span class="username">Mike Knight:</span>
+                            Need to sell some gear first, give me 10 mins
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <input type="text" class="chat-input" placeholder="Type your message..." id="chat-input">
+                        <button class="kenshi-btn primary" onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="reputation">
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Faction Standings</h3>
+                    <button class="kenshi-btn primary">Create Faction</button>
+                </div>
+                
+                <div class="faction-grid">
+                    <div class="faction-card">
+                        <div class="faction-header">
+                            <h4 style="color: #FFD700;">Holy Nation</h4>
+                            <span class="reputation-value negative">-45</span>
+                        </div>
+                        <div class="reputation-bar">
+                            <div class="reputation-fill hostile" style="width: 27.5%;"></div>
+                            <div class="reputation-marker" style="left: 50%;"></div>
+                        </div>
+                        <div class="reputation-label">Hostile</div>
+                        <div class="faction-info">
+                            <span>Type: Major Faction</span>
+                            <span>Kill on sight</span>
+                        </div>
+                    </div>
+
+                    <div class="faction-card">
+                        <div class="faction-header">
+                            <h4 style="color: #800080;">United Cities</h4>
+                            <span class="reputation-value positive">+25</span>
+                        </div>
+                        <div class="reputation-bar">
+                            <div class="reputation-fill friendly" style="width: 62.5%;"></div>
+                            <div class="reputation-marker" style="left: 50%;"></div>
+                        </div>
+                        <div class="reputation-label">Friendly</div>
+                        <div class="faction-info">
+                            <span>Type: Major Faction</span>
+                            <span>Trade discounts available</span>
+                        </div>
+                    </div>
+
+                    <div class="faction-card">
+                        <div class="faction-header">
+                            <h4 style="color: #8B4513;">Shek Kingdom</h4>
+                            <span class="reputation-value neutral">+5</span>
+                        </div>
+                        <div class="reputation-bar">
+                            <div class="reputation-fill neutral" style="width: 52.5%;"></div>
+                            <div class="reputation-marker" style="left: 50%;"></div>
+                        </div>
+                        <div class="reputation-label">Neutral</div>
+                        <div class="faction-info">
+                            <span>Type: Major Faction</span>
+                            <span>No special status</span>
+                        </div>
+                    </div>
+
+                    <div class="faction-card">
+                        <div class="faction-header">
+                            <h4 style="color: #00CED1;">Tech Hunters</h4>
+                            <span class="reputation-value positive">+60</span>
+                        </div>
+                        <div class="reputation-bar">
+                            <div class="reputation-fill allied" style="width: 80%;"></div>
+                            <div class="reputation-marker" style="left: 50%;"></div>
+                        </div>
+                        <div class="reputation-label">Allied</div>
+                        <div class="faction-info">
+                            <span>Type: Minor Faction</span>
+                            <span>Will assist in combat</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Recent Reputation Changes</h3>
+                </div>
+                <div class="reputation-history">
+                    <div class="reputation-event">
+                        <span class="timestamp">[14:45]</span>
+                        <span class="event-description">Killed Dust Bandit member</span>
+                        <span class="reputation-change negative">-5.0</span>
+                    </div>
+                    <div class="reputation-event">
+                        <span class="timestamp">[14:32]</span>
+                        <span class="event-description">Defended Squin from raid</span>
+                        <span class="reputation-change positive">+10.0</span>
+                    </div>
+                    <div class="reputation-event">
+                        <span class="timestamp">[14:28]</span>
+                        <span class="event-description">Traded with Tech Hunters</span>
+                        <span class="reputation-change positive">+0.5</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="map">
+            <div class="kenshi-panel" style="height: calc(100% - 40px);">
+                <div class="panel-header">
+                    <h3 class="panel-title">World Map</h3>
+                    <div class="map-controls">
+                        <button class="kenshi-btn" onclick="toggleMapLayer('personal')">Personal</button>
+                        <button class="kenshi-btn" onclick="toggleMapLayer('party')">Party</button>
+                        <button class="kenshi-btn" onclick="toggleMapLayer('events')">Events</button>
+                        <button class="kenshi-btn primary" onclick="markCurrentLocation()">Mark Location</button>
+                    </div>
+                </div>
+                
+                <div class="map-container">
+                    <canvas id="world-map" width="800" height="600"></canvas>
+                    <div class="map-overlay">
+                        <div class="map-info">
+                            <div>World Exploration: <span id="exploration-percent">23.5%</span></div>
+                            <div>Waypoints: <span id="waypoint-count">47</span></div>
+                            <div>Current Region: <span id="current-region">The Hub</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="waypoint-list">
+                    <h4>Recent Waypoints</h4>
+                    <div class="waypoint-item">
+                        <span class="waypoint-icon" style="color: #DC143C;">💀</span>
+                        <div class="waypoint-info">
+                            <span class="waypoint-name">Fogmen Camp</span>
+                            <span class="waypoint-distance">1.2km NW</span>
+                        </div>
+                        <button class="kenshi-btn" onclick="shareWaypoint('fogmen-camp')">Share</button>
+                    </div>
+                    <div class="waypoint-item">
+                        <span class="waypoint-icon" style="color: #228B22;">⛏️</span>
+                        <div class="waypoint-info">
+                            <span class="waypoint-name">Iron Deposit</span>
+                            <span class="waypoint-distance">0.5km E</span>
+                        </div>
+                        <button class="kenshi-btn" onclick="shareWaypoint('iron-deposit')">Share</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Personal Statistics</h3>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">342</div>
+                        <div class="stat-label">Enemies Defeated</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">28</div>
+                        <div class="stat-label">Events Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">156,420</div>
+                        <div class="stat-label">Cats Earned</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">84</div>
+                        <div class="stat-label">Trades Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">12</div>
+                        <div class="stat-label">Deaths</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">4.2</div>
+                        <div class="stat-label">K/D Ratio</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Achievement Progress</h3>
+                </div>
+                <div style="margin: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>Bandit Hunter</span>
+                        <span>85/100</span>
+                    </div>
+                    <div class="health-bar" style="width: 100%;">
+                        <div class="health-fill" style="width: 85%; background: var(--kenshi-green);"></div>
+                    </div>
+                </div>
+                <div style="margin: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>Master Trader</span>
+                        <span>156,420/500,000 cats</span>
+                    </div>
+                    <div class="health-bar" style="width: 100%;">
+                        <div class="health-fill" style="width: 31%; background: var(--kenshi-green);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="settings">
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Display Settings</h3>
+                </div>
+                <div style="margin: 10px 0;">
+                    <label style="display: flex; align-items: center; margin: 10px 0;">
+                        <input type="checkbox" checked style="margin-right: 10px;">
+                        Show player names above characters
+                    </label>
+                    <label style="display: flex; align-items: center; margin: 10px 0;">
+                        <input type="checkbox" checked style="margin-right: 10px;">
+                        Show health bars
+                    </label>
+                    <label style="display: flex; align-items: center; margin: 10px 0;">
+                        <input type="checkbox" style="margin-right: 10px;">
+                        Show party member waypoints
+                    </label>
+                    <label style="display: flex; align-items: center; margin: 10px 0;">
+                        <input type="checkbox" checked style="margin-right: 10px;">
+                        Enable chat notifications
+                    </label>
+                </div>
+            </div>
+
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Privacy Settings</h3>
+                </div>
+                <div style="margin: 10px 0;">
+                    <label style="display: flex; align-items: center; margin: 10px 0;">
+                        <input type="checkbox" style="margin-right: 10px;">
+                        Hide location from non-party members
+                    </label>
+                    <label style="display: flex; align-items: center; margin: 10px 0;">
+                        <input type="checkbox" style="margin-right: 10px;">
+                        Block trade requests from non-friends
+                    </label>
+                    <label style="display: flex; align-items: center; margin: 10px 0;">
+                        <input type="checkbox" checked style="margin-right: 10px;">
+                        Auto-accept party invites from friends
+                    </label>
+                </div>
+            </div>
+
+            <div class="kenshi-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Keybindings</h3>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>Open Chat: <strong>T</strong></div>
+                    <div>Party Chat: <strong>P</strong></div>
+                    <div>Push to Talk: <strong>V</strong></div>
+                    <div>Quick Trade: <strong>R</strong></div>
+                    <div>Toggle Map: <strong>M</strong></div>
+                    <div>Quick Teleport: <strong>F</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Bar -->
+    <div class="quick-actions">
+        <div class="quick-action-btn">
+            <span class="tooltip">Request Teleport</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+        </div>
+        <div class="quick-action-btn">
+            <span class="tooltip">Share Waypoint</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+            </svg>
+        </div>
+        <div class="quick-action-btn">
+            <span class="tooltip">Quick Trade</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 3l4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"></path>
+            </svg>
+        </div>
+        <div class="quick-action-btn">
+            <span class="tooltip">Voice Chat</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+        </div>
+        <div class="quick-action-btn">
+            <span class="tooltip">Toggle Map</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                <line x1="8" y1="2" x2="8" y2="18"></line>
+                <line x1="16" y1="6" x2="16" y2="22"></line>
+            </svg>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection
+        let ws = null;
+        let reconnectInterval = null;
+        let notifications = [];
+        let mapCanvas = null;
+        let mapCtx = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+            initializeMap();
+            loadNotifications();
+            setInterval(updateTimestamps, 60000); // Update timestamps every minute
+        });
+
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:8080/ws');
+
+            ws.onopen = () => {
+                console.log('Connected to server');
+                document.querySelector('.status-indicator').classList.remove('offline');
+                clearInterval(reconnectInterval);
+                
+                // Request initial data
+                ws.send(JSON.stringify({ type: 'get_status' }));
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleServerMessage(data);
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected from server');
+                document.querySelector('.status-indicator').classList.add('offline');
+                // Try to reconnect every 5 seconds
+                reconnectInterval = setInterval(connectWebSocket, 5000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function handleServerMessage(data) {
+            switch(data.type) {
+                case 'chat':
+                    addChatMessage(data.username, data.message);
+                    break;
+                case 'party_update':
+                    updatePartyList(data.members);
+                    break;
+                case 'event_update':
+                    updateEventList(data.events);
+                    break;
+                case 'player_update':
+                    updatePlayerInfo(data.player);
+                    break;
+                case 'notification':
+                    addNotification(data.notification);
+                    break;
+                case 'reputation_update':
+                    updateReputation(data.factionId, data.reputation);
+                    break;
+                case 'map_update':
+                    updateMap(data.waypoints);
+                    break;
+                case 'quest_update':
+                    updateQuests(data.quests);
+                    break;
+                case 'base_update':
+                    updateBases(data.bases);
+                    break;
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (message && ws && ws.readyState === WebSocket.OPEN) {
+                // Check for quick commands
+                if (message.startsWith('/')) {
+                    ws.send(JSON.stringify({
+                        type: 'command',
+                        command: message
+                    }));
+                } else {
+                    ws.send(JSON.stringify({
+                        type: 'chat',
+                        message: message
+                    }));
+                }
+                input.value = '';
+            }
+        }
+
+        function addChatMessage(username, message) {
+            const chatMessages = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message';
+            
+            const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            messageDiv.innerHTML = `
+                <span class="timestamp">[${time}]</span>
+                <span class="username">${username}:</span>
+                ${escapeHtml(message)}
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Play notification sound for mentions
+            if (message.toLowerCase().includes('@' + getCurrentUsername().toLowerCase())) {
+                playNotificationSound('mention');
+            }
+        }
+
+        // Notification System
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notification-dropdown');
+            dropdown.classList.toggle('active');
+            
+            if (dropdown.classList.contains('active')) {
+                markNotificationsRead();
+            }
+        }
+
+        function addNotification(notification) {
+            notifications.unshift(notification);
+            updateNotificationUI();
+            
+            // Show desktop notification if enabled
+            if (Notification.permission === 'granted' && notification.priority >= 2) {
+                new Notification(notification.title, {
+                    body: notification.message,
+                    icon: '/icon.png'
+                });
+            }
+            
+            // Play sound based on type
+            playNotificationSound(notification.type);
+        }
+
+        function updateNotificationUI() {
+            const list = document.getElementById('notification-list');
+            const count = document.getElementById('notification-count');
+            
+            // Update count
+            const unreadCount = notifications.filter(n => !n.isRead).length;
+            count.textContent = unreadCount;
+            count.style.display = unreadCount > 0 ? 'flex' : 'none';
+            
+            // Update list
+            list.innerHTML = notifications.slice(0, 10).map(n => `
+                <div class="notification-item ${n.isRead ? '' : 'unread'}" onclick="handleNotificationClick('${n.id}')">
+                    <div class="notification-title">${n.title}</div>
+                    <div class="notification-message">${n.message}</div>
+                    ${n.actions ? `
+                        <div class="notification-actions">
+                            ${n.actions.map(a => `
+                                <button class="kenshi-btn ${a.primary ? 'primary' : ''}" 
+                                        onclick="executeNotificationAction('${n.id}', '${a.id}'); event.stopPropagation();">
+                                    ${a.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <div class="notification-time">${getRelativeTime(n.timestamp)}</div>
+                </div>
+            `).join('');
+        }
+
+        function executeNotificationAction(notificationId, actionId) {
+            ws.send(JSON.stringify({
+                type: 'notification_action',
+                notificationId: notificationId,
+                actionId: actionId
+            }));
+            
+            // Remove notification after action
+            notifications = notifications.filter(n => n.id !== notificationId);
+            updateNotificationUI();
+        }
+
+        function markNotificationsRead() {
+            notifications.forEach(n => n.isRead = true);
+            updateNotificationUI();
+        }
+
+        function clearAllNotifications() {
+            notifications = [];
+            updateNotificationUI();
+            toggleNotifications();
+        }
+
+        // Map System
+        function initializeMap() {
+            mapCanvas = document.getElementById('world-map');
+            if (!mapCanvas) return;
+            
+            mapCtx = mapCanvas.getContext('2d');
+            
+            // Set up map interaction
+            mapCanvas.addEventListener('click', handleMapClick);
+            mapCanvas.addEventListener('mousemove', handleMapHover);
+            
+            // Initial render
+            renderMap();
+        }
+
+        function renderMap() {
+            if (!mapCtx) return;
+            
+            const width = mapCanvas.width;
+            const height = mapCanvas.height;
+            
+            // Clear canvas
+            mapCtx.fillStyle = '#1a1612';
+            mapCtx.fillRect(0, 0, width, height);
+            
+            // Draw grid
+            mapCtx.strokeStyle = '#3d2f1f';
+            mapCtx.lineWidth = 1;
+            
+            for (let x = 0; x < width; x += 50) {
+                mapCtx.beginPath();
+                mapCtx.moveTo(x, 0);
+                mapCtx.lineTo(x, height);
+                mapCtx.stroke();
+            }
+            
+            for (let y = 0; y < height; y += 50) {
+                mapCtx.beginPath();
+                mapCtx.moveTo(0, y);
+                mapCtx.lineTo(width, y);
+                mapCtx.stroke();
+            }
+            
+            // Draw regions
+            drawRegions();
+            
+            // Draw waypoints
+            drawWaypoints();
+            
+            // Draw player position
+            drawPlayerPosition();
+        }
+
+        function drawRegions() {
+            // Example regions - would be loaded from server
+            const regions = [
+                { name: 'The Hub', x: 400, y: 300, radius: 50, color: '#4169E1' },
+                { name: 'Squin', x: 200, y: 150, radius: 40, color: '#8B4513' },
+                { name: 'Venge', x: 600, y: 300, radius: 60, color: '#DC143C' }
+            ];
+            
+            regions.forEach(region => {
+                // Draw region circle
+                mapCtx.beginPath();
+                mapCtx.arc(region.x, region.y, region.radius, 0, Math.PI * 2);
+                mapCtx.fillStyle = region.color + '33'; // 20% opacity
+                mapCtx.fill();
+                mapCtx.strokeStyle = region.color;
+                mapCtx.lineWidth = 2;
+                mapCtx.stroke();
+                
+                // Draw region name
+                mapCtx.fillStyle = '#d4c5b9';
+                mapCtx.font = '12px Arial';
+                mapCtx.textAlign = 'center';
+                mapCtx.fillText(region.name, region.x, region.y - region.radius - 10);
+            });
+        }
+
+        function drawWaypoints() {
+            // Would get waypoints from server
+            const waypoints = [
+                { name: 'Iron Mine', x: 450, y: 350, type: 'resource', icon: '⛏️' },
+                { name: 'Bandit Camp', x: 550, y: 250, type: 'danger', icon: '💀' }
+            ];
+            
+            waypoints.forEach(wp => {
+                // Draw waypoint marker
+                mapCtx.font = '20px Arial';
+                mapCtx.textAlign = 'center';
+                mapCtx.fillText(wp.icon, wp.x, wp.y);
+                
+                // Draw waypoint name on hover
+                if (isNearPoint(mousePos, wp, 20)) {
+                    mapCtx.fillStyle = '#1a1612ee';
+                    mapCtx.fillRect(wp.x - 40, wp.y + 10, 80, 20);
+                    mapCtx.fillStyle = '#d4c5b9';
+                    mapCtx.font = '10px Arial';
+                    mapCtx.fillText(wp.name, wp.x, wp.y + 23);
+                }
+            });
+        }
+
+        function drawPlayerPosition() {
+            // Draw player marker
+            const playerX = 400;
+            const playerY = 300;
+            
+            mapCtx.beginPath();
+            mapCtx.arc(playerX, playerY, 5, 0, Math.PI * 2);
+            mapCtx.fillStyle = '#00FF00';
+            mapCtx.fill();
+            
+            // Draw player name
+            mapCtx.fillStyle = '#d4c5b9';
+            mapCtx.font = '10px Arial';
+            mapCtx.textAlign = 'center';
+            mapCtx.fillText('You', playerX, playerY - 10);
+        }
+
+        let mousePos = { x: 0, y: 0 };
+
+        function handleMapHover(event) {
+            const rect = mapCanvas.getBoundingClientRect();
+            mousePos = {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+            renderMap();
+        }
+
+        function handleMapClick(event) {
+            const rect = mapCanvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Check if clicking on waypoint
+            // If not, create new waypoint
+            if (event.shiftKey) {
+                createWaypoint(x, y);
+            }
+        }
+
+        function createWaypoint(x, y) {
+            const name = prompt('Waypoint name:');
+            if (name) {
+                ws.send(JSON.stringify({
+                    type: 'create_waypoint',
+                    name: name,
+                    x: x,
+                    y: y
+                }));
+            }
+        }
+
+        function markCurrentLocation() {
+            ws.send(JSON.stringify({
+                type: 'mark_location'
+            }));
+        }
+
+        function shareWaypoint(waypointId) {
+            ws.send(JSON.stringify({
+                type: 'share_waypoint',
+                waypointId: waypointId
+            }));
+        }
+
+        function toggleMapLayer(layer) {
+            ws.send(JSON.stringify({
+                type: 'toggle_map_layer',
+                layer: layer
+            }));
+        }
+
+        // Tab switching
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                tab.classList.add('active');
+                const contentId = tab.getAttribute('data-tab');
+                document.getElementById(contentId).classList.add('active');
+                
+                // Special handling for map tab
+                if (contentId === 'map') {
+                    renderMap();
+                }
+            });
+        });
+
+        // Chat input enter key
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Quick action buttons
+        document.querySelectorAll('.quick-action-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tooltip = this.querySelector('.tooltip').textContent;
+                console.log('Quick action:', tooltip);
+                
+                // Add pulse animation
+                this.classList.add('pulse');
+                setTimeout(() => this.classList.remove('pulse'), 1000);
+                
+                // Send action to server
+                ws.send(JSON.stringify({
+                    type: 'quick_action',
+                    action: tooltip.toLowerCase().replace(/ /g, '_')
+                }));
+            });
+        });
+
+        // Helper functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getCurrentUsername() {
+            // Would get from server/client state
+            return 'Player';
+        }
+
+        function getRelativeTime(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            
+            if (diff < 60000) return 'just now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + ' minutes ago';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
+            return Math.floor(diff / 86400000) + ' days ago';
+        }
+
+        function updateTimestamps() {
+            document.querySelectorAll('.notification-time').forEach(el => {
+                const timestamp = parseInt(el.getAttribute('data-timestamp'));
+                if (timestamp) {
+                    el.textContent = getRelativeTime(timestamp);
+                }
+            });
+        }
+
+        function isNearPoint(pos1, pos2, threshold) {
+            const dx = pos1.x - pos2.x;
+            const dy = pos1.y - pos2.y;
+            return Math.sqrt(dx * dx + dy * dy) < threshold;
+        }
+
+        function playNotificationSound(type) {
+            // Would play actual sound files
+            console.log('Playing sound:', type);
+        }
+
+        // Load initial notifications
+        function loadNotifications() {
+            // Example notifications
+            notifications = [
+                {
+                    id: '1',
+                    type: 'friend_request',
+                    title: 'Friend Request',
+                    message: 'Alex Chen wants to be your friend',
+                    timestamp: Date.now() - 120000,
+                    isRead: false,
+                    actions: [
+                        { id: 'accept', label: 'Accept', primary: true },
+                        { id: 'decline', label: 'Decline' }
+                    ]
+                },
+                {
+                    id: '2',
+                    type: 'base_alert',
+                    title: 'Base Under Attack!',
+                    message: 'Your outpost near Squin is under attack by Dust Bandits!',
+                    timestamp: Date.now() - 300000,
+                    isRead: false,
+                    priority: 3,
+                    actions: [
+                        { id: 'teleport', label: 'Teleport to Base', primary: true }
+                    ]
+                }
+            ];
+            updateNotificationUI();
+        }
+
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Initialize connection
+        connectWebSocket();
+
+        // Simulate some activity (for demo)
+        setInterval(() => {
+            const activities = [
+                'defeated a Dust Bandit',
+                'completed a trade',
+                'joined an event',
+                'leveled up to',
+                'discovered a new location'
+            ];
+            const names = ['Tom Wilson', 'Sarah Anderson', 'Mike Knight', 'Alex Chen', 'Lisa Brown'];
+            
+            const activity = activities[Math.floor(Math.random() * activities.length)];
+            const name = names[Math.floor(Math.random() * names.length)];
+            
+            // Add random activity
+            if (Math.random() > 0.8) {
+                addChatMessage(name, `Anyone interested in ${activity}?`);
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
