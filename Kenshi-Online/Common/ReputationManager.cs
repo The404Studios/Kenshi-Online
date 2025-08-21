@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 namespace KenshiMultiplayer.Common
 {
     using global::KenshiMultiplayer.Auth;
+    using global::KenshiMultiplayer.Common.NotificationManager;
     using global::KenshiMultiplayer.Networking;
     using System;
     using System.Collections.Generic;

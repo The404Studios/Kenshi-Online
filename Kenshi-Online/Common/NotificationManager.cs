@@ -1,4 +1,5 @@
-﻿using KenshiMultiplayer.Networking;
+﻿using KenshiMultiplayer.Auth;
+using KenshiMultiplayer.Networking;
 using System;
 using System.Collections.Generic;
 using System.Linq;

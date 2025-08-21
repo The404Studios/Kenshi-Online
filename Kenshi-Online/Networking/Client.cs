@@ -1,5 +1,6 @@
 ﻿using KenshiMultiplayer.Auth;
 using KenshiMultiplayer.Common;
+using KenshiMultiplayer.Common.FriendsManager;
 using KenshiMultiplayer.Networking.Inventory;
 using KenshiMultiplayer.Networking.Player;
 using System;

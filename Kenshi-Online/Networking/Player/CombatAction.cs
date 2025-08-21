@@ -161,6 +161,8 @@ namespace KenshiMultiplayer.Networking.Player
     // Combat result class - returned after combat resolution
     public class CombatResult
     {
+        internal int KnockbackForce;
+
         public bool Hit { get; set; }
         public int Damage { get; set; }
         public string DamageType { get; set; }
@@ -168,6 +170,22 @@ namespace KenshiMultiplayer.Networking.Player
         public bool IsCritical { get; set; }
         public List<StatusEffect> AppliedEffects { get; set; } = new List<StatusEffect>();
         public string ResultMessage { get; set; }
+        public bool Success { get; internal set; }
+        public string Reason { get; internal set; }
+        public string AttackerId { get; internal set; }
+        public string TargetId { get; internal set; }
+        public long Timestamp { get; internal set; }
+        public bool Blocked { get; internal set; }
+        public int BlockDamage { get; internal set; }
+        public bool BlockBroken { get; internal set; }
+        public bool Miss { get; internal set; }
+        public string HitLocation { get; internal set; }
+        public bool Critical { get; internal set; }
+        public LimbDamageResult LimbDamage { get; internal set; }
+        public bool Dismemberment { get; internal set; }
+        public string SeveredLimb { get; internal set; }
+        public float BleedDamage { get; internal set; }
+        public bool Knockback { get; internal set; }
 
         // Generate a descriptive message of what happened
         public string GetDetailedMessage(string attackerName, string targetName)
