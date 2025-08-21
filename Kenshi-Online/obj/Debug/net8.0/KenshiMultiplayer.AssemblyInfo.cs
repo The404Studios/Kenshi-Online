@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KenshiMultiplayer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bc74505129ff9e3c20a81476ac18b5a2475f9016")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a5a128299543278afefff3ad9b1926d24d8cd28b")]
 [assembly: System.Reflection.AssemblyProductAttribute("KenshiMultiplayer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KenshiMultiplayer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

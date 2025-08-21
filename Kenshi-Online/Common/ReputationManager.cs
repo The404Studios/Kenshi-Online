@@ -18,7 +18,7 @@ namespace KenshiMultiplayer.Common
     namespace KenshiMultiplayer
     {
         public enum FactionType
-        {
+        {FileName
             Major,      // Holy Nation, United Cities, Shek Kingdom
             Minor,      // Smaller factions like Tech Hunters, Flotsam Ninjas
             Bandit,     // Dust Bandits, Starving Bandits, etc.
