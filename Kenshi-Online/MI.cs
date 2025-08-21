@@ -1,457 +1,723 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using KenshiMultiplayer.Auth;
+using KenshiMultiplayer.Common.BaseManager;
+using KenshiMultiplayer.Common.KenshiMultiplayer;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using KenshiMultiplayer.Common;
-using KenshiMultiplayer.Networking;
-using KenshiMultiplayer.Auth;
+using System.Linq;
+using System.Net;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace KenshiMultiplayer
 {
     /// <summary>
-    /// Integrates all multiplayer components into a cohesive system
+    /// Main integration class that ties together all multiplayer components
+    /// Handles initialization, server/client modes, and game state synchronization
     /// </summary>
     public class MultiplayerIntegration
     {
         // Core components
-        private DeterministicPathManager pathManager;
+        private PathCache pathCache;
+        private PathInjector pathInjector;
         private ActionProcessor actionProcessor;
-        private EnhancedServer server;
-        private EnhancedClient client;
-        private GameModManager modManager;
+        private NetworkManager networkManager;
+        private StateManager stateManager;
+        private MemoryInterface memoryInterface;
 
-        // Configuration
-        private readonly string kenshiPath;
-        private readonly bool isServer;
-        private readonly int port;
+        // Server/Client state
+        private bool isServer;
+        private bool isInitialized;
+        private string serverAddress;
+        private int serverPort = 27015;
 
-        public MultiplayerIntegration(string kenshiInstallPath, bool runAsServer = false, int serverPort = 5555)
+        // Game state tracking
+        private Dictionary<string, KenshiCharacter> localCharacters;
+        private Dictionary<string, KenshiCharacter> remoteCharacters;
+        private Dictionary<string, Squad> squads;
+        private Dictionary<string, Building> buildings;
+
+        // Performance monitoring
+        private PerformanceMonitor perfMonitor;
+        private int targetTickRate = 30;
+        private int currentTickRate;
+
+        // Synchronization intervals (ms)
+        private const int POSITION_SYNC_INTERVAL = 100;
+        private const int INVENTORY_SYNC_INTERVAL = 500;
+        private const int STATS_SYNC_INTERVAL = 1000;
+        private const int WORLD_SYNC_INTERVAL = 5000;
+
+        // Memory addresses for Kenshi v0.98.50
+        private readonly IntPtr PLAYER_CONTROLLER_OFFSET = new IntPtr(0x249BCB0);
+        private readonly IntPtr WORLD_STATE_OFFSET = new IntPtr(0x24617B8);
+        private readonly IntPtr SQUAD_MANAGER_OFFSET = new IntPtr(0x2498FA0);
+        private readonly IntPtr TIME_MANAGER_OFFSET = new IntPtr(0x245C890);
+
+        public MultiplayerIntegration()
         {
-            kenshiPath = kenshiInstallPath;
-            isServer = runAsServer;
-            port = serverPort;
+            localCharacters = new Dictionary<string, KenshiCharacter>();
+            remoteCharacters = new Dictionary<string, KenshiCharacter>();
+            squads = new Dictionary<string, Squad>();
+            buildings = new Dictionary<string, Building>();
+            perfMonitor = new PerformanceMonitor();
         }
 
         /// <summary>
-        /// Initialize the complete multiplayer system
+        /// Initialize the multiplayer system
         /// </summary>
-        public async Task<bool> Initialize()
+        public async Task<bool> Initialize(bool asServer, string address = null)
         {
             try
             {
-                Logger.Log("=== Kenshi Multiplayer System Initialization ===");
+                Logger.Log("Initializing Kenshi Multiplayer System...");
 
-                // Step 1: Validate Kenshi installation
-                if (!ValidateKenshiInstallation())
+                isServer = asServer;
+                serverAddress = address ?? "127.0.0.1";
+
+                // Initialize memory interface
+                if (!InitializeMemoryInterface())
                 {
-                    Logger.Log("ERROR: Invalid Kenshi installation path");
+                    Logger.Log("Failed to initialize memory interface");
                     return false;
                 }
 
-                // Step 2: Initialize mod manager
-                Logger.Log("Loading mods...");
-                modManager = new GameModManager(kenshiPath);
-                var activeMods = modManager.GetActiveMods();
-                Logger.Log($"Loaded {activeMods.Count} active mods");
-
-                // Step 3: Initialize deterministic path system
-                Logger.Log("Initializing deterministic pathfinding...");
-                pathManager = new DeterministicPathManager("pathcache");
-
-                if (!await pathManager.Initialize(isServer))
+                // Initialize path cache system
+                pathCache = new PathCache();
+                if (asServer)
                 {
-                    Logger.Log("WARNING: Path system initialization failed - running in compatibility mode");
+                    Logger.Log("Server mode: Building path cache...");
+                    await pathCache.Initialize();
+                    await pathCache.PreBakeCommonPaths();
                 }
 
-                // Step 4: Initialize server or client
+                // Initialize path injection
+                pathInjector = new PathInjector(pathCache);
+                if (!pathInjector.Initialize())
+                {
+                    Logger.Log("Failed to initialize path injector");
+                    return false;
+                }
+
+                // Hook into game pathfinding
+                pathInjector.HookPathfinding();
+
+                // Initialize action processor
+                actionProcessor = new ActionProcessor();
+                actionProcessor.OnActionProcessed += HandleProcessedAction;
+
+                // Initialize network manager
+                networkManager = new NetworkManager(isServer ? NetworkMode.Server : NetworkMode.Client);
+                networkManager.OnMessageReceived += HandleNetworkMessage;
+                networkManager.OnClientConnected += HandleClientConnected;
+                networkManager.OnClientDisconnected += HandleClientDisconnected;
+
+                // Start network
                 if (isServer)
                 {
-                    await InitializeServer();
+                    if (!await networkManager.StartServer(serverPort))
+                    {
+                        Logger.Log("Failed to start server");
+                        return false;
+                    }
+                    Logger.Log($"Server started on port {serverPort}");
                 }
                 else
                 {
-                    await InitializeClient();
+                    if (!await networkManager.ConnectToServer(serverAddress, serverPort))
+                    {
+                        Logger.Log($"Failed to connect to server at {serverAddress}:{serverPort}");
+                        return false;
+                    }
+                    Logger.Log("Connected to server");
+
+                    // Request path cache from server
+                    await RequestPathCache();
                 }
 
-                Logger.Log("=== Multiplayer System Ready ===");
+                // Initialize state manager
+                stateManager = new StateManager(isServer);
+                stateManager.OnStateChanged += HandleStateChange;
+
+                // Start synchronization loops
+                StartSynchronizationLoops();
+
+                // Hook game events
+                HookGameEvents();
+
+                isInitialized = true;
+                Logger.Log("Multiplayer system initialized successfully");
                 return true;
             }
             catch (Exception ex)
             {
-                Logger.Log($"FATAL: Initialization failed - {ex.Message}");
+                Logger.Log($"Failed to initialize multiplayer: {ex.Message}");
                 return false;
             }
         }
 
         /// <summary>
-        /// Initialize server components
+        /// Initialize memory interface for reading/writing game memory
         /// </summary>
-        private async Task InitializeServer()
+        private bool InitializeMemoryInterface()
         {
-            Logger.Log("Starting server mode...");
-
-            // Create server instance
-            server = new EnhancedServer(kenshiPath);
-
-            // Initialize action processor
-            actionProcessor = new ActionProcessor(pathManager, server);
-
-            // Set up message handlers
-            SetupServerMessageHandlers();
-
-            // Start server
-            Task.Run(() => server.Start(port));
-
-            // Start action processing
-            actionProcessor.StartProcessing();
-
-            // Pre-cache common paths
-            Logger.Log("Pre-baking common paths for clients...");
-            var pathCache = new PathCache("pathcache");
-            await pathCache.PreBakeCommonPaths();
-
-            Logger.Log($"Server started on port {port}");
-        }
-
-        /// <summary>
-        /// Initialize client components
-        /// </summary>
-        private async Task InitializeClient()
-        {
-            Logger.Log("Starting client mode...");
-
-            // Create client instance
-            client = new EnhancedClient("cache");
-
-            // Set up message handlers
-            SetupClientMessageHandlers();
-
-            await Task.CompletedTask;
-            Logger.Log("Client initialized - use Connect() to join a server");
-        }
-
-        /// <summary>
-        /// Connect client to server
-        /// </summary>
-        public bool ConnectToServer(string serverAddress, int serverPort, string username, string password)
-        {
-            if (client == null)
+            try
             {
-                Logger.Log("ERROR: Client not initialized");
+                var process = Process.GetProcessesByName("kenshi_x64").FirstOrDefault();
+                if (process == null)
+                {
+                    Logger.Log("Kenshi process not found");
+                    return false;
+                }
+
+                memoryInterface = new MemoryInterface(process);
+                return memoryInterface.Initialize();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Memory interface initialization failed: {ex.Message}");
                 return false;
             }
+        }
 
-            Logger.Log($"Connecting to {serverAddress}:{serverPort}...");
+        /// <summary>
+        /// Hook into game events for state tracking
+        /// </summary>
+        private void HookGameEvents()
+        {
+            // Hook character movement
+            memoryInterface.HookFunction(PLAYER_CONTROLLER_OFFSET + 0x120, OnCharacterMove);
 
-            if (client.Login(serverAddress, serverPort, username, password))
+            // Hook combat events
+            memoryInterface.HookFunction(PLAYER_CONTROLLER_OFFSET + 0x450, OnCombatAction);
+
+            // Hook inventory changes
+            memoryInterface.HookFunction(PLAYER_CONTROLLER_OFFSET + 0x780, OnInventoryChange);
+
+            // Hook squad changes
+            memoryInterface.HookFunction(SQUAD_MANAGER_OFFSET + 0x90, OnSquadChange);
+
+            // Hook time changes
+            memoryInterface.HookFunction(TIME_MANAGER_OFFSET + 0x40, OnTimeChange);
+        }
+
+        /// <summary>
+        /// Start all synchronization loops
+        /// </summary>
+        private void StartSynchronizationLoops()
+        {
+            // Position sync loop
+            Task.Run(async () =>
             {
-                Logger.Log("Connected successfully!");
+                while (isInitialized)
+                {
+                    await SyncPositions();
+                    await Task.Delay(POSITION_SYNC_INTERVAL);
+                }
+            });
 
-                // Sync path cache
-                Task.Run(() => SyncPathCache());
+            // Inventory sync loop
+            Task.Run(async () =>
+            {
+                while (isInitialized)
+                {
+                    await SyncInventories();
+                    await Task.Delay(INVENTORY_SYNC_INTERVAL);
+                }
+            });
 
-                // Start sending position updates
-                Task.Run(() => PositionUpdateLoop());
+            // Stats sync loop
+            Task.Run(async () =>
+            {
+                while (isInitialized)
+                {
+                    await SyncCharacterStats();
+                    await Task.Delay(STATS_SYNC_INTERVAL);
+                }
+            });
 
-                return true;
+            // World sync loop (server only)
+            if (isServer)
+            {
+                Task.Run(async () =>
+                {
+                    while (isInitialized)
+                    {
+                        await SyncWorldState();
+                        await Task.Delay(WORLD_SYNC_INTERVAL);
+                    }
+                });
             }
 
-            Logger.Log("Connection failed");
-            return false;
+            // Action processing loop
+            Task.Run(async () =>
+            {
+                while (isInitialized)
+                {
+                    await actionProcessor.ProcessBatch();
+                    await Task.Delay(1000 / targetTickRate);
+                }
+            });
         }
 
         /// <summary>
-        /// Set up server message handlers
+        /// Synchronize character positions
         /// </summary>
-        private void SetupServerMessageHandlers()
+        private async Task SyncPositions()
         {
-            // This would integrate with your existing server message handling
-            // to process actions through the deterministic system
+            try
+            {
+                var positions = GetLocalCharacterPositions();
+
+                var positionData = new PositionSyncData
+                {
+                    Timestamp = GetGameTime(),
+                    Positions = positions.Select(p => new CharacterPosition
+                    {
+                        CharacterId = p.Key,
+                        X = p.Value.X,
+                        Y = p.Value.Y,
+                        Z = p.Value.Z,
+                        Rotation = p.Value.W
+                    }).ToList()
+                };
+
+                await networkManager.SendMessage(new NetworkMessage
+                {
+                    Type = MessageType.PositionSync,
+                    Data = positionData
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Position sync failed: {ex.Message}");
+            }
         }
 
         /// <summary>
-        /// Set up client message handlers
+        /// Synchronize inventories
         /// </summary>
-        private void SetupClientMessageHandlers()
+        private async Task SyncInventories()
         {
-            client.MessageReceived += (sender, message) =>
+            try
+            {
+                foreach (var character in localCharacters.Values)
+                {
+                    if (character.InventoryChanged)
+                    {
+                        var inventoryData = new InventorySyncData
+                        {
+                            CharacterId = character.ID.ToString(),
+                            Items = character.Inventory.Select(i => new ItemData
+                            {
+                                ItemId = i.ID,
+                                ItemType = i.Type,
+                                Quantity = i.Quantity,
+                                Quality = i.Quality,
+                                SlotIndex = i.SlotIndex
+                            }).ToList()
+                        };
+
+                        await networkManager.SendMessage(new NetworkMessage
+                        {
+                            Type = MessageType.InventorySync,
+                            Data = inventoryData
+                        });
+
+                        character.InventoryChanged = false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Inventory sync failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Synchronize character stats (health, skills, etc.)
+        /// </summary>
+        private async Task SyncCharacterStats()
+        {
+            try
+            {
+                foreach (var character in localCharacters.Values)
+                {
+                    if (character.StatsChanged)
+                    {
+                        var statsData = new CharacterStatsData
+                        {
+                            CharacterId = character.ID.ToString(),
+                            LimbHealth = character.LimbHealth,
+                            Skills = character.Skills,
+                            Hunger = character.Hunger,
+                            IsUnconscious = character.IsUnconscious,
+                            IsDead = character.IsDead
+                        };
+
+                        await networkManager.SendMessage(new NetworkMessage
+                        {
+                            Type = MessageType.StatsSync,
+                            Data = statsData
+                        });
+
+                        character.StatsChanged = false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Stats sync failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Synchronize world state (server only)
+        /// </summary>
+        private async Task SyncWorldState()
+        {
+            if (!isServer) return;
+
+            try
+            {
+                var worldState = new WorldStateData
+                {
+                    GameTime = GetGameTime(),
+                    Weather = GetCurrentWeather(),
+                    Factions = GetFactionRelations(),
+                    Towns = GetTownStates(),
+                    GlobalEvents = GetActiveEvents()
+                };
+
+                await networkManager.BroadcastMessage(new NetworkMessage
+                {
+                    Type = MessageType.WorldStateSync,
+                    Data = worldState
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"World sync failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Handle processed actions from the action processor
+        /// </summary>
+        private async void HandleProcessedAction(ProcessedAction action)
+        {
+            try
+            {
+                // Apply action locally
+                ApplyAction(action);
+
+                // Send to network
+                await networkManager.SendMessage(new NetworkMessage
+                {
+                    Type = MessageType.ActionExecuted,
+                    Data = action
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Failed to handle processed action: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Handle incoming network messages
+        /// </summary>
+        private async void HandleNetworkMessage(NetworkMessage message)
+        {
+            try
             {
                 switch (message.Type)
                 {
-                    case MessageType.Position:
-                        HandlePositionUpdate(message);
+                    case MessageType.PositionSync:
+                        HandlePositionSync((PositionSyncData)message.Data);
                         break;
 
-                    case MessageType.Combat:
-                        HandleCombatAction(message);
+                    case MessageType.ActionRequest:
+                        var action = (PlayerAction)message.Data;
+                        await actionProcessor.QueueAction(action);
                         break;
 
-                    case "path_update":
-                        HandlePathUpdate(message);
+                    case MessageType.PathCacheRequest:
+                        if (isServer)
+                            await SendPathCache(message.SenderId);
                         break;
 
-                    case "action_result":
-                        HandleActionResult(message);
+                    case MessageType.PathCacheData:
+                        await ReceivePathCache((PathCacheData)message.Data);
                         break;
 
-                    case MessageType.WorldState:
-                        HandleWorldStateUpdate(message);
+                    case MessageType.StateSync:
+                        HandleStateSync((StateSyncData)message.Data);
+                        break;
+
+                    case MessageType.WorldStateSync:
+                        HandleWorldStateSync((WorldStateData)message.Data);
                         break;
                 }
-            };
-        }
-
-        /// <summary>
-        /// Handle position updates from other players
-        /// </summary>
-        private void HandlePositionUpdate(GameMessage message)
-        {
-            // Update other player's position in game
-            // This would integrate with memory injection
-        }
-
-        /// <summary>
-        /// Handle combat actions
-        /// </summary>
-        private void HandleCombatAction(GameMessage message)
-        {
-            // Process combat through deterministic system
-        }
-
-        /// <summary>
-        /// Handle new path updates
-        /// </summary>
-        private void HandlePathUpdate(GameMessage message)
-        {
-            if (message.Data.TryGetValue("path", out var pathObj))
+            }
+            catch (Exception ex)
             {
-                var path = System.Text.Json.JsonSerializer.Deserialize<CachedPath>(pathObj.ToString());
-
-                // Add to local cache
-                var pathCache = new PathCache("pathcache");
-                pathCache.SynchronizePaths(new List<CachedPath> { path });
-
-                Logger.Log($"Received new path: {path.PathId}");
+                Logger.Log($"Failed to handle network message: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Handle action results
+        /// Handle client connection (server only)
         /// </summary>
-        private void HandleActionResult(GameMessage message)
+        private async void HandleClientConnected(string clientId)
         {
-            // Process action result
-            // Update local game state
-        }
+            if (!isServer) return;
 
-        /// <summary>
-        /// Handle world state updates
-        /// </summary>
-        private void HandleWorldStateUpdate(GameMessage message)
-        {
-            // Sync world state
-            // Apply to game through memory injection
-        }
+            Logger.Log($"Client connected: {clientId}");
 
-        /// <summary>
-        /// Sync path cache with server
-        /// </summary>
-        private async Task SyncPathCache()
-        {
-            Logger.Log("Syncing path cache with server...");
+            // Send initial state to new client
+            await SendInitialState(clientId);
 
-            // Request cache checksum
-            var checksumRequest = new GameMessage
+            // Send path cache
+            await SendPathCache(clientId);
+
+            // Notify other clients
+            await networkManager.BroadcastMessage(new NetworkMessage
             {
-                Type = "path_checksum_request",
-                PlayerId = client.CurrentUsername,
-                SessionId = client.AuthToken
-            };
-
-            // Send and wait for response
-            // If mismatch, request full cache sync
-
-            await Task.Delay(1000); // Placeholder
-            Logger.Log("Path cache synchronized");
+                Type = MessageType.PlayerJoined,
+                Data = new PlayerJoinedData { PlayerId = clientId }
+            }, clientId);
         }
 
         /// <summary>
-        /// Position update loop for client
+        /// Handle client disconnection
         /// </summary>
-        private async Task PositionUpdateLoop()
+        private void HandleClientDisconnected(string clientId)
         {
-            while (client != null && client.IsLoggedIn)
+            Logger.Log($"Client disconnected: {clientId}");
+
+            // Remove client's characters
+            var toRemove = remoteCharacters.Where(c => c.Value.PlayerId == clientId).Select(c => c.Key).ToList();
+            foreach (var id in toRemove)
             {
-                try
-                {
-                    // Read position from game memory
-                    var position = ReadPlayerPosition();
-
-                    if (position != null)
-                    {
-                        // Send position update
-                        client.UpdatePosition(position.X, position.Y);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"Position update error: {ex.Message}");
-                }
-
-                await Task.Delay(100); // 10 updates per second
+                remoteCharacters.Remove(id);
             }
-        }
 
-        /// <summary>
-        /// Read player position from game memory
-        /// </summary>
-        private Position ReadPlayerPosition()
-        {
-            // This would use memory reading to get actual position
-            // For now, return placeholder
-            return new Position();
-        }
-
-        /// <summary>
-        /// Validate Kenshi installation
-        /// </summary>
-        private bool ValidateKenshiInstallation()
-        {
-            if (!Directory.Exists(kenshiPath))
-                return false;
-
-            string executablePath = Path.Combine(kenshiPath, "kenshi_x64.exe");
-            return File.Exists(executablePath);
-        }
-
-        /// <summary>
-        /// Queue an action for processing
-        /// </summary>
-        public void QueueAction(string type, object data)
-        {
-            if (actionProcessor == null)
+            // Notify other clients
+            networkManager.BroadcastMessage(new NetworkMessage
             {
-                Logger.Log("ERROR: Action processor not initialized");
+                Type = MessageType.PlayerLeft,
+                Data = new PlayerLeftData { PlayerId = clientId }
+            });
+        }
+
+        /// <summary>
+        /// Request path cache from server (client only)
+        /// </summary>
+        private async Task RequestPathCache()
+        {
+            await networkManager.SendMessage(new NetworkMessage
+            {
+                Type = MessageType.PathCacheRequest
+            });
+        }
+
+        /// <summary>
+        /// Send path cache to client (server only)
+        /// </summary>
+        private async Task SendPathCache(string clientId)
+        {
+            var cacheData = await pathCache.SerializeCache();
+
+            await networkManager.SendToClient(clientId, new NetworkMessage
+            {
+                Type = MessageType.PathCacheData,
+                Data = new PathCacheData
+                {
+                    CompressedData = CompressData(cacheData),
+                    Checksum = CalculateChecksum(cacheData)
+                }
+            });
+        }
+
+        /// <summary>
+        /// Receive and load path cache (client only)
+        /// </summary>
+        private async Task ReceivePathCache(PathCacheData data)
+        {
+            var cacheData = DecompressData(data.CompressedData);
+
+            if (CalculateChecksum(cacheData) != data.Checksum)
+            {
+                Logger.Log("Path cache checksum mismatch!");
                 return;
             }
 
-            var action = new GameAction
-            {
-                Type = type,
-                PlayerId = isServer ? "SERVER" : client?.CurrentUsername ?? "UNKNOWN",
-                Data = System.Text.Json.JsonSerializer.Serialize(data),
-                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                Priority = GetActionPriority(type)
-            };
-
-            actionProcessor.QueueAction(action);
+            await pathCache.LoadCache(cacheData);
+            Logger.Log("Path cache loaded successfully");
         }
 
         /// <summary>
-        /// Get action priority
+        /// Apply an action to the local game state
         /// </summary>
-        private int GetActionPriority(string type)
+        private void ApplyAction(ProcessedAction action)
         {
-            switch (type)
+            switch (action.Type)
             {
-                case "combat": return 1;
-                case "movement": return 2;
-                case "interaction": return 3;
-                case "trade": return 4;
-                default: return 5;
+                case ActionType.Movement:
+                    ApplyMovement(action);
+                    break;
+
+                case ActionType.Combat:
+                    ApplyCombat(action);
+                    break;
+
+                case ActionType.Interaction:
+                    ApplyInteraction(action);
+                    break;
+
+                case ActionType.Trade:
+                    ApplyTrade(action);
+                    break;
+
+                case ActionType.Build:
+                    ApplyBuild(action);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Game event callbacks
+        /// </summary>
+        private void OnCharacterMove(IntPtr args)
+        {
+            // Extract movement data from game memory
+            var moveData = memoryInterface.ReadStruct<CharacterMoveData>(args);
+
+            // Queue movement action
+            actionProcessor.QueueAction(new PlayerAction
+            {
+                Type = ActionType.Movement,
+                CharacterId = moveData.CharacterId.ToString(),
+                TargetPosition = new Vector3(moveData.X, moveData.Y, moveData.Z),
+                Timestamp = GetGameTime()
+            });
+        }
+
+        private void OnCombatAction(IntPtr args)
+        {
+            var combatData = memoryInterface.ReadStruct<CombatActionData>(args);
+
+            actionProcessor.QueueAction(new PlayerAction
+            {
+                Type = ActionType.Combat,
+                CharacterId = combatData.AttackerId.ToString(),
+                TargetId = combatData.TargetId.ToString(),
+                ActionSubtype = combatData.AttackType,
+                Timestamp = GetGameTime()
+            });
+        }
+
+        private void OnInventoryChange(IntPtr args)
+        {
+            var character = GetCharacterFromPointer(args);
+            if (character != null)
+            {
+                character.InventoryChanged = true;
+            }
+        }
+
+        private void OnSquadChange(IntPtr args)
+        {
+            RefreshSquadData();
+        }
+
+        private void OnTimeChange(IntPtr args)
+        {
+            // Handle time synchronization
+            if (isServer)
+            {
+                var timeData = memoryInterface.ReadStruct<TimeData>(args);
+                stateManager.UpdateGameTime(timeData.GameTime, timeData.TimeMultiplier);
             }
         }
 
         /// <summary>
         /// Shutdown the multiplayer system
         /// </summary>
-        public void Shutdown()
+        public async Task Shutdown()
         {
-            Logger.Log("Shutting down multiplayer system...");
+            isInitialized = false;
 
-            actionProcessor?.StopProcessing();
-            pathManager?.Shutdown();
-            client?.Disconnect();
+            // Unhook pathfinding
+            pathInjector?.UnhookPathfinding();
 
-            Logger.Log("Multiplayer system shutdown complete");
-        }
-    }
+            // Disconnect network
+            await networkManager?.Shutdown();
 
-    /// <summary>
-    /// Example usage and entry point
-    /// </summary>
-    public class MultiplayerLauncher
-    {
-        public static async Task LaunchMultiplayer(bool isServer, string kenshiPath)
-        {
-            var integration = new MultiplayerIntegration(kenshiPath, isServer);
+            // Clean up resources
+            pathCache?.Dispose();
+            memoryInterface?.Dispose();
 
-            if (!await integration.Initialize())
-            {
-                Console.WriteLine("Failed to initialize multiplayer system");
-                return;
-            }
-
-            if (isServer)
-            {
-                Console.WriteLine("Server running. Press any key to stop...");
-                Console.ReadKey();
-            }
-            else
-            {
-                // Client mode
-                Console.Write("Server address: ");
-                string serverAddress = Console.ReadLine();
-
-                Console.Write("Username: ");
-                string username = Console.ReadLine();
-
-                Console.Write("Password: ");
-                string password = ReadPassword();
-
-                if (integration.ConnectToServer(serverAddress, 5555, username, password))
-                {
-                    Console.WriteLine("Connected! Press any key to disconnect...");
-
-                    // Example: Queue a movement action
-                    integration.QueueAction("movement", new
-                    {
-                        start = new { x = 0, y = 0, z = 0 },
-                        end = new { x = 100, y = 100, z = 0 },
-                        speed = 5.0f
-                    });
-
-                    Console.ReadKey();
-                }
-            }
-
-            integration.Shutdown();
+            Logger.Log("Multiplayer system shut down");
         }
 
-        private static string ReadPassword()
+        // Helper methods
+        private byte[] CompressData(byte[] data)
         {
-            string password = "";
-            ConsoleKeyInfo key;
-
-            do
+            using (var output = new MemoryStream())
             {
-                key = Console.ReadKey(true);
-
-                if (key.Key != ConsoleKey.Enter && key.Key != ConsoleKey.Backspace)
+                using (var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionMode.Compress))
                 {
-                    password += key.KeyChar;
-                    Console.Write("*");
+                    gzip.Write(data, 0, data.Length);
                 }
-                else if (key.Key == ConsoleKey.Backspace && password.Length > 0)
-                {
-                    password = password.Substring(0, password.Length - 1);
-                    Console.Write("\b \b");
-                }
+                return output.ToArray();
             }
-            while (key.Key != ConsoleKey.Enter);
+        }
 
-            Console.WriteLine();
-            return password;
+        private byte[] DecompressData(byte[] data)
+        {
+            using (var input = new MemoryStream(data))
+            using (var output = new MemoryStream())
+            {
+                using (var gzip = new System.IO.Compression.GZipStream(input, System.IO.Compression.CompressionMode.Decompress))
+                {
+                    gzip.CopyTo(output);
+                }
+                return output.ToArray();
+            }
+        }
+
+        private string CalculateChecksum(byte[] data)
+        {
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                var hash = sha256.ComputeHash(data);
+                return BitConverter.ToString(hash).Replace("-", "");
+            }
+        }
+
+        private double GetGameTime()
+        {
+            return memoryInterface.ReadDouble(TIME_MANAGER_OFFSET + 0x18);
+        }
+
+        private Dictionary<string, Vector4> GetLocalCharacterPositions()
+        {
+            var positions = new Dictionary<string, Vector4>();
+            foreach (var character in localCharacters.Values)
+            {
+                positions[character.ID.ToString()] = new Vector4(
+                    character.PosX,
+                    character.PosY,
+                    character.PosZ,
+                    character.Rotation
+                );
+            }
+            return positions;
         }
     }
 }

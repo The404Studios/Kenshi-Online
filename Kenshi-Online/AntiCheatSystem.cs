@@ -1,48 +1,64 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using KenshiMultiplayer.Common;
+using System;
 using System.Collections.Concurrent;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using KenshiMultiplayer.Networking.Player;
+using System.Linq;
+using System.Numerics;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using KenshiMultiplayer.Auth;
 using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Common;
+using KenshiMultiplayer.Utility;
 
 namespace KenshiMultiplayer
 {
     /// <summary>
-    /// Comprehensive anti-cheat system for Kenshi multiplayer
+    /// Comprehensive anti-cheat system for multiplayer
     /// </summary>
     public class AntiCheatSystem
     {
-        // Violation tracking
-        private readonly ConcurrentDictionary<string, PlayerViolations> playerViolations = new ConcurrentDictionary<string, PlayerViolations>();
-        private readonly ConcurrentDictionary<string, List<ViolationRecord>> violationHistory = new ConcurrentDictionary<string, List<ViolationRecord>>();
+        private bool isEnabled;
+        private bool isServer;
 
         // Detection modules
-        private readonly SpeedHackDetector speedHackDetector = new SpeedHackDetector();
-        private readonly TeleportDetector teleportDetector = new TeleportDetector();
-        private readonly StatValidator statValidator = new StatValidator();
-        private readonly InventoryValidator inventoryValidator = new InventoryValidator();
-        private readonly CombatValidator combatValidator = new CombatValidator();
-        private readonly MemoryIntegrityChecker memoryChecker = new MemoryIntegrityChecker();
-        private readonly PacketValidator packetValidator = new PacketValidator();
+        private SpeedHackDetector speedHackDetector;
+        private TeleportDetector teleportDetector;
+        private StatManipulationDetector statDetector;
+        private MemoryScanner memoryScanner;
+        private ProcessMonitor processMonitor;
+        private NetworkValidator networkValidator;
+        private FileIntegrityChecker fileChecker;
+
+        // Violation tracking
+        private ConcurrentDictionary<string, PlayerViolations> violations;
+        private ConcurrentDictionary<string, DateTime> bannedPlayers;
 
         // Configuration
-        private readonly AntiCheatConfig config;
-        private readonly int maxViolationPoints = 100;
-        private readonly TimeSpan violationDecayPeriod = TimeSpan.FromMinutes(30);
+        private AntiCheatConfig config;
 
-        // Callbacks
-        public event EventHandler<CheatDetectedEventArgs> CheatDetected;
-        public event EventHandler<string> PlayerBanned;
+        // Events
+        public event Action<CheatDetection> OnCheatDetected;
+        public event Action<string, ViolationType> OnViolation;
+        public event Action<string, string> OnPlayerBanned;
+        public event Action<string> OnPlayerKicked;
 
-        public AntiCheatSystem(AntiCheatConfig configuration = null)
+        // Statistics
+        private AntiCheatStatistics stats;
+
+        public AntiCheatSystem(bool serverMode)
         {
-            config = configuration ?? new AntiCheatConfig();
+            isServer = serverMode;
+            violations = new ConcurrentDictionary<string, PlayerViolations>();
+            bannedPlayers = new ConcurrentDictionary<string, DateTime>();
+            stats = new AntiCheatStatistics();
+
             InitializeDetectors();
+            LoadConfiguration();
         }
 
         /// <summary>
@@ -50,123 +66,147 @@ namespace KenshiMultiplayer
         /// </summary>
         private void InitializeDetectors()
         {
-            speedHackDetector.Initialize(config.SpeedHackSettings);
-            teleportDetector.Initialize(config.TeleportSettings);
-            statValidator.Initialize(config.StatValidationSettings);
-            inventoryValidator.Initialize(config.InventorySettings);
-            combatValidator.Initialize(config.CombatSettings);
-            memoryChecker.Initialize(config.MemoryCheckSettings);
-            packetValidator.Initialize(config.PacketSettings);
-
-            Logger.Log("Anti-cheat system initialized");
+            speedHackDetector = new SpeedHackDetector();
+            teleportDetector = new TeleportDetector();
+            statDetector = new StatManipulationDetector();
+            memoryScanner = new MemoryScanner();
+            processMonitor = new ProcessMonitor();
+            networkValidator = new NetworkValidator();
+            fileChecker = new FileIntegrityChecker();
         }
 
         /// <summary>
-        /// Validate player movement
+        /// Load anti-cheat configuration
         /// </summary>
-        public ValidationResult ValidateMovement(string playerId, MovementData movement)
+        private void LoadConfiguration()
         {
-            var result = new ValidationResult { IsValid = true };
-
-            // Speed hack detection
-            var speedResult = speedHackDetector.Check(playerId, movement);
-            if (!speedResult.IsValid)
+            config = new AntiCheatConfig
             {
-                RecordViolation(playerId, ViolationType.SpeedHack, speedResult.Severity, speedResult.Details);
-                result.IsValid = false;
-                result.Reason = "Abnormal movement speed detected";
-            }
+                // Detection thresholds
+                MaxSpeedVariance = 1.5f,
+                MaxTeleportDistance = 100.0f,
+                MaxStatChangeRate = 10.0f,
 
-            // Teleport detection
-            var teleportResult = teleportDetector.Check(playerId, movement);
-            if (!teleportResult.IsValid)
-            {
-                RecordViolation(playerId, ViolationType.Teleport, teleportResult.Severity, teleportResult.Details);
-                result.IsValid = false;
-                result.Reason = "Teleportation detected";
-            }
+                // Violation limits
+                MaxViolationsBeforeKick = 5,
+                MaxViolationsBeforeBan = 10,
+                ViolationDecayTime = 3600, // seconds
 
-            // No-clip detection (moving through walls)
-            if (IsNoClipping(movement))
-            {
-                RecordViolation(playerId, ViolationType.NoClip, ViolationSeverity.Critical, "Moving through solid objects");
-                result.IsValid = false;
-                result.Reason = "No-clip detected";
-            }
+                // Scan intervals
+                MemoryScanInterval = 30000, // ms
+                ProcessScanInterval = 10000,
+                FileScanInterval = 60000,
 
-            return result;
+                // Actions
+                AutoKick = true,
+                AutoBan = true,
+                BanDuration = 86400, // 24 hours
+
+                // Whitelist
+                WhitelistedProcesses = new List<string> { "discord", "steam", "obs" }
+            };
         }
 
         /// <summary>
-        /// Validate player stats
+        /// Start anti-cheat monitoring
         /// </summary>
-        public ValidationResult ValidateStats(string playerId, PlayerStats stats)
+        public async Task Start()
         {
-            var result = statValidator.Validate(playerId, stats);
+            isEnabled = true;
 
-            if (!result.IsValid)
-            {
-                RecordViolation(playerId, ViolationType.StatManipulation, result.Severity, result.Details);
-            }
+            // Start detection loops
+            Task.Run(() => SpeedHackDetectionLoop());
+            Task.Run(() => MemoryScanLoop());
+            Task.Run(() => ProcessMonitorLoop());
+            Task.Run(() => FileIntegrityLoop());
+            Task.Run(() => ViolationDecayLoop());
 
-            return result;
+            // Initial file integrity check
+            await PerformFileIntegrityCheck();
+
+            Logger.Log("Anti-cheat system started");
         }
 
         /// <summary>
-        /// Validate inventory changes
+        /// Validate player action
         /// </summary>
-        public ValidationResult ValidateInventory(string playerId, InventoryChange change)
+        public bool ValidateAction(string playerId, PlayerAction action)
         {
-            var result = inventoryValidator.Validate(playerId, change);
+            if (!isEnabled) return true;
 
-            if (!result.IsValid)
+            var validationResult = true;
+
+            switch (action.Type)
             {
-                RecordViolation(playerId, ViolationType.ItemDuplication, result.Severity, result.Details);
+                case ActionType.Movement:
+                    validationResult = ValidateMovement(playerId, action);
+                    break;
+
+                case ActionType.Combat:
+                    validationResult = ValidateCombat(playerId, action);
+                    break;
+
+                case ActionType.StatChange:
+                    validationResult = ValidateStatChange(playerId, action);
+                    break;
+
+                case ActionType.ItemSpawn:
+                    validationResult = ValidateItemSpawn(playerId, action);
+                    break;
             }
 
-            return result;
+            if (!validationResult)
+            {
+                RecordViolation(playerId, GetViolationType(action.Type), action.ToString());
+            }
+
+            return validationResult;
         }
 
         /// <summary>
-        /// Validate combat action
+        /// Validate movement
         /// </summary>
-        public ValidationResult ValidateCombat(string playerId, CombatAction action)
+        private bool ValidateMovement(string playerId, PlayerAction action)
         {
-            var result = combatValidator.Validate(playerId, action);
-
-            if (!result.IsValid)
+            // Check for speed hacks
+            if (!speedHackDetector.ValidateMovement(playerId, action.TargetPosition, action.Timestamp))
             {
-                RecordViolation(playerId, ViolationType.CombatHack, result.Severity, result.Details);
+                OnCheatDetected?.Invoke(new CheatDetection
+                {
+                    PlayerId = playerId,
+                    Type = CheatType.SpeedHack,
+                    Severity = Severity.High,
+                    Details = "Movement speed exceeds maximum",
+                    Timestamp = DateTime.UtcNow
+                });
+                return false;
             }
 
-            return result;
-        }
-
-        /// <summary>
-        /// Validate network packet
-        /// </summary>
-        public ValidationResult ValidatePacket(string playerId, NetworkPacket packet)
-        {
-            var result = packetValidator.Validate(playerId, packet);
-
-            if (!result.IsValid)
+            // Check for teleportation
+            if (!teleportDetector.ValidatePosition(playerId, action.TargetPosition))
             {
-                RecordViolation(playerId, ViolationType.PacketManipulation, result.Severity, result.Details);
+                OnCheatDetected?.Invoke(new CheatDetection
+                {
+                    PlayerId = playerId,
+                    Type = CheatType.Teleport,
+                    Severity = Severity.Critical,
+                    Details = "Impossible position change detected",
+                    Timestamp = DateTime.UtcNow
+                });
+                return false;
             }
 
-            return result;
-        }
-
-        /// <summary>
-        /// Perform memory integrity check on client
-        /// </summary>
-        public async Task<bool> PerformMemoryCheck(string playerId)
-        {
-            var checksum = await memoryChecker.RequestChecksum(playerId);
-
-            if (!memoryChecker.ValidateChecksum(checksum))
+            // Check for no-clip (position inside solid objects)
+            if (IsPositionInsideGeometry(action.TargetPosition))
             {
-                RecordViolation(playerId, ViolationType.MemoryManipulation, ViolationSeverity.Critical, "Memory integrity check failed");
+                OnCheatDetected?.Invoke(new CheatDetection
+                {
+                    PlayerId = playerId,
+                    Type = CheatType.NoClip,
+                    Severity = Severity.Critical,
+                    Details = "Player position inside solid geometry",
+                    Timestamp = DateTime.UtcNow
+                });
                 return false;
             }
 
@@ -174,183 +214,356 @@ namespace KenshiMultiplayer
         }
 
         /// <summary>
-        /// Record a violation
+        /// Validate combat action
         /// </summary>
-        private void RecordViolation(string playerId, ViolationType type, ViolationSeverity severity, string details)
+        private bool ValidateCombat(string playerId, PlayerAction action)
         {
-            // Get or create player violations
-            var violations = playerViolations.GetOrAdd(playerId, new PlayerViolations { PlayerId = playerId });
-
-            // Calculate points based on severity
-            int points = CalculateViolationPoints(type, severity);
-            violations.TotalPoints += points;
-            violations.LastViolation = DateTime.UtcNow;
-
-            // Record in history
-            var record = new ViolationRecord
+            // Check for damage modification
+            if (action.Damage > GetMaxPossibleDamage(action.WeaponType))
             {
-                Type = type,
-                Severity = severity,
-                Details = details,
-                Points = points,
-                Timestamp = DateTime.UtcNow
-            };
-
-            var history = violationHistory.GetOrAdd(playerId, new List<ViolationRecord>());
-            history.Add(record);
-
-            // Log the violation
-            Logger.Log($"VIOLATION: Player {playerId} - {type} ({severity}) - {details}");
-
-            // Raise event
-            CheatDetected?.Invoke(this, new CheatDetectedEventArgs
-            {
-                PlayerId = playerId,
-                ViolationType = type,
-                Severity = severity,
-                Details = details
-            });
-
-            // Check for automatic ban
-            if (violations.TotalPoints >= maxViolationPoints)
-            {
-                BanPlayer(playerId, "Excessive violations");
+                OnCheatDetected?.Invoke(new CheatDetection
+                {
+                    PlayerId = playerId,
+                    Type = CheatType.DamageHack,
+                    Severity = Severity.High,
+                    Details = $"Damage {action.Damage} exceeds maximum for weapon type",
+                    Timestamp = DateTime.UtcNow
+                });
+                return false;
             }
-            else if (severity == ViolationSeverity.Critical)
+
+            // Check for attack speed hack
+            if (!ValidateAttackSpeed(playerId, action.Timestamp))
             {
-                BanPlayer(playerId, $"Critical violation: {type}");
+                OnCheatDetected?.Invoke(new CheatDetection
+                {
+                    PlayerId = playerId,
+                    Type = CheatType.AttackSpeedHack,
+                    Severity = Severity.Medium,
+                    Details = "Attack speed exceeds maximum",
+                    Timestamp = DateTime.UtcNow
+                });
+                return false;
+            }
+
+            // Check for range hack
+            if (!ValidateAttackRange(playerId, action.TargetId, action.WeaponType))
+            {
+                OnCheatDetected?.Invoke(new CheatDetection
+                {
+                    PlayerId = playerId,
+                    Type = CheatType.RangeHack,
+                    Severity = Severity.Medium,
+                    Details = "Attack range exceeds weapon maximum",
+                    Timestamp = DateTime.UtcNow
+                });
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Validate stat change
+        /// </summary>
+        private bool ValidateStatChange(string playerId, PlayerAction action)
+        {
+            return statDetector.ValidateStatChange(playerId, action.StatType, action.OldValue, action.NewValue);
+        }
+
+        /// <summary>
+        /// Validate item spawn
+        /// </summary>
+        private bool ValidateItemSpawn(string playerId, PlayerAction action)
+        {
+            // Check if player has permission to spawn items
+            if (!HasAdminPermission(playerId))
+            {
+                OnCheatDetected?.Invoke(new CheatDetection
+                {
+                    PlayerId = playerId,
+                    Type = CheatType.ItemSpawn,
+                    Severity = Severity.Critical,
+                    Details = $"Unauthorized item spawn: {action.ItemType}",
+                    Timestamp = DateTime.UtcNow
+                });
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Speed hack detection loop
+        /// </summary>
+        private async Task SpeedHackDetectionLoop()
+        {
+            while (isEnabled)
+            {
+                try
+                {
+                    speedHackDetector.Update();
+                    await Task.Delay(100);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("Speed hack detection error", ex);
+                }
             }
         }
 
         /// <summary>
-        /// Calculate violation points
+        /// Memory scan loop
         /// </summary>
-        private int CalculateViolationPoints(ViolationType type, ViolationSeverity severity)
+        private async Task MemoryScanLoop()
         {
-            int basePoints = type switch
+            while (isEnabled)
             {
-                ViolationType.SpeedHack => 20,
-                ViolationType.Teleport => 30,
-                ViolationType.NoClip => 50,
-                ViolationType.StatManipulation => 40,
-                ViolationType.ItemDuplication => 35,
-                ViolationType.CombatHack => 25,
-                ViolationType.MemoryManipulation => 100,
-                ViolationType.PacketManipulation => 15,
-                _ => 10
-            };
+                try
+                {
+                    await Task.Delay(config.MemoryScanInterval);
 
-            return severity switch
-            {
-                ViolationSeverity.Minor => basePoints / 2,
-                ViolationSeverity.Moderate => basePoints,
-                ViolationSeverity.Major => basePoints * 2,
-                ViolationSeverity.Critical => basePoints * 5,
-                _ => basePoints
-            };
+                    if (!isServer)
+                    {
+                        var scanResult = await memoryScanner.ScanForCheats();
+                        if (!scanResult.IsClean)
+                        {
+                            OnCheatDetected?.Invoke(new CheatDetection
+                            {
+                                Type = CheatType.MemoryManipulation,
+                                Severity = Severity.Critical,
+                                Details = scanResult.Details,
+                                Timestamp = DateTime.UtcNow
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("Memory scan error", ex);
+                }
+            }
         }
 
         /// <summary>
-        /// Ban a player
+        /// Process monitor loop
         /// </summary>
-        private void BanPlayer(string playerId, string reason)
+        private async Task ProcessMonitorLoop()
         {
-            Logger.Log($"BANNING PLAYER: {playerId} - Reason: {reason}");
-
-            // Create ban record
-            var banRecord = new BanRecord
+            while (isEnabled)
             {
-                PlayerId = playerId,
-                Reason = reason,
-                Timestamp = DateTime.UtcNow,
-                Violations = violationHistory.GetOrAdd(playerId, new List<ViolationRecord>())
-            };
+                try
+                {
+                    await Task.Delay(config.ProcessScanInterval);
 
-            // Save ban record
-            SaveBanRecord(banRecord);
-
-            // Raise event
-            PlayerBanned?.Invoke(this, playerId);
+                    if (!isServer)
+                    {
+                        var suspiciousProcesses = processMonitor.GetSuspiciousProcesses();
+                        foreach (var process in suspiciousProcesses)
+                        {
+                            if (!config.WhitelistedProcesses.Any(w => process.ToLower().Contains(w)))
+                            {
+                                OnCheatDetected?.Invoke(new CheatDetection
+                                {
+                                    Type = CheatType.SuspiciousProcess,
+                                    Severity = Severity.Medium,
+                                    Details = $"Suspicious process detected: {process}",
+                                    Timestamp = DateTime.UtcNow
+                                });
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("Process monitor error", ex);
+                }
+            }
         }
 
         /// <summary>
-        /// Check for no-clip
+        /// File integrity check loop
         /// </summary>
-        private bool IsNoClipping(MovementData movement)
+        private async Task FileIntegrityLoop()
         {
-            // Check if path goes through solid objects
-            // This would need terrain/building collision data
-
-            // Simplified check - height changes without proper pathing
-            if (movement.EndPosition.Z - movement.StartPosition.Z > 2.0f)
+            while (isEnabled)
             {
-                var horizontalDistance = Math.Sqrt(
-                    Math.Pow(movement.EndPosition.X - movement.StartPosition.X, 2) +
-                    Math.Pow(movement.EndPosition.Y - movement.StartPosition.Y, 2)
-                );
+                try
+                {
+                    await Task.Delay(config.FileScanInterval);
+                    await PerformFileIntegrityCheck();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("File integrity check error", ex);
+                }
+            }
+        }
 
-                // Climbing too steep without path
-                if (horizontalDistance < 1.0f)
+        /// <summary>
+        /// Perform file integrity check
+        /// </summary>
+        private async Task PerformFileIntegrityCheck()
+        {
+            var result = await fileChecker.CheckGameFiles();
+            if (!result.IsValid)
+            {
+                OnCheatDetected?.Invoke(new CheatDetection
+                {
+                    Type = CheatType.ModifiedFiles,
+                    Severity = Severity.Critical,
+                    Details = $"Modified game files detected: {string.Join(", ", result.ModifiedFiles)}",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+        }
+
+        /// <summary>
+        /// Violation decay loop
+        /// </summary>
+        private async Task ViolationDecayLoop()
+        {
+            while (isEnabled)
+            {
+                try
+                {
+                    await Task.Delay(60000); // Check every minute
+
+                    foreach (var player in violations.Values)
+                    {
+                        player.DecayViolations(config.ViolationDecayTime);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("Violation decay error", ex);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Record violation
+        /// </summary>
+        private void RecordViolation(string playerId, ViolationType type, string details)
+        {
+            var playerViolations = violations.GetOrAdd(playerId, new PlayerViolations(playerId));
+            playerViolations.AddViolation(type, details);
+
+            OnViolation?.Invoke(playerId, type);
+
+            // Check for auto-kick
+            if (config.AutoKick && playerViolations.TotalViolations >= config.MaxViolationsBeforeKick)
+            {
+                KickPlayer(playerId, "Too many violations");
+            }
+
+            // Check for auto-ban
+            if (config.AutoBan && playerViolations.TotalViolations >= config.MaxViolationsBeforeBan)
+            {
+                BanPlayer(playerId, config.BanDuration, "Excessive violations");
+            }
+
+            stats.TotalViolations++;
+        }
+
+        /// <summary>
+        /// Kick player
+        /// </summary>
+        public void KickPlayer(string playerId, string reason)
+        {
+            OnPlayerKicked?.Invoke(playerId);
+            Logger.Log($"Player {playerId} kicked: {reason}");
+            stats.PlayersKicked++;
+        }
+
+        /// <summary>
+        /// Ban player
+        /// </summary>
+        public void BanPlayer(string playerId, int duration, string reason)
+        {
+            var banExpiry = DateTime.UtcNow.AddSeconds(duration);
+            bannedPlayers[playerId] = banExpiry;
+
+            OnPlayerBanned?.Invoke(playerId, reason);
+            Logger.Log($"Player {playerId} banned until {banExpiry}: {reason}");
+            stats.PlayersBanned++;
+        }
+
+        /// <summary>
+        /// Check if player is banned
+        /// </summary>
+        public bool IsPlayerBanned(string playerId)
+        {
+            if (bannedPlayers.TryGetValue(playerId, out var banExpiry))
+            {
+                if (DateTime.UtcNow < banExpiry)
                     return true;
+
+                // Ban expired, remove it
+                bannedPlayers.TryRemove(playerId, out _);
             }
 
             return false;
         }
 
         /// <summary>
-        /// Decay violation points over time
+        /// Validate network message
         /// </summary>
-        public void ProcessViolationDecay()
+        public bool ValidateNetworkMessage(string playerId, NetworkMessage message)
         {
-            var now = DateTime.UtcNow;
+            return networkValidator.ValidateMessage(playerId, message);
+        }
 
-            foreach (var kvp in playerViolations)
+        // Helper methods
+        private bool IsPositionInsideGeometry(Vector3 position)
+        {
+            // Check against world geometry
+            // This would need actual collision detection
+            return false;
+        }
+
+        private float GetMaxPossibleDamage(string weaponType)
+        {
+            // Return maximum damage for weapon type
+            return 1000.0f;
+        }
+
+        private bool ValidateAttackSpeed(string playerId, double timestamp)
+        {
+            // Check attack speed against weapon stats
+            return true;
+        }
+
+        private bool ValidateAttackRange(string playerId, string targetId, string weaponType)
+        {
+            // Check distance between attacker and target
+            return true;
+        }
+
+        private bool HasAdminPermission(string playerId)
+        {
+            // Check if player has admin rights
+            return false;
+        }
+
+        private ViolationType GetViolationType(ActionType actionType)
+        {
+            switch (actionType)
             {
-                var violations = kvp.Value;
-
-                if (now - violations.LastViolation > violationDecayPeriod)
-                {
-                    // Decay points
-                    violations.TotalPoints = Math.Max(0, violations.TotalPoints - 10);
-
-                    // Clean up if no violations
-                    if (violations.TotalPoints == 0)
-                    {
-                        playerViolations.TryRemove(kvp.Key, out _);
-                    }
-                }
+                case ActionType.Movement: return ViolationType.Movement;
+                case ActionType.Combat: return ViolationType.Combat;
+                case ActionType.StatChange: return ViolationType.Stats;
+                case ActionType.ItemSpawn: return ViolationType.Items;
+                default: return ViolationType.Other;
             }
         }
 
         /// <summary>
-        /// Get player violation status
+        /// Get anti-cheat statistics
         /// </summary>
-        public PlayerViolations GetPlayerViolations(string playerId)
+        public AntiCheatStatistics GetStatistics()
         {
-            return playerViolations.GetOrAdd(playerId, new PlayerViolations { PlayerId = playerId });
-        }
-
-        /// <summary>
-        /// Save ban record to file
-        /// </summary>
-        private void SaveBanRecord(BanRecord record)
-        {
-            try
-            {
-                string banFile = $"bans/{record.PlayerId}_{record.Timestamp:yyyyMMddHHmmss}.json";
-                Directory.CreateDirectory("bans");
-
-                var json = System.Text.Json.JsonSerializer.Serialize(record, new System.Text.Json.JsonSerializerOptions
-                {
-                    WriteIndented = true
-                });
-
-                File.WriteAllText(banFile, json);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log($"Error saving ban record: {ex.Message}");
-            }
+            return stats;
         }
     }
 
@@ -359,59 +572,49 @@ namespace KenshiMultiplayer
     /// </summary>
     public class SpeedHackDetector
     {
-        private readonly ConcurrentDictionary<string, MovementHistory> playerMovement = new ConcurrentDictionary<string, MovementHistory>();
-        private SpeedHackSettings settings;
+        private Dictionary<string, MovementHistory> playerMovement;
+        private readonly float maxSpeed = 10.0f; // meters per second
 
-        public void Initialize(SpeedHackSettings config)
+        public SpeedHackDetector()
         {
-            settings = config ?? new SpeedHackSettings();
+            playerMovement = new Dictionary<string, MovementHistory>();
         }
 
-        public ValidationResult Check(string playerId, MovementData movement)
+        public bool ValidateMovement(string playerId, Vector3 position, double timestamp)
         {
-            var history = playerMovement.GetOrAdd(playerId, new MovementHistory());
-
-            // Calculate speed
-            var distance = Vector3.Distance(movement.StartPosition, movement.EndPosition);
-            var time = (movement.Timestamp - history.LastTimestamp) / 1000.0f;
-
-            if (time <= 0)
-                return new ValidationResult { IsValid = true };
-
-            var speed = distance / time;
-
-            // Check against max speed (Kenshi's max running speed is ~8 m/s)
-            float maxSpeed = settings.MaxRunSpeed;
-
-            // Add tolerance for lag
-            maxSpeed *= settings.LagTolerance;
-
-            if (speed > maxSpeed)
+            if (!playerMovement.TryGetValue(playerId, out var history))
             {
-                // Check if consistent speed hacking
-                history.SpeedViolations++;
+                history = new MovementHistory();
+                playerMovement[playerId] = history;
+            }
 
-                if (history.SpeedViolations >= settings.ViolationThreshold)
+            if (history.LastPosition != null)
+            {
+                var distance = Vector3.Distance(history.LastPosition.Value, position);
+                var timeDelta = timestamp - history.LastTimestamp;
+                var speed = distance / timeDelta;
+
+                if (speed > maxSpeed * 1.5f) // Allow some variance
                 {
-                    return new ValidationResult
-                    {
-                        IsValid = false,
-                        Severity = speed > maxSpeed * 2 ? ViolationSeverity.Critical : ViolationSeverity.Major,
-                        Details = $"Speed: {speed:F2} m/s (Max: {settings.MaxRunSpeed:F2} m/s)"
-                    };
+                    return false;
                 }
             }
-            else
-            {
-                // Decay violations
-                history.SpeedViolations = Math.Max(0, history.SpeedViolations - 1);
-            }
 
-            // Update history
-            history.LastPosition = movement.EndPosition;
-            history.LastTimestamp = movement.Timestamp;
+            history.LastPosition = position;
+            history.LastTimestamp = timestamp;
 
-            return new ValidationResult { IsValid = true };
+            return true;
+        }
+
+        public void Update()
+        {
+            // Periodic update logic
+        }
+
+        private class MovementHistory
+        {
+            public Vector3? LastPosition { get; set; }
+            public double LastTimestamp { get; set; }
         }
     }
 
@@ -420,467 +623,425 @@ namespace KenshiMultiplayer
     /// </summary>
     public class TeleportDetector
     {
-        private readonly ConcurrentDictionary<string, Vector3> lastPositions = new ConcurrentDictionary<string, Vector3>();
-        private TeleportSettings settings;
+        private Dictionary<string, Vector3> lastKnownPositions;
+        private readonly float maxTeleportDistance = 100.0f;
 
-        public void Initialize(TeleportSettings config)
+        public TeleportDetector()
         {
-            settings = config ?? new TeleportSettings();
+            lastKnownPositions = new Dictionary<string, Vector3>();
         }
 
-        public ValidationResult Check(string playerId, MovementData movement)
+        public bool ValidatePosition(string playerId, Vector3 position)
         {
-            if (!lastPositions.TryGetValue(playerId, out var lastPos))
+            if (lastKnownPositions.TryGetValue(playerId, out var lastPos))
             {
-                lastPositions[playerId] = movement.EndPosition;
-                return new ValidationResult { IsValid = true };
-            }
-
-            var distance = Vector3.Distance(lastPos, movement.StartPosition);
-
-            // Check for position mismatch (teleport)
-            if (distance > settings.MaxPositionMismatch)
-            {
-                return new ValidationResult
+                var distance = Vector3.Distance(lastPos, position);
+                if (distance > maxTeleportDistance)
                 {
-                    IsValid = false,
-                    Severity = distance > settings.MaxPositionMismatch * 10 ? ViolationSeverity.Critical : ViolationSeverity.Major,
-                    Details = $"Position mismatch: {distance:F2}m"
-                };
-            }
-
-            lastPositions[playerId] = movement.EndPosition;
-            return new ValidationResult { IsValid = true };
-        }
-    }
-
-    /// <summary>
-    /// Stat validator
-    /// </summary>
-    public class StatValidator
-    {
-        private readonly ConcurrentDictionary<string, PlayerStats> lastStats = new ConcurrentDictionary<string, PlayerStats>();
-        private StatValidationSettings settings;
-
-        public void Initialize(StatValidationSettings config)
-        {
-            settings = config ?? new StatValidationSettings();
-        }
-
-        public ValidationResult Validate(string playerId, PlayerStats stats)
-        {
-            // Check stat limits
-            if (stats.Strength > settings.MaxStat || stats.Dexterity > settings.MaxStat ||
-                stats.Toughness > settings.MaxStat || stats.Perception > settings.MaxStat)
-            {
-                return new ValidationResult
-                {
-                    IsValid = false,
-                    Severity = ViolationSeverity.Critical,
-                    Details = "Stats exceed maximum allowed values"
-                };
-            }
-
-            // Check for instant stat increases
-            if (lastStats.TryGetValue(playerId, out var last))
-            {
-                var strengthGain = stats.Strength - last.Strength;
-                var dexGain = stats.Dexterity - last.Dexterity;
-
-                if (strengthGain > settings.MaxStatGainPerMinute || dexGain > settings.MaxStatGainPerMinute)
-                {
-                    return new ValidationResult
-                    {
-                        IsValid = false,
-                        Severity = ViolationSeverity.Major,
-                        Details = $"Abnormal stat gain detected"
-                    };
+                    return false;
                 }
             }
 
-            lastStats[playerId] = stats;
-            return new ValidationResult { IsValid = true };
+            lastKnownPositions[playerId] = position;
+            return true;
         }
     }
 
     /// <summary>
-    /// Inventory validator
+    /// Stat manipulation detector
     /// </summary>
-    public class InventoryValidator
+    public class StatManipulationDetector
     {
-        private readonly ConcurrentDictionary<string, Dictionary<string, int>> playerInventories = new ConcurrentDictionary<string, Dictionary<string, int>>();
-        private InventorySettings settings;
+        private Dictionary<string, Dictionary<string, float>> playerStats;
 
-        public void Initialize(InventorySettings config)
+        public StatManipulationDetector()
         {
-            settings = config ?? new InventorySettings();
+            playerStats = new Dictionary<string, Dictionary<string, float>>();
         }
 
-        public ValidationResult Validate(string playerId, InventoryChange change)
+        public bool ValidateStatChange(string playerId, string statType, float oldValue, float newValue)
         {
-            var inventory = playerInventories.GetOrAdd(playerId, new Dictionary<string, int>());
+            var maxChangeRate = GetMaxChangeRate(statType);
+            var change = Math.Abs(newValue - oldValue);
 
-            // Check for item duplication
-            if (change.Type == ChangeType.Add)
+            if (change > maxChangeRate)
             {
-                // Check if adding more than possible
-                if (change.Quantity > settings.MaxStackSize)
-                {
-                    return new ValidationResult
-                    {
-                        IsValid = false,
-                        Severity = ViolationSeverity.Major,
-                        Details = $"Adding {change.Quantity} items exceeds max stack size"
-                    };
-                }
-
-                // Check for rare item duplication
-                if (IsRareItem(change.ItemId) && change.Quantity > 1)
-                {
-                    return new ValidationResult
-                    {
-                        IsValid = false,
-                        Severity = ViolationSeverity.Critical,
-                        Details = $"Duplicating rare item: {change.ItemId}"
-                    };
-                }
+                return false;
             }
 
-            // Update tracked inventory
-            if (!inventory.ContainsKey(change.ItemId))
-                inventory[change.ItemId] = 0;
-
-            inventory[change.ItemId] += change.Type == ChangeType.Add ? change.Quantity : -change.Quantity;
-
-            if (inventory[change.ItemId] < 0)
+            // Store for future validation
+            if (!playerStats.ContainsKey(playerId))
             {
-                return new ValidationResult
-                {
-                    IsValid = false,
-                    Severity = ViolationSeverity.Major,
-                    Details = "Negative inventory detected"
-                };
+                playerStats[playerId] = new Dictionary<string, float>();
             }
+            playerStats[playerId][statType] = newValue;
 
-            return new ValidationResult { IsValid = true };
+            return true;
         }
 
-        private bool IsRareItem(string itemId)
+        private float GetMaxChangeRate(string statType)
         {
-            // Check against list of rare/unique items
-            var rareItems = new[] { "meitou", "edge_weapon", "masterwork" };
-            return rareItems.Any(rare => itemId.ToLower().Contains(rare));
+            // Return maximum allowed change rate for stat type
+            return 10.0f;
         }
     }
 
     /// <summary>
-    /// Combat validator
+    /// Memory scanner for cheat detection
     /// </summary>
-    public class CombatValidator
+    public class MemoryScanner
     {
-        private readonly ConcurrentDictionary<string, CombatStats> combatStats = new ConcurrentDictionary<string, CombatStats>();
-        private CombatSettings settings;
+        private List<string> knownCheatSignatures;
 
-        public void Initialize(CombatSettings config)
+        public MemoryScanner()
         {
-            settings = config ?? new CombatSettings();
+            knownCheatSignatures = new List<string>
+            {
+                "CheatEngine",
+                "speedhack",
+                "trainer",
+                "injector"
+            };
         }
 
-        public ValidationResult Validate(string playerId, CombatAction action)
+        public async Task<ScanResult> ScanForCheats()
         {
-            var stats = combatStats.GetOrAdd(playerId, new CombatStats());
+            // Scan running processes
+            var processes = Process.GetProcesses();
 
-            // Check attack speed
-            var timeSinceLastAttack = (action.Timestamp - stats.LastAttackTime) / 1000.0f;
-
-            if (timeSinceLastAttack < settings.MinAttackInterval)
+            foreach (var process in processes)
             {
-                stats.AttackSpeedViolations++;
-
-                if (stats.AttackSpeedViolations >= settings.ViolationThreshold)
+                try
                 {
-                    return new ValidationResult
+                    var processName = process.ProcessName.ToLower();
+
+                    if (knownCheatSignatures.Any(sig => processName.Contains(sig)))
                     {
-                        IsValid = false,
-                        Severity = ViolationSeverity.Major,
-                        Details = $"Attack speed too fast: {timeSinceLastAttack:F2}s"
-                    };
+                        return new ScanResult
+                        {
+                            IsClean = false,
+                            Details = $"Cheat software detected: {process.ProcessName}"
+                        };
+                    }
+                }
+                catch
+                {
+                    // Process access denied, skip
                 }
             }
-            else
-            {
-                stats.AttackSpeedViolations = Math.Max(0, stats.AttackSpeedViolations - 1);
-            }
 
-            // Check damage
-            if (action.Damage > settings.MaxDamage)
-            {
-                return new ValidationResult
-                {
-                    IsValid = false,
-                    Severity = ViolationSeverity.Critical,
-                    Details = $"Damage exceeds maximum: {action.Damage}"
-                };
-            }
+            return new ScanResult { IsClean = true };
+        }
 
-            // Check range
-            if (action.Range > settings.MaxAttackRange)
-            {
-                return new ValidationResult
-                {
-                    IsValid = false,
-                    Severity = ViolationSeverity.Major,
-                    Details = $"Attack range too far: {action.Range:F2}m"
-                };
-            }
-
-            stats.LastAttackTime = action.Timestamp;
-            return new ValidationResult { IsValid = true };
+        public class ScanResult
+        {
+            public bool IsClean { get; set; }
+            public string Details { get; set; }
         }
     }
 
     /// <summary>
-    /// Memory integrity checker
+    /// Process monitor
     /// </summary>
-    public class MemoryIntegrityChecker
+    public class ProcessMonitor
     {
-        private readonly Dictionary<string, string> expectedChecksums = new Dictionary<string, string>();
-        private MemoryCheckSettings settings;
+        private HashSet<string> suspiciousProcessNames;
 
-        public void Initialize(MemoryCheckSettings config)
+        public ProcessMonitor()
         {
-            settings = config ?? new MemoryCheckSettings();
-            GenerateExpectedChecksums();
+            suspiciousProcessNames = new HashSet<string>
+            {
+                "cheatengine",
+                "artmoney",
+                "ollydbg",
+                "x64dbg",
+                "ida",
+                "processhacker"
+            };
         }
 
-        private void GenerateExpectedChecksums()
+        public List<string> GetSuspiciousProcesses()
         {
-            // Generate checksums for critical memory regions
-            expectedChecksums["player_stats"] = "a1b2c3d4e5f6";
-            expectedChecksums["game_speed"] = "f6e5d4c3b2a1";
-            // Add more...
-        }
+            var suspicious = new List<string>();
+            var processes = Process.GetProcesses();
 
-        public async Task<string> RequestChecksum(string playerId)
-        {
-            // Request memory checksum from client
-            await Task.Delay(100); // Simulate network request
-            return "a1b2c3d4e5f6"; // Placeholder
-        }
+            foreach (var process in processes)
+            {
+                try
+                {
+                    var name = process.ProcessName.ToLower();
+                    if (suspiciousProcessNames.Any(s => name.Contains(s)))
+                    {
+                        suspicious.Add(process.ProcessName);
+                    }
+                }
+                catch
+                {
+                    // Access denied
+                }
+            }
 
-        public bool ValidateChecksum(string checksum)
-        {
-            return expectedChecksums.Values.Contains(checksum);
+            return suspicious;
         }
     }
 
     /// <summary>
-    /// Packet validator
+    /// Network validator
     /// </summary>
-    public class PacketValidator
+    public class NetworkValidator
     {
-        private readonly ConcurrentDictionary<string, PacketStats> packetStats = new ConcurrentDictionary<string, PacketStats>();
-        private PacketSettings settings;
+        private Dictionary<string, RateLimiter> rateLimiters;
 
-        public void Initialize(PacketSettings config)
+        public NetworkValidator()
         {
-            settings = config ?? new PacketSettings();
+            rateLimiters = new Dictionary<string, RateLimiter>();
         }
 
-        public ValidationResult Validate(string playerId, NetworkPacket packet)
+        public bool ValidateMessage(string playerId, NetworkMessage message)
         {
-            var stats = packetStats.GetOrAdd(playerId, new PacketStats());
-
-            // Check packet rate
-            stats.PacketsPerSecond++;
-
-            if (stats.PacketsPerSecond > settings.MaxPacketsPerSecond)
+            // Check rate limiting
+            if (!rateLimiters.TryGetValue(playerId, out var limiter))
             {
-                return new ValidationResult
-                {
-                    IsValid = false,
-                    Severity = ViolationSeverity.Moderate,
-                    Details = $"Packet flood detected: {stats.PacketsPerSecond} pps"
-                };
+                limiter = new RateLimiter();
+                rateLimiters[playerId] = limiter;
             }
 
-            // Check packet size
-            if (packet.Data.Length > settings.MaxPacketSize)
+            if (!limiter.AllowRequest())
             {
-                return new ValidationResult
-                {
-                    IsValid = false,
-                    Severity = ViolationSeverity.Major,
-                    Details = $"Packet too large: {packet.Data.Length} bytes"
-                };
+                return false;
             }
 
-            return new ValidationResult { IsValid = true };
+            // Validate message size
+            if (message.Data?.ToString().Length > 65536)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private class RateLimiter
+        {
+            private Queue<DateTime> requests = new Queue<DateTime>();
+            private readonly int maxRequests = 100;
+            private readonly TimeSpan timeWindow = TimeSpan.FromSeconds(1);
+
+            public bool AllowRequest()
+            {
+                var now = DateTime.UtcNow;
+
+                // Remove old requests
+                while (requests.Count > 0 && now - requests.Peek() > timeWindow)
+                {
+                    requests.Dequeue();
+                }
+
+                if (requests.Count >= maxRequests)
+                {
+                    return false;
+                }
+
+                requests.Enqueue(now);
+                return true;
+            }
         }
     }
 
-    // Supporting classes
-
-    public class ValidationResult
+    /// <summary>
+    /// File integrity checker
+    /// </summary>
+    public class FileIntegrityChecker
     {
-        public bool IsValid { get; set; }
-        public ViolationSeverity Severity { get; set; }
+        private Dictionary<string, string> fileHashes;
+
+        public FileIntegrityChecker()
+        {
+            fileHashes = new Dictionary<string, string>();
+            // Load known good file hashes
+        }
+
+        public async Task<IntegrityResult> CheckGameFiles()
+        {
+            var modifiedFiles = new List<string>();
+
+            // Check critical game files
+            var gamePath = GetGamePath();
+            var criticalFiles = new[]
+            {
+                "kenshi_x64.exe",
+                "data.dat",
+                "scripts.pak"
+            };
+
+            foreach (var file in criticalFiles)
+            {
+                var filePath = Path.Combine(gamePath, file);
+                if (File.Exists(filePath))
+                {
+                    var hash = await CalculateFileHash(filePath);
+                    if (fileHashes.ContainsKey(file) && fileHashes[file] != hash)
+                    {
+                        modifiedFiles.Add(file);
+                    }
+                }
+            }
+
+            return new IntegrityResult
+            {
+                IsValid = modifiedFiles.Count == 0,
+                ModifiedFiles = modifiedFiles
+            };
+        }
+
+        private async Task<string> CalculateFileHash(string filePath)
+        {
+            using (var sha256 = SHA256.Create())
+            using (var stream = File.OpenRead(filePath))
+            {
+                var hash = await Task.Run(() => sha256.ComputeHash(stream));
+                return BitConverter.ToString(hash).Replace("-", "");
+            }
+        }
+
+        private string GetGamePath()
+        {
+            // Get Kenshi installation path
+            return @"C:\Program Files\Steam\steamapps\common\Kenshi";
+        }
+
+        public class IntegrityResult
+        {
+            public bool IsValid { get; set; }
+            public List<string> ModifiedFiles { get; set; }
+        }
+    }
+
+    // Data structures
+    public class PlayerViolations
+    {
+        public string PlayerId { get; set; }
+        public int TotalViolations { get; private set; }
+        public Dictionary<ViolationType, List<Violation>> Violations { get; set; }
+
+        public PlayerViolations(string playerId)
+        {
+            PlayerId = playerId;
+            Violations = new Dictionary<ViolationType, List<Violation>>();
+        }
+
+        public void AddViolation(ViolationType type, string details)
+        {
+            if (!Violations.ContainsKey(type))
+            {
+                Violations[type] = new List<Violation>();
+            }
+
+            Violations[type].Add(new Violation
+            {
+                Type = type,
+                Details = details,
+                Timestamp = DateTime.UtcNow
+            });
+
+            TotalViolations++;
+        }
+
+        public void DecayViolations(int decayTimeSeconds)
+        {
+            var cutoff = DateTime.UtcNow.AddSeconds(-decayTimeSeconds);
+
+            foreach (var list in Violations.Values)
+            {
+                list.RemoveAll(v => v.Timestamp < cutoff);
+            }
+
+            TotalViolations = Violations.Values.Sum(l => l.Count);
+        }
+    }
+
+    public class Violation
+    {
+        public ViolationType Type { get; set; }
         public string Details { get; set; }
-        public string Reason { get; set; }
+        public DateTime Timestamp { get; set; }
     }
 
-    public enum ViolationType
+    public class CheatDetection
+    {
+        public string PlayerId { get; set; }
+        public CheatType Type { get; set; }
+        public Severity Severity { get; set; }
+        public string Details { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+
+    public class AntiCheatConfig
+    {
+        public float MaxSpeedVariance { get; set; }
+        public float MaxTeleportDistance { get; set; }
+        public float MaxStatChangeRate { get; set; }
+        public int MaxViolationsBeforeKick { get; set; }
+        public int MaxViolationsBeforeBan { get; set; }
+        public int ViolationDecayTime { get; set; }
+        public int MemoryScanInterval { get; set; }
+        public int ProcessScanInterval { get; set; }
+        public int FileScanInterval { get; set; }
+        public bool AutoKick { get; set; }
+        public bool AutoBan { get; set; }
+        public int BanDuration { get; set; }
+        public List<string> WhitelistedProcesses { get; set; }
+    }
+
+    public class AntiCheatStatistics
+    {
+        public int TotalViolations { get; set; }
+        public int PlayersKicked { get; set; }
+        public int PlayersBanned { get; set; }
+        public Dictionary<CheatType, int> DetectionsByType { get; set; } = new Dictionary<CheatType, int>();
+    }
+
+    public enum CheatType
     {
         SpeedHack,
         Teleport,
         NoClip,
+        DamageHack,
+        AttackSpeedHack,
+        RangeHack,
+        ItemSpawn,
         StatManipulation,
-        ItemDuplication,
-        CombatHack,
         MemoryManipulation,
-        PacketManipulation
+        ModifiedFiles,
+        SuspiciousProcess,
+        NetworkExploit
     }
 
-    public enum ViolationSeverity
+    public enum ViolationType
     {
-        Minor,
-        Moderate,
-        Major,
+        Movement,
+        Combat,
+        Stats,
+        Items,
+        Network,
+        Other
+    }
+
+    public enum Severity
+    {
+        Low,
+        Medium,
+        High,
         Critical
     }
 
-    public class PlayerViolations
+    public enum ActionType
     {
-        public string PlayerId { get; set; }
-        public int TotalPoints { get; set; }
-        public DateTime LastViolation { get; set; }
-        public Dictionary<ViolationType, int> ViolationCounts { get; set; } = new Dictionary<ViolationType, int>();
-    }
-
-    public class ViolationRecord
-    {
-        public ViolationType Type { get; set; }
-        public ViolationSeverity Severity { get; set; }
-        public string Details { get; set; }
-        public int Points { get; set; }
-        public DateTime Timestamp { get; set; }
-    }
-
-    public class BanRecord
-    {
-        public string PlayerId { get; set; }
-        public string Reason { get; set; }
-        public DateTime Timestamp { get; set; }
-        public List<ViolationRecord> Violations { get; set; }
-    }
-
-    public class CheatDetectedEventArgs : EventArgs
-    {
-        public string PlayerId { get; set; }
-        public ViolationType ViolationType { get; set; }
-        public ViolationSeverity Severity { get; set; }
-        public string Details { get; set; }
-    }
-
-    public class MovementData
-    {
-        public Vector3 StartPosition { get; set; }
-        public Vector3 EndPosition { get; set; }
-        public long Timestamp { get; set; }
-    }
-
-    public class MovementHistory
-    {
-        public Vector3 LastPosition { get; set; }
-        public long LastTimestamp { get; set; }
-        public int SpeedViolations { get; set; }
-    }
-
-    public class PlayerStats
-    {
-        public float Strength { get; set; }
-        public float Dexterity { get; set; }
-        public float Toughness { get; set; }
-        public float Perception { get; set; }
-    }
-
-    public class InventoryChange
-    {
-        public string ItemId { get; set; }
-        public int Quantity { get; set; }
-        public ChangeType Type { get; set; }
-    }
-
-    public enum ChangeType
-    {
-        Add,
-        Remove
-    }
-
-    public class CombatStats
-    {
-        public long LastAttackTime { get; set; }
-        public int AttackSpeedViolations { get; set; }
-    }
-
-    public class PacketStats
-    {
-        public int PacketsPerSecond { get; set; }
-        public DateTime LastReset { get; set; } = DateTime.UtcNow;
-    }
-
-    // Configuration classes
-
-    public class AntiCheatConfig
-    {
-        public SpeedHackSettings SpeedHackSettings { get; set; } = new SpeedHackSettings();
-        public TeleportSettings TeleportSettings { get; set; } = new TeleportSettings();
-        public StatValidationSettings StatValidationSettings { get; set; } = new StatValidationSettings();
-        public InventorySettings InventorySettings { get; set; } = new InventorySettings();
-        public CombatSettings CombatSettings { get; set; } = new CombatSettings();
-        public MemoryCheckSettings MemoryCheckSettings { get; set; } = new MemoryCheckSettings();
-        public PacketSettings PacketSettings { get; set; } = new PacketSettings();
-    }
-
-    public class SpeedHackSettings
-    {
-        public float MaxRunSpeed { get; set; } = 8.0f; // Kenshi max run speed
-        public float LagTolerance { get; set; } = 1.2f; // 20% tolerance for lag
-        public int ViolationThreshold { get; set; } = 3;
-    }
-
-    public class TeleportSettings
-    {
-        public float MaxPositionMismatch { get; set; } = 5.0f; // meters
-    }
-
-    public class StatValidationSettings
-    {
-        public float MaxStat { get; set; } = 100.0f;
-        public float MaxStatGainPerMinute { get; set; } = 1.0f;
-    }
-
-    public class InventorySettings
-    {
-        public int MaxStackSize { get; set; } = 999;
-    }
-
-    public class CombatSettings
-    {
-        public float MinAttackInterval { get; set; } = 0.5f; // seconds
-        public int MaxDamage { get; set; } = 200;
-        public float MaxAttackRange { get; set; } = 5.0f; // meters
-        public int ViolationThreshold { get; set; } = 3;
-    }
-
-    public class MemoryCheckSettings
-    {
-        public int CheckInterval { get; set; } = 60000; // milliseconds
-    }
-
-    public class PacketSettings
-    {
-        public int MaxPacketsPerSecond { get; set; } = 60;
-        public int MaxPacketSize { get; set; } = 8192; // bytes
+        Movement,
+        Combat,
+        StatChange,
+        ItemSpawn,
+        Build,
+        Trade,
+        Interaction
     }
 }

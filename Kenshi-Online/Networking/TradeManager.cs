@@ -1,11 +1,14 @@
-﻿using KenshiMultiplayer.Auth;
-using KenshiMultiplayer.Common;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Networking.Player;
+using KenshiMultiplayer.Networking.Inventory;
+using KenshiMultiplayer.Auth;
+using KenshiMultiplayer.Common;
 
 namespace KenshiMultiplayer.Networking
 {
@@ -155,27 +158,27 @@ namespace KenshiMultiplayer.Networking
         // Client message handling
         private void OnMessageReceived(object sender, GameMessage message)
         {
-            if (message.Type == MessageType.TradeRequest)
+            if (message.Type == Auth.MessageType.TradeRequest)
             {
                 HandleTradeRequest(message);
             }
-            else if (message.Type == MessageType.TradeAccept)
+            else if (message.Type == Auth.MessageType.TradeAccept)
             {
                 HandleTradeAccept(message);
             }
-            else if (message.Type == MessageType.TradeDecline)
+            else if (message.Type == Auth.MessageType.TradeDecline)
             {
                 HandleTradeDecline(message);
             }
-            else if (message.Type == MessageType.TradeUpdate)
+            else if (message.Type == Auth.MessageType.TradeUpdate)
             {
                 HandleTradeUpdate(message);
             }
-            else if (message.Type == MessageType.TradeCancel)
+            else if (message.Type == Auth.MessageType.TradeCancel)
             {
                 HandleTradeCancel(message);
             }
-            else if (message.Type == MessageType.TradeComplete)
+            else if (message.Type == Auth.MessageType.TradeComplete)
             {
                 HandleTradeComplete(message);
             }
@@ -200,7 +203,7 @@ namespace KenshiMultiplayer.Networking
             // Create the trade request message
             var tradeMessage = new GameMessage
             {
-                Type = MessageType.TradeRequest,
+                Type = Auth.MessageType.TradeRequest,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
