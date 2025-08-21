@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Fasm.NET" Version="1.70.3" />
+    <PackageReference Include="Fasm.NET" Version="1.70.3.2" />
     <PackageReference Include="MemorySharp" Version="1.2.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.14.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
