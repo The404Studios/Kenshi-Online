@@ -1,5 +1,6 @@
 ﻿using KenshiMultiplayer.Auth;
 using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Common;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace KenshiMultiplayer.Common.FriendsManager
+namespace KenshiMultiplayer.Common
 {
     public enum FriendshipStatus
     {
@@ -153,23 +154,23 @@ namespace KenshiMultiplayer.Common.FriendsManager
         // Client message handling
         private void OnMessageReceived(object sender, GameMessage message)
         {
-            if (message.Type == MessageType.FriendRequest)
+            if (message.Type == Auth.MessageType.FriendRequest)
             {
                 HandleFriendRequest(message);
             }
-            else if (message.Type == MessageType.FriendAccept)
+            else if (message.Type == Auth.MessageType.FriendAccept)
             {
                 HandleFriendAccept(message);
             }
-            else if (message.Type == MessageType.FriendDecline)
+            else if (message.Type == Auth.MessageType.FriendDecline)
             {
                 HandleFriendDecline(message);
             }
-            else if (message.Type == MessageType.FriendRemove)
+            else if (message.Type == Auth.MessageType.FriendRemove)
             {
                 HandleFriendRemove(message);
             }
-            else if (message.Type == MessageType.FriendStatus)
+            else if (message.Type == Auth.MessageType.FriendStatus)
             {
                 HandleFriendStatusUpdate(message);
             }
@@ -198,7 +199,7 @@ namespace KenshiMultiplayer.Common.FriendsManager
             // Create the request message
             var requestMessage = new GameMessage
             {
-                Type = MessageType.FriendRequest,
+                Type = Auth.MessageType.FriendRequest,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -238,7 +239,7 @@ namespace KenshiMultiplayer.Common.FriendsManager
             // Create the accept message
             var acceptMessage = new GameMessage
             {
-                Type = MessageType.FriendAccept,
+                Type = Auth.MessageType.FriendAccept,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -273,7 +274,7 @@ namespace KenshiMultiplayer.Common.FriendsManager
             // Create the decline message
             var declineMessage = new GameMessage
             {
-                Type = MessageType.FriendDecline,
+                Type = Auth.MessageType.FriendDecline,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -304,7 +305,7 @@ namespace KenshiMultiplayer.Common.FriendsManager
             // Create the remove friend message
             var removeMessage = new GameMessage
             {
-                Type = MessageType.FriendRemove,
+                Type = Auth.MessageType.FriendRemove,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -347,7 +348,7 @@ namespace KenshiMultiplayer.Common.FriendsManager
             // Create the block message
             var blockMessage = new GameMessage
             {
-                Type = MessageType.FriendBlock,
+                Type = Auth.MessageType.FriendBlock,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {

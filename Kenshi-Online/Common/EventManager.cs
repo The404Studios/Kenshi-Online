@@ -138,7 +138,7 @@ namespace KenshiMultiplayer
             dataFilePath = Path.Combine(dataDirectory, "events.json");
             Directory.CreateDirectory(dataDirectory);
 
-            LoadData();
+            LoadData(GetCompletedEvents(), GetPlayerEventHistory());
 
             if (client != null)
             {
@@ -162,10 +162,20 @@ namespace KenshiMultiplayer
             dataFilePath = Path.Combine(dataDirectory, "events.json");
             Directory.CreateDirectory(dataDirectory);
 
-            LoadData();
+            LoadData(GetCompletedEvents(), GetPlayerEventHistory());
         }
 
-        private void LoadData()
+        private Dictionary<string, List<WorldEvent>> GetCompletedEvents()
+        {
+            return completedEvents;
+        }
+
+        private Dictionary<string, List<string>> GetPlayerEventHistory()
+        {
+            return playerEventHistory;
+        }
+
+        private void LoadData(Dictionary<string, List<WorldEvent>> completedEvents, Dictionary<string, List<string>> playerEventHistory)
         {
             try
             {

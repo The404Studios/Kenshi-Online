@@ -116,11 +116,11 @@ namespace KenshiMultiplayer.Common
         // Client message handling
         private void OnMessageReceived(object sender, GameMessage message)
         {
-            if (message.Type == MessageType.MarketplaceUpdate)
+            if (message.Type == Auth.MessageType.MarketplaceUpdate)
             {
                 HandleMarketplaceUpdate(message);
             }
-            else if (message.Type == MessageType.MarketplacePurchase)
+            else if (message.Type == Auth.MessageType.MarketplacePurchase)
             {
                 HandleMarketplacePurchase(message);
             }
@@ -159,7 +159,7 @@ namespace KenshiMultiplayer.Common
             // Create the listing message
             var listingMessage = new GameMessage
             {
-                Type = MessageType.MarketplaceCreate,
+                Type = Auth.MessageType.MarketplaceCreate,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -195,7 +195,7 @@ namespace KenshiMultiplayer.Common
             // Create the purchase message
             var purchaseMessage = new GameMessage
             {
-                Type = MessageType.MarketplacePurchase,
+                Type = Auth.MessageType.MarketplacePurchase,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -234,7 +234,7 @@ namespace KenshiMultiplayer.Common
             // Create the cancel message
             var cancelMessage = new GameMessage
             {
-                Type = MessageType.MarketplaceCancel,
+                Type = Auth.MessageType.MarketplaceCancel,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {

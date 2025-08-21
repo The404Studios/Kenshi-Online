@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace KenshiMultiplayer.Common
 {
     using global::KenshiMultiplayer.Auth;
-    using global::KenshiMultiplayer.Common.NotificationManager;
+   // using global::KenshiMultiplayer.Common.NotificationManager;
     using global::KenshiMultiplayer.Networking;
     using System;
     using System.Collections.Generic;
@@ -18,7 +18,7 @@ namespace KenshiMultiplayer.Common
     namespace KenshiMultiplayer
     {
         public enum FactionType
-        {FileName
+        {
             Major,      // Holy Nation, United Cities, Shek Kingdom
             Minor,      // Smaller factions like Tech Hunters, Flotsam Ninjas
             Bandit,     // Dust Bandits, Starving Bandits, etc.
@@ -504,7 +504,7 @@ namespace KenshiMultiplayer.Common
                 // Send to server
                 var message = new GameMessage
                 {
-                    Type = MessageType.FactionCreate,
+                    Type = Auth.MessageType.FactionCreate,
                     PlayerId = client.CurrentUsername,
                     Data = new Dictionary<string, object>
                 {

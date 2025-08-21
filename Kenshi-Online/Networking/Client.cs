@@ -69,7 +69,7 @@ namespace KenshiMultiplayer.Networking
                 // Create login message
                 var loginMessage = new GameMessage
                 {
-                    Type = MessageType.Login,
+                    Type = Auth.MessageType.Login,
                     Data = new Dictionary<string, object>
                     {
                         { "username", username },
@@ -82,7 +82,7 @@ namespace KenshiMultiplayer.Networking
                 // Wait for response
                 GameMessage response = ReceiveMessageFromServer();
 
-                if (response.Type == MessageType.Authentication &&
+                if (response.Type == Auth.MessageType.Authentication &&
                     response.Data.ContainsKey("success") &&
                     (bool)response.Data["success"] &&
                     response.Data.ContainsKey("token"))
@@ -115,7 +115,7 @@ namespace KenshiMultiplayer.Networking
 
                 var registerMessage = new GameMessage
                 {
-                    Type = MessageType.Register,
+                    Type = Auth.MessageType.Register,
                     Data = new Dictionary<string, object>
                     {
                         { "username", username },
@@ -128,7 +128,7 @@ namespace KenshiMultiplayer.Networking
 
                 GameMessage response = ReceiveMessageFromServer();
 
-                if (response.Type == MessageType.Authentication &&
+                if (response.Type == Auth.MessageType.Authentication &&
                     response.Data.ContainsKey("success") &&
                     (bool)response.Data["success"])
                 {
@@ -342,7 +342,7 @@ namespace KenshiMultiplayer.Networking
                 var position = new Position { X = newX, Y = newY };
                 var message = new GameMessage
                 {
-                    Type = MessageType.Position,
+                    Type = Auth.MessageType.Position,
                     PlayerId = CurrentUsername,
                     Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(position)),
                     SessionId = authToken
@@ -368,7 +368,7 @@ namespace KenshiMultiplayer.Networking
             var combatAction = new CombatAction { TargetId = targetId, Action = actionType };
             var message = new GameMessage
             {
-                Type = MessageType.Combat,
+                Type = Auth.MessageType.Combat,
                 PlayerId = CurrentUsername,
                 Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(combatAction)),
                 SessionId = authToken
@@ -382,7 +382,7 @@ namespace KenshiMultiplayer.Networking
             var inventoryItem = new InventoryItem { ItemName = itemName, Quantity = quantity };
             var message = new GameMessage
             {
-                Type = MessageType.Inventory,
+                Type = Auth.MessageType.Inventory,
                 PlayerId = CurrentUsername,
                 Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(inventoryItem)),
                 SessionId = authToken
@@ -396,7 +396,7 @@ namespace KenshiMultiplayer.Networking
             var healthStatus = new HealthStatus { CurrentHealth = currentHealth, MaxHealth = maxHealth };
             var message = new GameMessage
             {
-                Type = MessageType.Health,
+                Type = Auth.MessageType.Health,
                 PlayerId = CurrentUsername,
                 Data = JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(healthStatus)),
                 SessionId = authToken
@@ -439,19 +439,19 @@ namespace KenshiMultiplayer.Networking
         {
             switch (message.Type)
             {
-                case MessageType.Position:
+                case Auth.MessageType.Position:
                     var position = JsonSerializer.Deserialize<Position>(JsonSerializer.Serialize(message.Data));
                     // Handle position update
                     break;
-                case MessageType.Inventory:
+                case Auth.MessageType.Inventory:
                     var item = JsonSerializer.Deserialize<InventoryItem>(JsonSerializer.Serialize(message.Data));
                     Console.WriteLine($"Player {message.PlayerId} has item: {item.ItemName} x{item.Quantity}");
                     break;
-                case MessageType.Combat:
+                case Auth.MessageType.Combat:
                     var combatAction = JsonSerializer.Deserialize<CombatAction>(JsonSerializer.Serialize(message.Data));
                     Console.WriteLine($"Player {message.PlayerId} performs {combatAction.Action} on {combatAction.TargetId}");
                     break;
-                case MessageType.Health:
+                case Auth.MessageType.Health:
                     var health = JsonSerializer.Deserialize<HealthStatus>(JsonSerializer.Serialize(message.Data));
                     Console.WriteLine($"Player {message.PlayerId} health: {health.CurrentHealth}/{health.MaxHealth}");
                     break;

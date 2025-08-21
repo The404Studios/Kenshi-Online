@@ -166,7 +166,7 @@ namespace KenshiMultiplayer.Common.QuestManager
             dataFilePath = Path.Combine(dataDirectory, "quests.json");
             Directory.CreateDirectory(dataDirectory);
 
-            LoadData();
+            LoadData(GetPlayerQuests(), CompletedQuests, DailyQuests);
             InitializeQuests();
 
             if (client != null)
@@ -194,7 +194,16 @@ namespace KenshiMultiplayer.Common.QuestManager
             });
         }
 
-        private void LoadData()
+        private Dictionary<string, List<Quest>> GetPlayerQuests()
+        {
+            return playerQuests;
+        }
+
+        private Dictionary<string, List<Quest>> CompletedQuests => completedQuests;
+
+        private Dictionary<string, List<DailyQuest>> DailyQuests => dailyQuests;
+
+        private void LoadData(Dictionary<string, List<Quest>> playerQuests, Dictionary<string, List<Quest>> completedQuests, Dictionary<string, List<DailyQuest>> dailyQuests)
         {
             try
             {
@@ -372,7 +381,7 @@ namespace KenshiMultiplayer.Common.QuestManager
             // Send to server
             var message = new GameMessage
             {
-                Type = MessageType.QuestAccept,
+                Type = Auth.MessageType.QuestAccept,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -417,7 +426,7 @@ namespace KenshiMultiplayer.Common.QuestManager
             // Send to server
             var message = new GameMessage
             {
-                Type = MessageType.QuestOffer,
+                Type = Auth.MessageType.QuestOffer,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -472,7 +481,7 @@ namespace KenshiMultiplayer.Common.QuestManager
             // Send to server
             var message = new GameMessage
             {
-                Type = MessageType.QuestUpdate,
+                Type = Auth.MessageType.QuestUpdate,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -529,7 +538,7 @@ namespace KenshiMultiplayer.Common.QuestManager
             // Send to server
             var message = new GameMessage
             {
-                Type = MessageType.QuestComplete,
+                Type = Auth.MessageType.QuestComplete,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -570,7 +579,7 @@ namespace KenshiMultiplayer.Common.QuestManager
             // Send to server
             var message = new GameMessage
             {
-                Type = MessageType.QuestDecline,
+                Type = Auth.MessageType.QuestDecline,
                 PlayerId = client.CurrentUsername,
                 Data = new Dictionary<string, object>
                 {
@@ -996,13 +1005,13 @@ namespace KenshiMultiplayer.Common.QuestManager
         {
             switch (message.Type)
             {
-                case MessageType.QuestOffer:
+                case Auth.MessageType.QuestOffer:
                     HandleQuestOffer(message);
                     break;
-                case MessageType.QuestUpdate:
+                case Auth.MessageType.QuestUpdate:
                     HandleQuestUpdate(message);
                     break;
-                case MessageType.QuestComplete:
+                case Auth.MessageType.QuestComplete:
                     HandleQuestComplete(message);
                     break;
             }

@@ -1,5 +1,6 @@
 ﻿using KenshiMultiplayer.Auth;
 using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace KenshiMultiplayer.Common.NotificationManager
+namespace KenshiMultiplayer.Common
 {
     public enum NotificationType
     {
@@ -206,7 +207,7 @@ namespace KenshiMultiplayer.Common.NotificationManager
             client.MessageReceived += (sender, msg) => {
                 switch (msg.Type)
                 {
-                    case MessageType.FriendRequest:
+                    case Auth.MessageType.FriendRequest:
                         CreateNotification(
                             NotificationType.FriendRequest,
                             "Friend Request",
@@ -231,7 +232,7 @@ namespace KenshiMultiplayer.Common.NotificationManager
                         );
                         break;
 
-                    case MessageType.PartyInvite:
+                    case Auth.MessageType.PartyInvite:
                         if (msg.Data.TryGetValue("partyName", out var partyName))
                         {
                             CreateNotification(
@@ -285,7 +286,7 @@ namespace KenshiMultiplayer.Common.NotificationManager
                         );
                         break;
 
-                    case MessageType.CombatAction:
+                    case Auth.MessageType.CombatAction:
                         if (msg.Data.ContainsKey("targetId") && msg.Data["targetId"].ToString() == client.CurrentUsername)
                         {
                             CreateNotification(

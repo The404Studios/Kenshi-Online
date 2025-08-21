@@ -87,7 +87,8 @@ namespace KenshiMultiplayer.Common
         // Time control
         TimeSync,
         PauseRequest,
-        SpeedChangeRequest
+        SpeedChangeRequest,
+        BuildingPlace
     }
 
     public class NetworkMessage

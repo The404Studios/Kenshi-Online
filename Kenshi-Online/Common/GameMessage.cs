@@ -77,7 +77,7 @@ namespace KenshiMultiplayer.Common
         // Create a new acknowledgment message
         public GameMessage CreateAck()
         {
-            return new GameMessage(MessageType.Acknowledgment, PlayerId)
+            return new GameMessage(Auth.MessageType.Acknowledgment, PlayerId)
             {
                 AckId = MessageId,
                 LobbyId = LobbyId,
@@ -88,7 +88,7 @@ namespace KenshiMultiplayer.Common
         // Create a batch message containing this message and others
         public GameMessage CreateBatch(List<GameMessage> additionalMessages)
         {
-            GameMessage batch = new GameMessage(MessageType.Batch, PlayerId)
+            GameMessage batch = new GameMessage(Auth.MessageType.Batch, PlayerId)
             {
                 IsBatch = true,
                 LobbyId = LobbyId,
@@ -123,7 +123,7 @@ namespace KenshiMultiplayer.Common
                 return false;
 
             // Acknowledgment validation
-            if (Type == MessageType.Acknowledgment && string.IsNullOrEmpty(AckId))
+            if (Type == Auth.MessageType.Acknowledgment && string.IsNullOrEmpty(AckId))
                 return false;
 
             return true;

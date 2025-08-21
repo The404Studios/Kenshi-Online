@@ -1,6 +1,8 @@
 ﻿using KenshiMultiplayer.Auth;
 using KenshiMultiplayer.Common;
 using KenshiMultiplayer.Networking.Inventory;
+using KenshiMultiplayer.Networking.Player;
+using KenshiMultiplayer.Utility;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -68,7 +70,7 @@ namespace KenshiMultiplayer.Networking
                         GameMessage message = GameMessage.FromJson(jsonMessage);
 
                         // Handle authentication
-                        if (message.Type == MessageType.Login)
+                        if (message.Type == Auth.MessageType.Login)
                         {
                             HandleLogin(message, client);
                             if (message.Data.ContainsKey("username"))
@@ -76,7 +78,7 @@ namespace KenshiMultiplayer.Networking
                                 authenticatedUser = message.Data["username"].ToString();
                             }
                         }
-                        else if (message.Type == MessageType.Register)
+                        else if (message.Type == Auth.MessageType.Register)
                         {
                             HandleRegistration(message, client);
                         }
@@ -116,13 +118,13 @@ namespace KenshiMultiplayer.Networking
                             // Handle various message types
                             switch (message.Type)
                             {
-                                case MessageType.Chat:
+                                case Auth.MessageType.Chat:
                                     HandleChatMessage(message, client);
                                     break;
-                                case MessageType.Position:
-                                case MessageType.Inventory:
-                                case MessageType.Combat:
-                                case MessageType.Health:
+                                case Auth.MessageType.Position:
+                                case Auth.MessageType.Inventory:
+                                case Auth.MessageType.Combat:
+                                case Auth.MessageType.Health:
                                     // Broadcast to other clients
                                     if (ValidateMessage(message))
                                     {
@@ -181,7 +183,7 @@ namespace KenshiMultiplayer.Networking
 
                 var response = new GameMessage
                 {
-                    Type = MessageType.Authentication,
+                    Type = Auth.MessageType.Authentication,
                     Data = new Dictionary<string, object>
                     {
                         { "success", true },
@@ -197,7 +199,7 @@ namespace KenshiMultiplayer.Networking
             {
                 var response = new GameMessage
                 {
-                    Type = MessageType.Authentication,
+                    Type = Auth.MessageType.Authentication,
                     Data = new Dictionary<string, object>
                     {
                         { "success", false },
@@ -220,7 +222,7 @@ namespace KenshiMultiplayer.Networking
 
             var response = new GameMessage
             {
-                Type = MessageType.Authentication,
+                Type = Auth.MessageType.Authentication,
                 Data = new Dictionary<string, object>
                 {
                     { "success", success },
@@ -345,11 +347,11 @@ namespace KenshiMultiplayer.Networking
         {
             switch (message.Type)
             {
-                case MessageType.Position:
-                case MessageType.Inventory:
-                case MessageType.Combat:
-                case MessageType.Health:
-                case MessageType.Chat:
+                case Auth.MessageType.Position:
+                case Auth.MessageType.Inventory:
+                case Auth.MessageType.Combat:
+                case Auth.MessageType.Health:
+                case Auth.MessageType.Chat:
                     return true;
                 default:
                     return false;
@@ -360,7 +362,7 @@ namespace KenshiMultiplayer.Networking
         {
             var response = new GameMessage
             {
-                Type = MessageType.Error,
+                Type = Auth.MessageType.Error,
                 Data = new Dictionary<string, object> { { "message", errorMessage } }
             };
 
@@ -405,7 +407,7 @@ namespace KenshiMultiplayer.Networking
 
                 var broadcastMessage = new GameMessage
                 {
-                    Type = MessageType.Chat,
+                    Type = Auth.MessageType.Chat,
                     PlayerId = username,
                     Data = new Dictionary<string, object>
                     {
@@ -580,7 +582,7 @@ namespace KenshiMultiplayer.Networking
         {
             var systemMessage = new GameMessage
             {
-                Type = MessageType.SystemMessage,
+                Type = Auth.MessageType.SystemMessage,
                 PlayerId = "SYSTEM",
                 Data = new Dictionary<string, object> { { "message", message } }
             };

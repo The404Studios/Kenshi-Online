@@ -8,6 +8,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using KenshiMultiplayer.Common;
+using KenshiMultiplayer.Auth;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
 
 namespace KenshiMultiplayer
 {

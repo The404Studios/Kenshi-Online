@@ -1,4 +1,7 @@
 ﻿using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Common;
+using KenshiMultiplayer.Auth;
+using KenshiMultiplayer.Utility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
