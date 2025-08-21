@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Utility
 {
     public class CombatAction
     {

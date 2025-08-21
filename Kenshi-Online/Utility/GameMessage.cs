@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Utility
 {
     public class GameMessage
     {

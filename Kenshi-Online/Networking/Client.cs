@@ -6,8 +6,11 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Networking
 {
     public class EnhancedClient
     {

@@ -1,4 +1,8 @@
-﻿namespace KenshiMultiplayer
+﻿using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Data;
+
+namespace KenshiMultiplayer.Utility
 {
     public static class MessageType
     {

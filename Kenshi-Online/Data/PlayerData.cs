@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Data
 {
     public class PlayerData
     {

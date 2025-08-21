@@ -1,6 +1,9 @@
 ﻿using System;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Networking
 {
     public class Position
     {

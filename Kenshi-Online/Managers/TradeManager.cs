@@ -4,8 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Managers
 {
     public enum TradeStatus
     {

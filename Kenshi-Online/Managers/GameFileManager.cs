@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Managers
 {
     public class GameFileManager
     {

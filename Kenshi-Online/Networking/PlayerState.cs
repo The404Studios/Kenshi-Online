@@ -1,4 +1,8 @@
-﻿namespace KenshiMultiplayer
+﻿using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Data;
+
+namespace KenshiMultiplayer.Networking
 {
     public enum PlayerState
     {

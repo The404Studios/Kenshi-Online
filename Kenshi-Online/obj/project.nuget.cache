@@ -1,20 +1,20 @@
 {
   "version": 2,
-  "dgSpecHash": "m8FPrOfG5dg=",
+  "dgSpecHash": "P/IVWWh7bwc=",
   "success": true,
   "projectFilePath": "C:\\Users\\thewi\\Documents\\GitHub\\Kenshi-Online\\Kenshi-Online\\KenshiMultiplayer.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\thewi\\.nuget\\packages\\fasm.net\\1.70.3\\fasm.net.1.70.3.nupkg.sha512",
     "C:\\Users\\thewi\\.nuget\\packages\\memorysharp\\1.2.0\\memorysharp.1.2.0.nupkg.sha512",
     "C:\\Users\\thewi\\.nuget\\packages\\microsoft.csharp\\4.5.0\\microsoft.csharp.4.5.0.nupkg.sha512",
-    "C:\\Users\\thewi\\.nuget\\packages\\microsoft.identitymodel.abstractions\\6.32.1\\microsoft.identitymodel.abstractions.6.32.1.nupkg.sha512",
-    "C:\\Users\\thewi\\.nuget\\packages\\microsoft.identitymodel.jsonwebtokens\\6.32.1\\microsoft.identitymodel.jsonwebtokens.6.32.1.nupkg.sha512",
-    "C:\\Users\\thewi\\.nuget\\packages\\microsoft.identitymodel.logging\\6.32.1\\microsoft.identitymodel.logging.6.32.1.nupkg.sha512",
-    "C:\\Users\\thewi\\.nuget\\packages\\microsoft.identitymodel.tokens\\6.32.1\\microsoft.identitymodel.tokens.6.32.1.nupkg.sha512",
+    "C:\\Users\\thewi\\.nuget\\packages\\microsoft.identitymodel.abstractions\\6.34.0\\microsoft.identitymodel.abstractions.6.34.0.nupkg.sha512",
+    "C:\\Users\\thewi\\.nuget\\packages\\microsoft.identitymodel.jsonwebtokens\\6.34.0\\microsoft.identitymodel.jsonwebtokens.6.34.0.nupkg.sha512",
+    "C:\\Users\\thewi\\.nuget\\packages\\microsoft.identitymodel.logging\\6.34.0\\microsoft.identitymodel.logging.6.34.0.nupkg.sha512",
+    "C:\\Users\\thewi\\.nuget\\packages\\microsoft.identitymodel.tokens\\6.34.0\\microsoft.identitymodel.tokens.6.34.0.nupkg.sha512",
     "C:\\Users\\thewi\\.nuget\\packages\\microsoft.netcore.platforms\\1.1.0\\microsoft.netcore.platforms.1.1.0.nupkg.sha512",
     "C:\\Users\\thewi\\.nuget\\packages\\microsoft.netcore.targets\\1.1.0\\microsoft.netcore.targets.1.1.0.nupkg.sha512",
     "C:\\Users\\thewi\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512",
-    "C:\\Users\\thewi\\.nuget\\packages\\system.identitymodel.tokens.jwt\\6.32.1\\system.identitymodel.tokens.jwt.6.32.1.nupkg.sha512",
+    "C:\\Users\\thewi\\.nuget\\packages\\system.identitymodel.tokens.jwt\\6.34.0\\system.identitymodel.tokens.jwt.6.34.0.nupkg.sha512",
     "C:\\Users\\thewi\\.nuget\\packages\\system.runtime\\4.3.0\\system.runtime.4.3.0.nupkg.sha512",
     "C:\\Users\\thewi\\.nuget\\packages\\system.security.cryptography.cng\\4.5.0\\system.security.cryptography.cng.4.5.0.nupkg.sha512",
     "C:\\Users\\thewi\\.nuget\\packages\\system.text.encoding\\4.3.0\\system.text.encoding.4.3.0.nupkg.sha512",
@@ -22,16 +22,6 @@
     "C:\\Users\\thewi\\.nuget\\packages\\system.text.json\\8.0.5\\system.text.json.8.0.5.nupkg.sha512"
   ],
   "logs": [
-    {
-      "code": "NU1902",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Package 'System.IdentityModel.Tokens.Jwt' 6.32.1 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-59j7-ghrg-fj52",
-      "libraryId": "System.IdentityModel.Tokens.Jwt",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    },
     {
       "code": "NU1701",
       "level": "Warning",

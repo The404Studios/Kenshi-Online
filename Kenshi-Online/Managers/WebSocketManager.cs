@@ -6,8 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Text.Json;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Managers
 {
     public class WebSocketManager
     {

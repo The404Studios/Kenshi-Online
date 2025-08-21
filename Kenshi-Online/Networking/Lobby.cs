@@ -1,8 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Networking
 {
     public class Lobby
     {

@@ -61,7 +61,7 @@
             },
             "Microsoft.IdentityModel.Tokens": {
               "target": "Package",
-              "version": "[6.32.1, )"
+              "version": "[6.34.0, )"
             },
             "Newtonsoft.Json": {
               "target": "Package",
@@ -69,7 +69,7 @@
             },
             "System.IdentityModel.Tokens.Jwt": {
               "target": "Package",
-              "version": "[6.32.1, )"
+              "version": "[6.34.0, )"
             },
             "System.Text.Json": {
               "target": "Package",

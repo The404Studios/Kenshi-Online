@@ -5,8 +5,11 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Managers
 {
     public static class AuthManager
     {

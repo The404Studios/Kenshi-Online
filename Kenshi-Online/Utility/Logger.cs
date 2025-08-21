@@ -1,7 +1,10 @@
 ﻿using System;
 using System.IO;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Utility
 {
     public static class Logger
     {

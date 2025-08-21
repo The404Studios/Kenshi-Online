@@ -8,8 +8,11 @@ using System.Text.Json;
 using System.Linq;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Data;
 
-namespace KenshiMultiplayer
+namespace KenshiMultiplayer.Networking
 {
     public class WebUIController
     {
