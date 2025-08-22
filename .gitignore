@@ -1,52 +1,42 @@
-# Prerequisites
-*.d
+# -----------------------------
+# Visual Studio / .NET (C#)
+# -----------------------------
+# VS solution/user state
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+# Build outputs
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+TestResult*/
+*.VisualState.xml
 
-# Linker output
-*.ilk
-*.map
-*.exp
+# Design/build caches
+**/*.cache
+**/*.v2
+**/*.tlog
+**/*.opendb
+**/*.VC.db
+**/*.db
 
-# Precompiled Headers
-*.gch
-*.pch
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+*.nuspec
+project.lock.json
+**/project.assets.json
+artifacts/
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
+# Rider / VS Code (optional)
+.idea/
+.vscode/
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+# OS cruft (safe)
+.DS_Store
+Thumbs.db
