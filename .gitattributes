@@ -1,2 +1,26 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Treat Visual Studio / build artifacts as binary
+*.suo   binary merge=ours
+*.user  binary merge=ours
+*.db    binary merge=ours
+*.cache binary merge=ours
+*.v2    binary merge=ours
+
+# Ignore diffs for compiled objects
+*.dll   binary
+*.exe   binary
+*.pdb   binary
+*.lib   binary
+*.obj   binary
+*.nupkg binary
+
+# Force LF for source code
+*.cs    text eol=lf
+*.csproj text eol=lf
+*.sln   text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+*.xml   text eol=lf
+
