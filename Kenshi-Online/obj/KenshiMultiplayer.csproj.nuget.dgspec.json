@@ -53,7 +53,7 @@
           "dependencies": {
             "Fasm.NET": {
               "target": "Package",
-              "version": "[1.70.3, )"
+              "version": "[1.70.3.2, )"
             },
             "MemorySharp": {
               "target": "Package",
@@ -61,7 +61,7 @@
             },
             "Microsoft.IdentityModel.Tokens": {
               "target": "Package",
-              "version": "[6.32.1, )"
+              "version": "[8.14.0, )"
             },
             "Newtonsoft.Json": {
               "target": "Package",
@@ -69,11 +69,11 @@
             },
             "System.IdentityModel.Tokens.Jwt": {
               "target": "Package",
-              "version": "[6.32.1, )"
+              "version": "[6.34.0, )"
             },
             "System.Text.Json": {
               "target": "Package",
-              "version": "[8.0.5, )"
+              "version": "[9.0.8, )"
             }
           },
           "imports": [
