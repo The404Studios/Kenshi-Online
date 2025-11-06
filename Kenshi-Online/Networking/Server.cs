@@ -13,19 +13,58 @@ namespace KenshiMultiplayer.Networking
 {
     public class EnhancedServer
     {
-        private TcpListener server;
+        private TcpListener? server;
         private List<TcpClient> connectedClients = new List<TcpClient>();
         private Dictionary<string, Lobby> lobbies = new Dictionary<string, Lobby>();
-        private GameFileManager fileManager;
+        private GameFileManager? fileManager;
         private Dictionary<string, string> activeUserSessions = new Dictionary<string, string>(); // Maps authToken to username
+        private bool _isRunning = false;
 
-        public EnhancedServer(string kenshiRootPath)
+        // Events for server program integration
+        public event Action<string>? OnClientConnected;
+        public event Action<string>? OnClientDisconnected;
+        public event Action<string, string>? OnPlayerJoinRequest; // playerId, characterName
+
+        public EnhancedServer(string? kenshiRootPath = null)
         {
-            fileManager = new GameFileManager(kenshiRootPath);
+            if (!string.IsNullOrEmpty(kenshiRootPath))
+            {
+                fileManager = new GameFileManager(kenshiRootPath);
+            }
+        }
+
+        /// <summary>
+        /// Start the server (async wrapper for compatibility)
+        /// </summary>
+        public Task StartServer(int port = 5555)
+        {
+            return Task.Run(() => Start(port));
+        }
+
+        /// <summary>
+        /// Stop the server
+        /// </summary>
+        public void StopServer()
+        {
+            _isRunning = false;
+            server?.Stop();
+
+            foreach (var client in connectedClients.ToArray())
+            {
+                try
+                {
+                    client?.Close();
+                }
+                catch { }
+            }
+
+            connectedClients.Clear();
+            Logger.Log("Server stopped");
         }
 
         public void Start(int port = 5555)
         {
+            _isRunning = true;
             server = new TcpListener(IPAddress.Any, port);
             server.Start();
             Logger.Log($"Enhanced server started on port {port}.");
@@ -36,28 +75,42 @@ namespace KenshiMultiplayer.Networking
             adminThread.Start();
 
             // Main client acceptance loop
-            while (true)
+            while (_isRunning)
             {
-                TcpClient client = server.AcceptTcpClient();
-                connectedClients.Add(client);
-                Logger.Log("Client connected.");
+                try
+                {
+                    TcpClient client = server.AcceptTcpClient();
+                    string clientId = Guid.NewGuid().ToString();
+                    connectedClients.Add(client);
+                    Logger.Log($"Client connected: {clientId}");
 
-                Thread clientThread = new Thread(() => HandleClient(client));
-                clientThread.IsBackground = true;
-                clientThread.Start();
+                    // Trigger event
+                    OnClientConnected?.Invoke(clientId);
+
+                    Thread clientThread = new Thread(() => HandleClient(client, clientId));
+                    clientThread.IsBackground = true;
+                    clientThread.Start();
+                }
+                catch (Exception ex)
+                {
+                    if (_isRunning)
+                    {
+                        Logger.Log($"Error accepting client: {ex.Message}");
+                    }
+                }
             }
         }
 
-        private void HandleClient(TcpClient client)
+        private void HandleClient(TcpClient client, string clientId)
         {
             NetworkStream stream = client.GetStream();
             byte[] buffer = new byte[16384]; // Larger buffer for file transfers
-            string authenticatedUser = null;
-            string authToken = null;
+            string? authenticatedUser = null;
+            string? authToken = null;
 
             try
             {
-                while (true)
+                while (_isRunning)
                 {
                     int bytesRead = stream.Read(buffer, 0, buffer.Length);
                     if (bytesRead > 0)

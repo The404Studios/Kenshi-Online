@@ -53,7 +53,49 @@ namespace KenshiMultiplayer.Game
         private const string LOG_PREFIX = "[ModInjector] ";
 
         /// <summary>
-        /// Inject the Kenshi Online mod DLL into Kenshi process
+        /// Inject the Kenshi Online mod DLL into Kenshi process by process ID
+        /// </summary>
+        public bool InjectMod(int processId, string dllPath)
+        {
+            try
+            {
+                Logger.Log(LOG_PREFIX + "Starting mod injection...");
+
+                // Validate DLL path
+                if (!File.Exists(dllPath))
+                {
+                    Logger.Log(LOG_PREFIX + $"ERROR: DLL not found at {dllPath}");
+                    return false;
+                }
+
+                Logger.Log(LOG_PREFIX + $"DLL path: {dllPath}");
+                Logger.Log(LOG_PREFIX + $"Target process ID: {processId}");
+
+                // Open process
+                IntPtr processHandle = OpenProcess(
+                    PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION |
+                    PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ,
+                    false, processId);
+
+                if (processHandle == IntPtr.Zero)
+                {
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to open process! Run as administrator.");
+                    return false;
+                }
+
+                Logger.Log(LOG_PREFIX + "Process opened successfully");
+
+                return PerformInjection(processHandle, dllPath);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"ERROR during injection: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Inject the Kenshi Online mod DLL into Kenshi process (finds by name)
         /// </summary>
         public bool InjectMod(string dllPath)
         {
@@ -86,20 +128,22 @@ namespace KenshiMultiplayer.Game
                 Process targetProcess = processes[0];
                 Logger.Log(LOG_PREFIX + $"Found Kenshi process (PID: {targetProcess.Id})");
 
-                // Open process
-                IntPtr processHandle = OpenProcess(
-                    PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION |
-                    PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ,
-                    false, targetProcess.Id);
+                return InjectMod(targetProcess.Id, dllPath);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"ERROR during injection: {ex.Message}");
+                return false;
+            }
+        }
 
-                if (processHandle == IntPtr.Zero)
-                {
-                    Logger.Log(LOG_PREFIX + "ERROR: Failed to open process! Run as administrator.");
-                    return false;
-                }
-
-                Logger.Log(LOG_PREFIX + "Process opened successfully");
-
+        /// <summary>
+        /// Perform the actual DLL injection
+        /// </summary>
+        private bool PerformInjection(IntPtr processHandle, string dllPath)
+        {
+            try
+            {
                 // Get LoadLibraryA address
                 IntPtr loadLibraryAddr = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
                 if (loadLibraryAddr == IntPtr.Zero)
@@ -178,7 +222,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                Logger.Log(LOG_PREFIX + $"ERROR during injection: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in PerformInjection: {ex.Message}");
                 return false;
             }
         }
