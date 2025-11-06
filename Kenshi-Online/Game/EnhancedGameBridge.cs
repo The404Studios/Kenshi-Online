@@ -48,7 +48,7 @@ namespace KenshiMultiplayer.Game
         private IntPtr processHandle;
         private long baseAddress;
         private bool isConnected;
-        private Logger logger = new Logger("EnhancedGameBridge");
+        private const string LOG_PREFIX = "[EnhancedGameBridge] ";
 
         // Caches
         private Dictionary<int, Character> characterCache = new Dictionary<int, Character>();
@@ -65,7 +65,7 @@ namespace KenshiMultiplayer.Game
         {
             try
             {
-                logger.Log("Connecting to Kenshi...");
+                Logger.Log(LOG_PREFIX + "Connecting to Kenshi...");
 
                 // Find Kenshi process
                 var processes = Process.GetProcessesByName("kenshi_x64");
@@ -76,34 +76,34 @@ namespace KenshiMultiplayer.Game
 
                 if (processes.Length == 0)
                 {
-                    logger.Log("ERROR: Kenshi process not found!");
+                    Logger.Log(LOG_PREFIX + "ERROR: Kenshi process not found!");
                     return false;
                 }
 
                 kenshiProcess = processes[0];
-                logger.Log($"Found Kenshi process (PID: {kenshiProcess.Id})");
+                Logger.Log(LOG_PREFIX + $"Found Kenshi process (PID: {kenshiProcess.Id})");
 
                 // Open process
                 processHandle = OpenProcess(PROCESS_ALL_ACCESS, false, kenshiProcess.Id);
                 if (processHandle == IntPtr.Zero)
                 {
-                    logger.Log("ERROR: Failed to open process!");
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to open process!");
                     return false;
                 }
 
                 // Calculate base address (ASLR)
                 baseAddress = kenshiProcess.MainModule.BaseAddress.ToInt64();
                 KenshiMemory.BaseAddress = baseAddress;
-                logger.Log($"Base address: 0x{baseAddress:X}");
+                Logger.Log(LOG_PREFIX + $"Base address: 0x{baseAddress:X}");
 
                 isConnected = true;
-                logger.Log("Successfully connected to Kenshi!");
+                Logger.Log(LOG_PREFIX + "Successfully connected to Kenshi!");
 
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR connecting: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR connecting: {ex.Message}");
                 return false;
             }
         }
@@ -205,7 +205,7 @@ namespace KenshiMultiplayer.Game
                 if (countBuffer == null) return characters;
 
                 int count = BitConverter.ToInt32(countBuffer, 0);
-                logger.Log($"Found {count} player characters");
+                Logger.Log(LOG_PREFIX + $"Found {count} player characters");
 
                 IntPtr listPtr = ReadPointer(listAddr);
                 if (listPtr == IntPtr.Zero) return characters;
@@ -225,7 +225,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR reading player characters: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR reading player characters: {ex.Message}");
                 return new List<Character>();
             }
         }
@@ -265,7 +265,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR reading all characters: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR reading all characters: {ex.Message}");
                 return new List<Character>();
             }
         }
@@ -313,7 +313,7 @@ namespace KenshiMultiplayer.Game
                         WriteProcessMemory(processHandle, new IntPtr(charPtr.ToInt64() + posXOffset + 4), BitConverter.GetBytes(y), 4, out _);
                         WriteProcessMemory(processHandle, new IntPtr(charPtr.ToInt64() + posXOffset + 8), BitConverter.GetBytes(z), 4, out _);
 
-                        logger.Log($"Updated character {characterId} position to ({x}, {y}, {z})");
+                        Logger.Log(LOG_PREFIX + $"Updated character {characterId} position to ({x}, {y}, {z})");
                         return true;
                     }
                 }
@@ -322,7 +322,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR updating character position: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR updating character position: {ex.Message}");
                 return false;
             }
         }
@@ -358,7 +358,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR updating health: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR updating health: {ex.Message}");
                 return false;
             }
         }
@@ -382,7 +382,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR reading stats: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR reading stats: {ex.Message}");
                 return default;
             }
         }
@@ -420,12 +420,12 @@ namespace KenshiMultiplayer.Game
                     }
                 }
 
-                logger.Log($"Found {factions.Count} factions");
+                Logger.Log(LOG_PREFIX + $"Found {factions.Count} factions");
                 return factions;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR reading factions: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR reading factions: {ex.Message}");
                 return new List<Faction>();
             }
         }
@@ -469,7 +469,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR reading faction relation: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR reading faction relation: {ex.Message}");
                 return 0;
             }
         }
@@ -495,14 +495,14 @@ namespace KenshiMultiplayer.Game
 
                 if (success)
                 {
-                    logger.Log($"Set faction relation: {factionId1} -> {factionId2} = {relation}");
+                    Logger.Log(LOG_PREFIX + $"Set faction relation: {factionId1} -> {factionId2} = {relation}");
                 }
 
                 return success;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR setting faction relation: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR setting faction relation: {ex.Message}");
                 return false;
             }
         }
@@ -568,7 +568,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR reading buildings: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR reading buildings: {ex.Message}");
                 return new List<Building>();
             }
         }
@@ -596,7 +596,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR reading weather: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR reading weather: {ex.Message}");
                 return default;
             }
         }
@@ -632,7 +632,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR reading inventory: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR reading inventory: {ex.Message}");
                 return new List<GameItem>();
             }
         }
@@ -668,13 +668,13 @@ namespace KenshiMultiplayer.Game
                 IntPtr funcAddr = new IntPtr(baseAddress + KenshiMemory.Functions.IssueCommand);
                 CreateRemoteThread(processHandle, IntPtr.Zero, 0, funcAddr, commandAddr, 0, IntPtr.Zero);
 
-                logger.Log($"Issued command {command} to character {characterId}");
+                Logger.Log(LOG_PREFIX + $"Issued command {command} to character {characterId}");
 
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR issuing command: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR issuing command: {ex.Message}");
                 return false;
             }
         }
@@ -693,7 +693,7 @@ namespace KenshiMultiplayer.Game
                 processHandle = IntPtr.Zero;
             }
 
-            logger.Log("Enhanced Game Bridge disposed");
+            Logger.Log(LOG_PREFIX + "Enhanced Game Bridge disposed");
         }
 
         #endregion

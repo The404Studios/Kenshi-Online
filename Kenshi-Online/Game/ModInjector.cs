@@ -50,7 +50,7 @@ namespace KenshiMultiplayer.Game
 
         #endregion
 
-        private Logger logger = new Logger("ModInjector");
+        private const string LOG_PREFIX = "[ModInjector] ";
 
         /// <summary>
         /// Inject the Kenshi Online mod DLL into Kenshi process
@@ -59,16 +59,16 @@ namespace KenshiMultiplayer.Game
         {
             try
             {
-                logger.Log("Starting mod injection...");
+                Logger.Log(LOG_PREFIX + "Starting mod injection...");
 
                 // Validate DLL path
                 if (!File.Exists(dllPath))
                 {
-                    logger.Log($"ERROR: DLL not found at {dllPath}");
+                    Logger.Log(LOG_PREFIX + $"ERROR: DLL not found at {dllPath}");
                     return false;
                 }
 
-                logger.Log($"DLL path: {dllPath}");
+                Logger.Log(LOG_PREFIX + $"DLL path: {dllPath}");
 
                 // Find Kenshi process
                 Process[] processes = Process.GetProcessesByName("kenshi_x64");
@@ -79,12 +79,12 @@ namespace KenshiMultiplayer.Game
 
                 if (processes.Length == 0)
                 {
-                    logger.Log("ERROR: Kenshi process not found!");
+                    Logger.Log(LOG_PREFIX + "ERROR: Kenshi process not found!");
                     return false;
                 }
 
                 Process targetProcess = processes[0];
-                logger.Log($"Found Kenshi process (PID: {targetProcess.Id})");
+                Logger.Log(LOG_PREFIX + $"Found Kenshi process (PID: {targetProcess.Id})");
 
                 // Open process
                 IntPtr processHandle = OpenProcess(
@@ -94,22 +94,22 @@ namespace KenshiMultiplayer.Game
 
                 if (processHandle == IntPtr.Zero)
                 {
-                    logger.Log("ERROR: Failed to open process! Run as administrator.");
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to open process! Run as administrator.");
                     return false;
                 }
 
-                logger.Log("Process opened successfully");
+                Logger.Log(LOG_PREFIX + "Process opened successfully");
 
                 // Get LoadLibraryA address
                 IntPtr loadLibraryAddr = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
                 if (loadLibraryAddr == IntPtr.Zero)
                 {
-                    logger.Log("ERROR: Failed to get LoadLibraryA address!");
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to get LoadLibraryA address!");
                     CloseHandle(processHandle);
                     return false;
                 }
 
-                logger.Log($"LoadLibraryA address: 0x{loadLibraryAddr.ToInt64():X}");
+                Logger.Log(LOG_PREFIX + $"LoadLibraryA address: 0x{loadLibraryAddr.ToInt64():X}");
 
                 // Allocate memory for DLL path in target process
                 IntPtr allocMemAddress = VirtualAllocEx(
@@ -121,12 +121,12 @@ namespace KenshiMultiplayer.Game
 
                 if (allocMemAddress == IntPtr.Zero)
                 {
-                    logger.Log("ERROR: Failed to allocate memory in target process!");
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to allocate memory in target process!");
                     CloseHandle(processHandle);
                     return false;
                 }
 
-                logger.Log($"Allocated memory at: 0x{allocMemAddress.ToInt64():X}");
+                Logger.Log(LOG_PREFIX + $"Allocated memory at: 0x{allocMemAddress.ToInt64():X}");
 
                 // Write DLL path to allocated memory
                 byte[] dllPathBytes = Encoding.ASCII.GetBytes(dllPath);
@@ -139,12 +139,12 @@ namespace KenshiMultiplayer.Game
 
                 if (!writeSuccess)
                 {
-                    logger.Log("ERROR: Failed to write DLL path to process memory!");
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to write DLL path to process memory!");
                     CloseHandle(processHandle);
                     return false;
                 }
 
-                logger.Log("DLL path written to process memory");
+                Logger.Log(LOG_PREFIX + "DLL path written to process memory");
 
                 // Create remote thread to call LoadLibraryA
                 IntPtr threadHandle = CreateRemoteThread(
@@ -158,27 +158,27 @@ namespace KenshiMultiplayer.Game
 
                 if (threadHandle == IntPtr.Zero)
                 {
-                    logger.Log("ERROR: Failed to create remote thread!");
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to create remote thread!");
                     CloseHandle(processHandle);
                     return false;
                 }
 
-                logger.Log("Remote thread created successfully");
+                Logger.Log(LOG_PREFIX + "Remote thread created successfully");
 
                 // Wait for thread to complete
                 WaitForSingleObject(threadHandle, 5000);
-                logger.Log("Thread execution completed");
+                Logger.Log(LOG_PREFIX + "Thread execution completed");
 
                 // Cleanup
                 CloseHandle(threadHandle);
                 CloseHandle(processHandle);
 
-                logger.Log("Mod injection successful!");
+                Logger.Log(LOG_PREFIX + "Mod injection successful!");
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR during injection: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR during injection: {ex.Message}");
                 return false;
             }
         }
@@ -225,7 +225,7 @@ namespace KenshiMultiplayer.Game
         {
             try
             {
-                logger.Log("Building Kenshi Online mod...");
+                Logger.Log(LOG_PREFIX + "Building Kenshi Online mod...");
 
                 // Check if CMake is available
                 ProcessStartInfo cmakeInfo = new ProcessStartInfo
@@ -241,7 +241,7 @@ namespace KenshiMultiplayer.Game
                 Process cmakeProcess = Process.Start(cmakeInfo);
                 if (cmakeProcess == null)
                 {
-                    logger.Log("ERROR: Failed to start CMake. Make sure CMake is installed.");
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to start CMake. Make sure CMake is installed.");
                     return false;
                 }
 
@@ -249,11 +249,11 @@ namespace KenshiMultiplayer.Game
 
                 if (cmakeProcess.ExitCode != 0)
                 {
-                    logger.Log("ERROR: CMake configuration failed!");
+                    Logger.Log(LOG_PREFIX + "ERROR: CMake configuration failed!");
                     return false;
                 }
 
-                logger.Log("CMake configuration successful");
+                Logger.Log(LOG_PREFIX + "CMake configuration successful");
 
                 // Build with CMake
                 ProcessStartInfo buildInfo = new ProcessStartInfo
@@ -269,7 +269,7 @@ namespace KenshiMultiplayer.Game
                 Process buildProcess = Process.Start(buildInfo);
                 if (buildProcess == null)
                 {
-                    logger.Log("ERROR: Failed to start build process.");
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to start build process.");
                     return false;
                 }
 
@@ -277,16 +277,16 @@ namespace KenshiMultiplayer.Game
 
                 if (buildProcess.ExitCode != 0)
                 {
-                    logger.Log("ERROR: Build failed!");
+                    Logger.Log(LOG_PREFIX + "ERROR: Build failed!");
                     return false;
                 }
 
-                logger.Log("Mod build successful!");
+                Logger.Log(LOG_PREFIX + "Mod build successful!");
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR building mod: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR building mod: {ex.Message}");
                 return false;
             }
         }

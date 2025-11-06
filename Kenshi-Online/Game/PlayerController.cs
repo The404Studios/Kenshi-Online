@@ -16,12 +16,12 @@ namespace KenshiMultiplayer.Game
         private readonly KenshiGameBridge gameBridge;
         private readonly Dictionary<string, PlayerData> players = new Dictionary<string, PlayerData>();
         private readonly Dictionary<string, PlayerControlState> controlStates = new Dictionary<string, PlayerControlState>();
-        private readonly Logger logger = new Logger("PlayerController");
+        private const string LOG_PREFIX = "[PlayerController] ";
 
         public PlayerController(KenshiGameBridge gameBridge)
         {
             this.gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
-            logger.Log("PlayerController initialized");
+            Logger.Log(LOG_PREFIX + "PlayerController initialized");
         }
 
         #region Player Registration
@@ -35,7 +35,7 @@ namespace KenshiMultiplayer.Game
             {
                 if (players.ContainsKey(playerId))
                 {
-                    logger.Log($"Player {playerId} already registered, updating data...");
+                    Logger.Log(LOG_PREFIX + $"Player {playerId} already registered, updating data...");
                     players[playerId] = playerData;
                     return true;
                 }
@@ -48,12 +48,12 @@ namespace KenshiMultiplayer.Game
                     LastUpdateTime = DateTime.UtcNow
                 };
 
-                logger.Log($"Registered player {playerId} ({playerData.DisplayName})");
+                Logger.Log(LOG_PREFIX + $"Registered player {playerId} ({playerData.DisplayName})");
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR registering player: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR registering player: {ex.Message}");
                 return false;
             }
         }
@@ -70,12 +70,12 @@ namespace KenshiMultiplayer.Game
 
                 players.Remove(playerId);
                 controlStates.Remove(playerId);
-                logger.Log($"Unregistered player {playerId}");
+                Logger.Log(LOG_PREFIX + $"Unregistered player {playerId}");
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR unregistering player: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR unregistering player: {ex.Message}");
                 return false;
             }
         }
@@ -94,7 +94,7 @@ namespace KenshiMultiplayer.Game
 
             try
             {
-                logger.Log($"Moving player {playerId} to {targetPosition.X}, {targetPosition.Y}, {targetPosition.Z}");
+                Logger.Log(LOG_PREFIX + $"Moving player {playerId} to {targetPosition.X}, {targetPosition.Y}, {targetPosition.Z}");
 
                 // Update player data
                 var playerData = players[playerId];
@@ -114,7 +114,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR moving player: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR moving player: {ex.Message}");
                 return false;
             }
         }
@@ -129,7 +129,7 @@ namespace KenshiMultiplayer.Game
 
             try
             {
-                logger.Log($"Player {playerId} following {targetPlayerId}");
+                Logger.Log(LOG_PREFIX + $"Player {playerId} following {targetPlayerId}");
 
                 var playerData = players[playerId];
                 playerData.CurrentState = PlayerState.Moving;
@@ -147,7 +147,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR in follow command: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in follow command: {ex.Message}");
                 return false;
             }
         }
@@ -172,7 +172,7 @@ namespace KenshiMultiplayer.Game
                     playerData.TargetId = null;
 
                     UpdateControlState(playerId);
-                    logger.Log($"Stopped player {playerId}");
+                    Logger.Log(LOG_PREFIX + $"Stopped player {playerId}");
                     return true;
                 }
 
@@ -180,7 +180,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR stopping player: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR stopping player: {ex.Message}");
                 return false;
             }
         }
@@ -199,7 +199,7 @@ namespace KenshiMultiplayer.Game
 
             try
             {
-                logger.Log($"Player {playerId} attacking {targetId}");
+                Logger.Log(LOG_PREFIX + $"Player {playerId} attacking {targetId}");
 
                 var playerData = players[playerId];
                 playerData.CurrentState = PlayerState.Fighting;
@@ -217,7 +217,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR in attack command: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in attack command: {ex.Message}");
                 return false;
             }
         }
@@ -236,13 +236,13 @@ namespace KenshiMultiplayer.Game
                 playerData.CurrentState = PlayerState.Fighting;
 
                 // Set defensive stance
-                logger.Log($"Player {playerId} entering defensive stance");
+                Logger.Log(LOG_PREFIX + $"Player {playerId} entering defensive stance");
                 UpdateControlState(playerId);
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR in defend command: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in defend command: {ex.Message}");
                 return false;
             }
         }
@@ -261,7 +261,7 @@ namespace KenshiMultiplayer.Game
 
             try
             {
-                logger.Log($"Player {playerId} picking up item {itemId}");
+                Logger.Log(LOG_PREFIX + $"Player {playerId} picking up item {itemId}");
 
                 var playerData = players[playerId];
                 playerData.CurrentState = PlayerState.Looting;
@@ -278,7 +278,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR in pickup command: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in pickup command: {ex.Message}");
                 return false;
             }
         }
@@ -293,7 +293,7 @@ namespace KenshiMultiplayer.Game
 
             try
             {
-                logger.Log($"Player {playerId} talking to NPC {npcId}");
+                Logger.Log(LOG_PREFIX + $"Player {playerId} talking to NPC {npcId}");
 
                 var playerData = players[playerId];
                 playerData.CurrentState = PlayerState.Talking;
@@ -305,7 +305,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR in talk command: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in talk command: {ex.Message}");
                 return false;
             }
         }
@@ -344,7 +344,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR updating player state: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR updating player state: {ex.Message}");
                 return null;
             }
         }
@@ -393,7 +393,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR setting player health: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR setting player health: {ex.Message}");
                 return false;
             }
         }
@@ -410,7 +410,7 @@ namespace KenshiMultiplayer.Game
             try
             {
                 string squadId = Guid.NewGuid().ToString();
-                logger.Log($"Creating squad {squadId} with {playerIds.Count} players");
+                Logger.Log(LOG_PREFIX + $"Creating squad {squadId} with {playerIds.Count} players");
 
                 foreach (var playerId in playerIds)
                 {
@@ -418,7 +418,7 @@ namespace KenshiMultiplayer.Game
                     {
                         var playerData = players[playerId];
                         // Store squad info (would need to add SquadId to PlayerData)
-                        logger.Log($"Added player {playerId} to squad {squadId}");
+                        Logger.Log(LOG_PREFIX + $"Added player {playerId} to squad {squadId}");
                     }
                 }
 
@@ -427,7 +427,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR creating squad: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR creating squad: {ex.Message}");
                 return null;
             }
         }
@@ -440,12 +440,12 @@ namespace KenshiMultiplayer.Game
             try
             {
                 // Would need squad tracking to implement this fully
-                logger.Log($"Squad {squadId} following {targetPlayerId}");
+                Logger.Log(LOG_PREFIX + $"Squad {squadId} following {targetPlayerId}");
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR in squad follow: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in squad follow: {ex.Message}");
                 return false;
             }
         }
@@ -470,13 +470,13 @@ namespace KenshiMultiplayer.Game
         {
             if (string.IsNullOrEmpty(playerId))
             {
-                logger.Log("ERROR: Player ID is null or empty");
+                Logger.Log(LOG_PREFIX + "ERROR: Player ID is null or empty");
                 return false;
             }
 
             if (!players.ContainsKey(playerId))
             {
-                logger.Log($"ERROR: Player {playerId} not registered");
+                Logger.Log(LOG_PREFIX + $"ERROR: Player {playerId} not registered");
                 return false;
             }
 

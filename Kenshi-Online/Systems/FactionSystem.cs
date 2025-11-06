@@ -17,7 +17,7 @@ namespace KenshiMultiplayer.Systems
         private readonly EnhancedGameBridge gameBridge;
         private readonly Dictionary<int, FactionData> factions = new Dictionary<int, FactionData>();
         private readonly Dictionary<(int, int), int> relations = new Dictionary<(int, int), int>(); // (faction1, faction2) -> relation
-        private readonly Logger logger = new Logger("FactionSystem");
+        private const string LOG_PREFIX = "[FactionSystem] ";
         private readonly string savePath;
 
         private const string FACTIONS_FILE = "factions.json";
@@ -44,7 +44,7 @@ namespace KenshiMultiplayer.Systems
 
             try
             {
-                logger.Log("Syncing factions from game...");
+                Logger.Log(LOG_PREFIX + "Syncing factions from game...");
 
                 var gameFactions = gameBridge.GetAllFactions();
 
@@ -65,7 +65,7 @@ namespace KenshiMultiplayer.Systems
                     factions[gameFaction.FactionID] = factionData;
                 }
 
-                logger.Log($"Synced {factions.Count} factions from game");
+                Logger.Log(LOG_PREFIX + $"Synced {factions.Count} factions from game");
 
                 // Sync relations
                 SyncRelationsFromGame();
@@ -75,7 +75,7 @@ namespace KenshiMultiplayer.Systems
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR syncing factions: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR syncing factions: {ex.Message}");
             }
         }
 
@@ -99,11 +99,11 @@ namespace KenshiMultiplayer.Systems
                     }
                 }
 
-                logger.Log($"Synced {relations.Count} faction relations");
+                Logger.Log(LOG_PREFIX + $"Synced {relations.Count} faction relations");
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR syncing relations: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR syncing relations: {ex.Message}");
             }
         }
 
@@ -162,14 +162,14 @@ namespace KenshiMultiplayer.Systems
 
                 SaveToDisk();
 
-                logger.Log($"Created player faction: {name} (ID: {newId})");
+                Logger.Log(LOG_PREFIX + $"Created player faction: {name} (ID: {newId})");
                 OnFactionCreated?.Invoke(faction);
 
                 return faction;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR creating faction: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR creating faction: {ex.Message}");
                 return null;
             }
         }
@@ -192,14 +192,14 @@ namespace KenshiMultiplayer.Systems
 
                 SaveToDisk();
 
-                logger.Log($"Added {playerId} to faction {faction.Name}");
+                Logger.Log(LOG_PREFIX + $"Added {playerId} to faction {faction.Name}");
                 OnMemberAdded?.Invoke(factionId, playerId);
 
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR adding member: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR adding member: {ex.Message}");
                 return false;
             }
         }
@@ -235,14 +235,14 @@ namespace KenshiMultiplayer.Systems
 
                 SaveToDisk();
 
-                logger.Log($"Removed {playerId} from faction {faction.Name}");
+                Logger.Log(LOG_PREFIX + $"Removed {playerId} from faction {faction.Name}");
                 OnMemberRemoved?.Invoke(factionId, playerId);
 
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR removing member: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR removing member: {ex.Message}");
                 return false;
             }
         }
@@ -286,14 +286,14 @@ namespace KenshiMultiplayer.Systems
 
                 SaveToDisk();
 
-                logger.Log($"Set faction relation: {factionId1} <-> {factionId2} = {relation}");
+                Logger.Log(LOG_PREFIX + $"Set faction relation: {factionId1} <-> {factionId2} = {relation}");
                 OnRelationChanged?.Invoke(factionId1, factionId2, relation);
 
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR setting relation: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR setting relation: {ex.Message}");
                 return false;
             }
         }
@@ -372,11 +372,11 @@ namespace KenshiMultiplayer.Systems
                 var relationsJson = JsonSerializer.Serialize(relationsDict, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(relationsPath, relationsJson);
 
-                logger.Log($"Saved {factions.Count} factions and {relations.Count} relations to disk");
+                Logger.Log(LOG_PREFIX + $"Saved {factions.Count} factions and {relations.Count} relations to disk");
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR saving to disk: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR saving to disk: {ex.Message}");
             }
         }
 
@@ -403,7 +403,7 @@ namespace KenshiMultiplayer.Systems
                         }
                     }
 
-                    logger.Log($"Loaded {factions.Count} factions from disk");
+                    Logger.Log(LOG_PREFIX + $"Loaded {factions.Count} factions from disk");
                 }
 
                 // Load relations
@@ -428,12 +428,12 @@ namespace KenshiMultiplayer.Systems
                         }
                     }
 
-                    logger.Log($"Loaded {relations.Count} faction relations from disk");
+                    Logger.Log(LOG_PREFIX + $"Loaded {relations.Count} faction relations from disk");
                 }
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR loading from disk: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR loading from disk: {ex.Message}");
             }
         }
 

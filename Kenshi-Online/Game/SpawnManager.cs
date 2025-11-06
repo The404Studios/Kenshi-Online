@@ -17,7 +17,7 @@ namespace KenshiMultiplayer.Game
         private readonly PlayerController playerController;
         private readonly Dictionary<string, SpawnRequest> pendingSpawns = new Dictionary<string, SpawnRequest>();
         private readonly Dictionary<string, string> playerSpawnLocations = new Dictionary<string, string>();
-        private readonly Logger logger = new Logger("SpawnManager");
+        private const string LOG_PREFIX = "[SpawnManager] ";
 
         // Predefined spawn locations from Kenshi world
         private static readonly Dictionary<string, SpawnLocation> SpawnLocations = new Dictionary<string, SpawnLocation>
@@ -49,7 +49,7 @@ namespace KenshiMultiplayer.Game
         {
             this.gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             this.playerController = playerController ?? throw new ArgumentNullException(nameof(playerController));
-            logger.Log("SpawnManager initialized");
+            Logger.Log(LOG_PREFIX + "SpawnManager initialized");
         }
 
         #region Single Player Spawning
@@ -61,12 +61,12 @@ namespace KenshiMultiplayer.Game
         {
             try
             {
-                logger.Log($"Spawning player {playerId} ({playerData.DisplayName}) at {locationName}");
+                Logger.Log(LOG_PREFIX + $"Spawning player {playerId} ({playerData.DisplayName}) at {locationName}");
 
                 // Get spawn location
                 if (!SpawnLocations.TryGetValue(locationName, out var spawnLocation))
                 {
-                    logger.Log($"Unknown spawn location '{locationName}', using default");
+                    Logger.Log(LOG_PREFIX + $"Unknown spawn location '{locationName}', using default");
                     spawnLocation = SpawnLocations["Default"];
                 }
 
@@ -90,7 +90,7 @@ namespace KenshiMultiplayer.Game
                 // Register with controller
                 if (!playerController.RegisterPlayer(playerId, playerData))
                 {
-                    logger.Log($"ERROR: Failed to register player {playerId}");
+                    Logger.Log(LOG_PREFIX + $"ERROR: Failed to register player {playerId}");
                     return false;
                 }
 
@@ -100,19 +100,19 @@ namespace KenshiMultiplayer.Game
                 if (spawned)
                 {
                     playerSpawnLocations[playerId] = locationName;
-                    logger.Log($"Successfully spawned player {playerId} at {spawnLocation.Name}");
+                    Logger.Log(LOG_PREFIX + $"Successfully spawned player {playerId} at {spawnLocation.Name}");
                     OnPlayerSpawned?.Invoke(playerId, spawnPos);
                 }
                 else
                 {
-                    logger.Log($"ERROR: Failed to spawn player {playerId} in game");
+                    Logger.Log(LOG_PREFIX + $"ERROR: Failed to spawn player {playerId} in game");
                 }
 
                 return spawned;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR spawning player: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR spawning player: {ex.Message}");
                 return false;
             }
         }
@@ -124,7 +124,7 @@ namespace KenshiMultiplayer.Game
         {
             try
             {
-                logger.Log($"Spawning player {playerId} at custom coords ({x}, {y}, {z})");
+                Logger.Log(LOG_PREFIX + $"Spawning player {playerId} at custom coords ({x}, {y}, {z})");
 
                 Position spawnPos = new Position(x, y, z);
                 playerData.Position = spawnPos;
@@ -132,7 +132,7 @@ namespace KenshiMultiplayer.Game
 
                 if (!playerController.RegisterPlayer(playerId, playerData))
                 {
-                    logger.Log($"ERROR: Failed to register player {playerId}");
+                    Logger.Log(LOG_PREFIX + $"ERROR: Failed to register player {playerId}");
                     return false;
                 }
 
@@ -141,7 +141,7 @@ namespace KenshiMultiplayer.Game
                 if (spawned)
                 {
                     playerSpawnLocations[playerId] = $"Custom_{x}_{y}_{z}";
-                    logger.Log($"Successfully spawned player {playerId} at custom location");
+                    Logger.Log(LOG_PREFIX + $"Successfully spawned player {playerId} at custom location");
                     OnPlayerSpawned?.Invoke(playerId, spawnPos);
                 }
 
@@ -149,7 +149,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR spawning player: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR spawning player: {ex.Message}");
                 return false;
             }
         }
@@ -166,7 +166,7 @@ namespace KenshiMultiplayer.Game
             try
             {
                 string groupId = Guid.NewGuid().ToString();
-                logger.Log($"Creating group spawn request {groupId} for {playerIds.Count} players at {locationName}");
+                Logger.Log(LOG_PREFIX + $"Creating group spawn request {groupId} for {playerIds.Count} players at {locationName}");
 
                 // Get spawn location
                 if (!SpawnLocations.TryGetValue(locationName, out var spawnLocation))
@@ -193,14 +193,14 @@ namespace KenshiMultiplayer.Game
 
                 pendingSpawns[groupId] = request;
 
-                logger.Log($"Group spawn {groupId} created, waiting for {playerIds.Count} players to ready up");
+                Logger.Log(LOG_PREFIX + $"Group spawn {groupId} created, waiting for {playerIds.Count} players to ready up");
                 OnGroupSpawnRequested?.Invoke(groupId, playerIds, spawnLocation.Name);
 
                 return groupId;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR creating group spawn: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR creating group spawn: {ex.Message}");
                 return null;
             }
         }
@@ -214,23 +214,23 @@ namespace KenshiMultiplayer.Game
             {
                 if (!pendingSpawns.TryGetValue(groupId, out var request))
                 {
-                    logger.Log($"ERROR: Group spawn {groupId} not found");
+                    Logger.Log(LOG_PREFIX + $"ERROR: Group spawn {groupId} not found");
                     return false;
                 }
 
                 if (!request.PlayerIds.Contains(playerId))
                 {
-                    logger.Log($"ERROR: Player {playerId} not in group {groupId}");
+                    Logger.Log(LOG_PREFIX + $"ERROR: Player {playerId} not in group {groupId}");
                     return false;
                 }
 
                 request.ReadyPlayers.Add(playerId);
-                logger.Log($"Player {playerId} ready for group spawn {groupId} ({request.ReadyPlayers.Count}/{request.PlayerIds.Count})");
+                Logger.Log(LOG_PREFIX + $"Player {playerId} ready for group spawn {groupId} ({request.ReadyPlayers.Count}/{request.PlayerIds.Count})");
 
                 // Check if all players are ready
                 if (request.ReadyPlayers.Count == request.PlayerIds.Count)
                 {
-                    logger.Log($"All players ready! Executing group spawn {groupId}");
+                    Logger.Log(LOG_PREFIX + $"All players ready! Executing group spawn {groupId}");
                     _ = ExecuteGroupSpawn(groupId);
                 }
 
@@ -238,7 +238,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR setting player ready: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR setting player ready: {ex.Message}");
                 return false;
             }
         }
@@ -252,11 +252,11 @@ namespace KenshiMultiplayer.Game
             {
                 if (!pendingSpawns.TryGetValue(groupId, out var request))
                 {
-                    logger.Log($"ERROR: Group spawn {groupId} not found");
+                    Logger.Log(LOG_PREFIX + $"ERROR: Group spawn {groupId} not found");
                     return false;
                 }
 
-                logger.Log($"Executing group spawn {groupId} for {request.PlayerIds.Count} players");
+                Logger.Log(LOG_PREFIX + $"Executing group spawn {groupId} for {request.PlayerIds.Count} players");
 
                 var spawnLocation = request.SpawnLocation;
                 var tasks = new List<Task<bool>>();
@@ -278,7 +278,7 @@ namespace KenshiMultiplayer.Game
                     float spawnY = spawnLocation.Y;
                     float spawnZ = spawnLocation.Z + offsetZ;
 
-                    logger.Log($"Spawning player {playerId} at offset ({offsetX:F2}, 0, {offsetZ:F2})");
+                    Logger.Log(LOG_PREFIX + $"Spawning player {playerId} at offset ({offsetX:F2}, 0, {offsetZ:F2})");
 
                     // Get player data (would need to be provided)
                     var playerData = new PlayerData
@@ -300,12 +300,12 @@ namespace KenshiMultiplayer.Game
 
                 if (allSuccessful)
                 {
-                    logger.Log($"Group spawn {groupId} completed successfully!");
+                    Logger.Log(LOG_PREFIX + $"Group spawn {groupId} completed successfully!");
                     OnGroupSpawnCompleted?.Invoke(groupId, request.PlayerIds);
                 }
                 else
                 {
-                    logger.Log($"Group spawn {groupId} completed with some failures");
+                    Logger.Log(LOG_PREFIX + $"Group spawn {groupId} completed with some failures");
                 }
 
                 // Clean up
@@ -315,7 +315,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR executing group spawn: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR executing group spawn: {ex.Message}");
                 return false;
             }
         }
@@ -327,7 +327,7 @@ namespace KenshiMultiplayer.Game
         {
             if (pendingSpawns.Remove(groupId))
             {
-                logger.Log($"Cancelled group spawn {groupId}");
+                Logger.Log(LOG_PREFIX + $"Cancelled group spawn {groupId}");
                 OnGroupSpawnCancelled?.Invoke(groupId);
                 return true;
             }
@@ -345,13 +345,13 @@ namespace KenshiMultiplayer.Game
         {
             try
             {
-                logger.Log($"Respawning player {playerId}");
+                Logger.Log(LOG_PREFIX + $"Respawning player {playerId}");
 
                 // Get player data
                 var playerData = playerController.GetPlayerData(playerId);
                 if (playerData == null)
                 {
-                    logger.Log($"ERROR: Player {playerId} not found");
+                    Logger.Log(LOG_PREFIX + $"ERROR: Player {playerId} not found");
                     return false;
                 }
 
@@ -381,7 +381,7 @@ namespace KenshiMultiplayer.Game
 
                 if (success)
                 {
-                    logger.Log($"Successfully respawned player {playerId}");
+                    Logger.Log(LOG_PREFIX + $"Successfully respawned player {playerId}");
                     OnPlayerRespawned?.Invoke(playerId);
                 }
 
@@ -389,7 +389,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR respawning player: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR respawning player: {ex.Message}");
                 return false;
             }
         }
@@ -405,7 +405,7 @@ namespace KenshiMultiplayer.Game
         {
             try
             {
-                logger.Log($"Despawning player {playerId}");
+                Logger.Log(LOG_PREFIX + $"Despawning player {playerId}");
 
                 // Unregister from controller
                 playerController.UnregisterPlayer(playerId);
@@ -416,7 +416,7 @@ namespace KenshiMultiplayer.Game
                 if (success)
                 {
                     playerSpawnLocations.Remove(playerId);
-                    logger.Log($"Successfully despawned player {playerId}");
+                    Logger.Log(LOG_PREFIX + $"Successfully despawned player {playerId}");
                     OnPlayerDespawned?.Invoke(playerId);
                 }
 
@@ -424,7 +424,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR despawning player: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR despawning player: {ex.Message}");
                 return false;
             }
         }

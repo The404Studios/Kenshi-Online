@@ -18,7 +18,7 @@ namespace KenshiMultiplayer.Game
         private readonly PlayerController playerController;
         private readonly SpawnManager spawnManager;
         private readonly StateSynchronizer stateSynchronizer;
-        private readonly Logger logger = new Logger("GameStateManager");
+        private const string LOG_PREFIX = "[GameStateManager] ";
 
         private Timer updateTimer;
         private bool isRunning;
@@ -47,7 +47,7 @@ namespace KenshiMultiplayer.Game
             // Subscribe to events
             RegisterEventHandlers();
 
-            logger.Log("GameStateManager initialized");
+            Logger.Log(LOG_PREFIX + "GameStateManager initialized");
         }
 
         #region Initialization
@@ -61,19 +61,19 @@ namespace KenshiMultiplayer.Game
             {
                 if (isRunning)
                 {
-                    logger.Log("GameStateManager already running");
+                    Logger.Log(LOG_PREFIX + "GameStateManager already running");
                     return true;
                 }
 
-                logger.Log("Starting GameStateManager...");
+                Logger.Log(LOG_PREFIX + "Starting GameStateManager...");
 
                 // Connect to Kenshi
                 if (!gameBridge.IsConnected)
                 {
-                    logger.Log("Connecting to Kenshi...");
+                    Logger.Log(LOG_PREFIX + "Connecting to Kenshi...");
                     if (!gameBridge.ConnectToKenshi())
                     {
-                        logger.Log("ERROR: Failed to connect to Kenshi. Make sure the game is running!");
+                        Logger.Log(LOG_PREFIX + "ERROR: Failed to connect to Kenshi. Make sure the game is running!");
                         return false;
                     }
                 }
@@ -83,12 +83,12 @@ namespace KenshiMultiplayer.Game
                 // Start update loop
                 updateTimer = new Timer(UpdateGameState, null, 0, UPDATE_RATE_MS);
 
-                logger.Log("GameStateManager started successfully!");
+                Logger.Log(LOG_PREFIX + "GameStateManager started successfully!");
                 return true;
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR starting GameStateManager: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR starting GameStateManager: {ex.Message}");
                 return false;
             }
         }
@@ -103,7 +103,7 @@ namespace KenshiMultiplayer.Game
                 if (!isRunning)
                     return;
 
-                logger.Log("Stopping GameStateManager...");
+                Logger.Log(LOG_PREFIX + "Stopping GameStateManager...");
 
                 isRunning = false;
                 updateTimer?.Dispose();
@@ -115,11 +115,11 @@ namespace KenshiMultiplayer.Game
                     DespawnPlayer(playerId);
                 }
 
-                logger.Log("GameStateManager stopped");
+                Logger.Log(LOG_PREFIX + "GameStateManager stopped");
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR stopping GameStateManager: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR stopping GameStateManager: {ex.Message}");
             }
         }
 
@@ -151,11 +151,11 @@ namespace KenshiMultiplayer.Game
             {
                 try
                 {
-                    logger.Log($"Adding player {playerId} ({playerData.DisplayName})");
+                    Logger.Log(LOG_PREFIX + $"Adding player {playerId} ({playerData.DisplayName})");
 
                     if (activePlayers.ContainsKey(playerId))
                     {
-                        logger.Log($"Player {playerId} already active, updating...");
+                        Logger.Log(LOG_PREFIX + $"Player {playerId} already active, updating...");
                         activePlayers[playerId] = playerData;
                         return true;
                     }
@@ -167,7 +167,7 @@ namespace KenshiMultiplayer.Game
                 }
                 catch (Exception ex)
                 {
-                    logger.Log($"ERROR adding player: {ex.Message}");
+                    Logger.Log(LOG_PREFIX + $"ERROR adding player: {ex.Message}");
                     return false;
                 }
             }
@@ -177,7 +177,7 @@ namespace KenshiMultiplayer.Game
 
             if (spawned)
             {
-                logger.Log($"Player {playerId} added and spawned successfully");
+                Logger.Log(LOG_PREFIX + $"Player {playerId} added and spawned successfully");
                 BroadcastPlayerJoined(playerId, playerData);
             }
 
@@ -195,11 +195,11 @@ namespace KenshiMultiplayer.Game
                 {
                     if (!activePlayers.ContainsKey(playerId))
                     {
-                        logger.Log($"Player {playerId} not found");
+                        Logger.Log(LOG_PREFIX + $"Player {playerId} not found");
                         return false;
                     }
 
-                    logger.Log($"Removing player {playerId}");
+                    Logger.Log(LOG_PREFIX + $"Removing player {playerId}");
 
                     activePlayers.Remove(playerId);
                     lastUpdateTimes.Remove(playerId);
@@ -207,14 +207,14 @@ namespace KenshiMultiplayer.Game
                     // Despawn
                     spawnManager.DespawnPlayer(playerId);
 
-                    logger.Log($"Player {playerId} removed successfully");
+                    Logger.Log(LOG_PREFIX + $"Player {playerId} removed successfully");
                     BroadcastPlayerLeft(playerId);
 
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    logger.Log($"ERROR removing player: {ex.Message}");
+                    Logger.Log(LOG_PREFIX + $"ERROR removing player: {ex.Message}");
                     return false;
                 }
             }
@@ -254,7 +254,7 @@ namespace KenshiMultiplayer.Game
             var playerData = GetPlayerData(playerId);
             if (playerData == null)
             {
-                logger.Log($"ERROR: Player {playerId} not found");
+                Logger.Log(LOG_PREFIX + $"ERROR: Player {playerId} not found");
                 return false;
             }
 
@@ -266,7 +266,7 @@ namespace KenshiMultiplayer.Game
         /// </summary>
         public string RequestGroupSpawn(List<string> playerIds, string locationName = "Default")
         {
-            logger.Log($"Requesting group spawn for {playerIds.Count} players");
+            Logger.Log(LOG_PREFIX + $"Requesting group spawn for {playerIds.Count} players");
             return spawnManager.RequestGroupSpawn(playerIds, locationName);
         }
 
@@ -374,7 +374,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR in update loop: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in update loop: {ex.Message}");
             }
         }
 
@@ -408,7 +408,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR sending player update: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR sending player update: {ex.Message}");
             }
         }
 
@@ -435,24 +435,24 @@ namespace KenshiMultiplayer.Game
 
         private void OnPlayerSpawned(string playerId, Position spawnPosition)
         {
-            logger.Log($"Player {playerId} spawned at {spawnPosition.X}, {spawnPosition.Y}, {spawnPosition.Z}");
+            Logger.Log(LOG_PREFIX + $"Player {playerId} spawned at {spawnPosition.X}, {spawnPosition.Y}, {spawnPosition.Z}");
             BroadcastPlayerSpawned(playerId, spawnPosition);
         }
 
         private void OnPlayerDespawned(string playerId)
         {
-            logger.Log($"Player {playerId} despawned");
+            Logger.Log(LOG_PREFIX + $"Player {playerId} despawned");
         }
 
         private void OnGroupSpawnCompleted(string groupId, List<string> playerIds)
         {
-            logger.Log($"Group spawn {groupId} completed for {playerIds.Count} players");
+            Logger.Log(LOG_PREFIX + $"Group spawn {groupId} completed for {playerIds.Count} players");
             BroadcastGroupSpawnCompleted(groupId, playerIds);
         }
 
         private void OnPlayerDied(string playerId)
         {
-            logger.Log($"Player {playerId} died");
+            Logger.Log(LOG_PREFIX + $"Player {playerId} died");
             BroadcastPlayerDied(playerId);
         }
 
@@ -504,7 +504,7 @@ namespace KenshiMultiplayer.Game
         {
             Stop();
             gameBridge?.Dispose();
-            logger.Log("GameStateManager disposed");
+            Logger.Log(LOG_PREFIX + "GameStateManager disposed");
         }
 
         #endregion

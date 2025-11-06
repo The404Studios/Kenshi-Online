@@ -104,7 +104,7 @@ namespace KenshiMultiplayer.Game
         private readonly object lockObject = new object();
         private Timer updateTimer;
         private Dictionary<string, IntPtr> spawnedCharacters = new Dictionary<string, IntPtr>();
-        private Logger logger = new Logger("KenshiGameBridge");
+        private const string LOG_PREFIX = "[KenshiGameBridge] ";
 
         public bool IsConnected => isConnected;
         public Process KenshiProcess => kenshiProcess;
@@ -113,7 +113,7 @@ namespace KenshiMultiplayer.Game
 
         public KenshiGameBridge()
         {
-            logger.Log("Initializing Kenshi Game Bridge...");
+            Logger.Log(LOG_PREFIX + "Initializing Kenshi Game Bridge...");
         }
 
         /// <summary>
@@ -123,7 +123,7 @@ namespace KenshiMultiplayer.Game
         {
             try
             {
-                logger.Log("Searching for Kenshi process...");
+                Logger.Log(LOG_PREFIX + "Searching for Kenshi process...");
 
                 // Find Kenshi process
                 var processes = Process.GetProcessesByName("kenshi_x64");
@@ -135,23 +135,23 @@ namespace KenshiMultiplayer.Game
 
                 if (processes.Length == 0)
                 {
-                    logger.Log("ERROR: Kenshi process not found! Please start Kenshi first.");
+                    Logger.Log(LOG_PREFIX + "ERROR: Kenshi process not found! Please start Kenshi first.");
                     return false;
                 }
 
                 kenshiProcess = processes[0];
-                logger.Log($"Found Kenshi process (PID: {kenshiProcess.Id})");
+                Logger.Log(LOG_PREFIX + $"Found Kenshi process (PID: {kenshiProcess.Id})");
 
                 // Open process with full access
                 processHandle = OpenProcess(PROCESS_ALL_ACCESS, false, kenshiProcess.Id);
                 if (processHandle == IntPtr.Zero)
                 {
-                    logger.Log("ERROR: Failed to open Kenshi process. Try running as administrator.");
+                    Logger.Log(LOG_PREFIX + "ERROR: Failed to open Kenshi process. Try running as administrator.");
                     return false;
                 }
 
                 isConnected = true;
-                logger.Log("Successfully connected to Kenshi!");
+                Logger.Log(LOG_PREFIX + "Successfully connected to Kenshi!");
 
                 // Start monitoring thread
                 StartUpdateLoop();
@@ -160,7 +160,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR connecting to Kenshi: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR connecting to Kenshi: {ex.Message}");
                 return false;
             }
         }
@@ -258,12 +258,12 @@ namespace KenshiMultiplayer.Game
             {
                 try
                 {
-                    logger.Log($"Spawning player {playerId} at {spawnPosition.X}, {spawnPosition.Y}, {spawnPosition.Z}");
+                    Logger.Log(LOG_PREFIX + $"Spawning player {playerId} at {spawnPosition.X}, {spawnPosition.Y}, {spawnPosition.Z}");
 
                     // Check if already spawned
                     if (spawnedCharacters.ContainsKey(playerId))
                     {
-                        logger.Log($"Player {playerId} already spawned, updating position...");
+                        Logger.Log(LOG_PREFIX + $"Player {playerId} already spawned, updating position...");
                         return UpdatePlayerPosition(playerId, spawnPosition);
                     }
 
@@ -275,7 +275,7 @@ namespace KenshiMultiplayer.Game
 
                     if (characterPtr == IntPtr.Zero)
                     {
-                        logger.Log("ERROR: Failed to allocate memory for character");
+                        Logger.Log(LOG_PREFIX + "ERROR: Failed to allocate memory for character");
                         return false;
                     }
 
@@ -311,7 +311,7 @@ namespace KenshiMultiplayer.Game
                     byte[] characterBytes = StructureToBytes(character);
                     if (!WriteMemory(characterPtr, characterBytes))
                     {
-                        logger.Log("ERROR: Failed to write character data");
+                        Logger.Log(LOG_PREFIX + "ERROR: Failed to write character data");
                         VirtualFreeEx(processHandle, characterPtr, 0, MEM_RELEASE);
                         return false;
                     }
@@ -319,20 +319,20 @@ namespace KenshiMultiplayer.Game
                     // Call Kenshi's spawn function
                     if (!CallSpawnFunction(characterPtr))
                     {
-                        logger.Log("ERROR: Failed to call spawn function");
+                        Logger.Log(LOG_PREFIX + "ERROR: Failed to call spawn function");
                         VirtualFreeEx(processHandle, characterPtr, 0, MEM_RELEASE);
                         return false;
                     }
 
                     // Track spawned character
                     spawnedCharacters[playerId] = characterPtr;
-                    logger.Log($"Successfully spawned player {playerId}!");
+                    Logger.Log(LOG_PREFIX + $"Successfully spawned player {playerId}!");
 
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    logger.Log($"ERROR spawning player: {ex.Message}");
+                    Logger.Log(LOG_PREFIX + $"ERROR spawning player: {ex.Message}");
                     return false;
                 }
             }
@@ -349,11 +349,11 @@ namespace KenshiMultiplayer.Game
                 {
                     if (!spawnedCharacters.TryGetValue(playerId, out IntPtr characterPtr))
                     {
-                        logger.Log($"Player {playerId} not found in spawn list");
+                        Logger.Log(LOG_PREFIX + $"Player {playerId} not found in spawn list");
                         return false;
                     }
 
-                    logger.Log($"Despawning player {playerId}...");
+                    Logger.Log(LOG_PREFIX + $"Despawning player {playerId}...");
 
                     // Call Kenshi's despawn function
                     CallDespawnFunction(characterPtr);
@@ -362,12 +362,12 @@ namespace KenshiMultiplayer.Game
                     VirtualFreeEx(processHandle, characterPtr, 0, MEM_RELEASE);
                     spawnedCharacters.Remove(playerId);
 
-                    logger.Log($"Successfully despawned player {playerId}");
+                    Logger.Log(LOG_PREFIX + $"Successfully despawned player {playerId}");
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    logger.Log($"ERROR despawning player: {ex.Message}");
+                    Logger.Log(LOG_PREFIX + $"ERROR despawning player: {ex.Message}");
                     return false;
                 }
             }
@@ -438,7 +438,7 @@ namespace KenshiMultiplayer.Game
 
             try
             {
-                logger.Log($"Sending command '{command}' for player {playerId}");
+                Logger.Log(LOG_PREFIX + $"Sending command '{command}' for player {playerId}");
 
                 switch (command.ToLower())
                 {
@@ -471,7 +471,7 @@ namespace KenshiMultiplayer.Game
                         break;
 
                     default:
-                        logger.Log($"Unknown command: {command}");
+                        Logger.Log(LOG_PREFIX + $"Unknown command: {command}");
                         return false;
                 }
 
@@ -479,7 +479,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR sending game command: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR sending game command: {ex.Message}");
                 return false;
             }
         }
@@ -660,7 +660,7 @@ namespace KenshiMultiplayer.Game
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR in update loop: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in update loop: {ex.Message}");
             }
         }
 
@@ -708,7 +708,7 @@ namespace KenshiMultiplayer.Game
                 processHandle = IntPtr.Zero;
             }
 
-            logger.Log("Kenshi Game Bridge disposed");
+            Logger.Log(LOG_PREFIX + "Kenshi Game Bridge disposed");
         }
 
         #endregion

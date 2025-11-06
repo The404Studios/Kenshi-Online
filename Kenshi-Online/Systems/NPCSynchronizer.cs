@@ -18,7 +18,7 @@ namespace KenshiMultiplayer.Systems
         private readonly EnhancedGameBridge gameBridge;
         private readonly Dictionary<int, NPCState> npcStates = new Dictionary<int, NPCState>();
         private readonly Dictionary<int, DateTime> lastUpdateTimes = new Dictionary<int, DateTime>();
-        private readonly Logger logger = new Logger("NPCSynchronizer");
+        private const string LOG_PREFIX = "[NPCSynchronizer] ";
 
         private Timer updateTimer;
         private bool isRunning;
@@ -40,25 +40,25 @@ namespace KenshiMultiplayer.Systems
         {
             if (isRunning) return;
 
-            logger.Log("Starting NPC synchronizer...");
+            Logger.Log(LOG_PREFIX + "Starting NPC synchronizer...");
             isRunning = true;
 
             updateTimer = new Timer(UpdateNPCs, null, 0, UPDATE_INTERVAL_MS);
 
-            logger.Log("NPC synchronizer started");
+            Logger.Log(LOG_PREFIX + "NPC synchronizer started");
         }
 
         public void Stop()
         {
             if (!isRunning) return;
 
-            logger.Log("Stopping NPC synchronizer...");
+            Logger.Log(LOG_PREFIX + "Stopping NPC synchronizer...");
             isRunning = false;
 
             updateTimer?.Dispose();
             updateTimer = null;
 
-            logger.Log("NPC synchronizer stopped");
+            Logger.Log(LOG_PREFIX + "NPC synchronizer stopped");
         }
 
         #endregion
@@ -106,7 +106,7 @@ namespace KenshiMultiplayer.Systems
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR in NPC update: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR in NPC update: {ex.Message}");
             }
         }
 
@@ -155,7 +155,7 @@ namespace KenshiMultiplayer.Systems
             }
             catch (Exception ex)
             {
-                logger.Log($"ERROR updating NPC state: {ex.Message}");
+                Logger.Log(LOG_PREFIX + $"ERROR updating NPC state: {ex.Message}");
             }
         }
 
@@ -245,7 +245,7 @@ namespace KenshiMultiplayer.Systems
 
             if (oldNPCs.Count > 0)
             {
-                logger.Log($"Cleaned up {oldNPCs.Count} old NPC entries");
+                Logger.Log(LOG_PREFIX + $"Cleaned up {oldNPCs.Count} old NPC entries");
             }
         }
 
