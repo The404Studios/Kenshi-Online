@@ -10,9 +10,9 @@ namespace KenshiMultiplayer.Utility
     /// </summary>
     public class GameAction
     {
-        public string Type { get; set; }
-        public string PlayerId { get; set; }
-        public string Data { get; set; }
+        public string Type { get; set; } = string.Empty;
+        public string PlayerId { get; set; } = string.Empty;
+        public string Data { get; set; } = string.Empty;
         public long Timestamp { get; set; }
         public int Priority { get; set; }
     }

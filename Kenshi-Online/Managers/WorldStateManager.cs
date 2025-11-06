@@ -31,7 +31,7 @@ namespace KenshiMultiplayer.Managers
         /// <summary>
         /// Get a player by ID
         /// </summary>
-        public PlayerData GetPlayer(string playerId)
+        public PlayerData? GetPlayer(string playerId)
         {
             if (players.TryGetValue(playerId, out var player))
             {
@@ -55,10 +55,10 @@ namespace KenshiMultiplayer.Managers
     /// </summary>
     public class EntityState
     {
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         public System.Numerics.Vector3 Position { get; set; }
         public float Health { get; set; }
-        public string Type { get; set; }
-        public string CurrentState { get; set; }
+        public string Type { get; set; } = string.Empty;
+        public string CurrentState { get; set; } = string.Empty;
     }
 }
