@@ -168,7 +168,7 @@ namespace KenshiMultiplayer.Utility
         /// <summary>
         /// Set up server message handlers
         /// </summary>
-        private void SetupServerMessageHandlers()
+        private static void SetupServerMessageHandlers()
         {
             // This would integrate with your existing server message handling
             // to process actions through the deterministic system
@@ -209,24 +209,26 @@ namespace KenshiMultiplayer.Utility
         /// <summary>
         /// Handle position updates from other players
         /// </summary>
-        private void HandlePositionUpdate(GameMessage message)
+        private static void HandlePositionUpdate(GameMessage message)
         {
             // Update other player's position in game
             // This would integrate with memory injection
+            _ = message; // Suppress unused parameter warning (stub implementation)
         }
-        
+
         /// <summary>
         /// Handle combat actions
         /// </summary>
-        private void HandleCombatAction(GameMessage message)
+        private static void HandleCombatAction(GameMessage message)
         {
             // Process combat through deterministic system
+            _ = message; // Suppress unused parameter warning (stub implementation)
         }
-        
+
         /// <summary>
         /// Handle new path updates
         /// </summary>
-        private void HandlePathUpdate(GameMessage message)
+        private static void HandlePathUpdate(GameMessage message)
         {
             if (message.Data.TryGetValue("path", out var pathObj))
             {
@@ -243,19 +245,21 @@ namespace KenshiMultiplayer.Utility
         /// <summary>
         /// Handle action results
         /// </summary>
-        private void HandleActionResult(GameMessage message)
+        private static void HandleActionResult(GameMessage message)
         {
             // Process action result
             // Update local game state
+            _ = message; // Suppress unused parameter warning (stub implementation)
         }
-        
+
         /// <summary>
         /// Handle world state updates
         /// </summary>
-        private void HandleWorldStateUpdate(GameMessage message)
+        private static void HandleWorldStateUpdate(GameMessage message)
         {
             // Sync world state
             // Apply to game through memory injection
+            _ = message; // Suppress unused parameter warning (stub implementation)
         }
         
         /// <summary>
@@ -264,18 +268,17 @@ namespace KenshiMultiplayer.Utility
         private async Task SyncPathCache()
         {
             Logger.Log("Syncing path cache with server...");
-            
-            // Request cache checksum
-            var checksumRequest = new GameMessage
-            {
-                Type = "path_checksum_request",
-                PlayerId = client.CurrentUsername,
-                SessionId = client.AuthToken
-            };
-            
-            // Send and wait for response
+
+            // TODO: Request cache checksum and compare
+            // var checksumRequest = new GameMessage
+            // {
+            //     Type = "path_checksum_request",
+            //     PlayerId = client.CurrentUsername,
+            //     SessionId = client.AuthToken
+            // };
+            // await client.SendMessage(checksumRequest);
             // If mismatch, request full cache sync
-            
+
             await Task.Delay(1000); // Placeholder
             Logger.Log("Path cache synchronized");
         }
@@ -310,7 +313,7 @@ namespace KenshiMultiplayer.Utility
         /// <summary>
         /// Read player position from game memory
         /// </summary>
-        private Position ReadPlayerPosition()
+        private static Position ReadPlayerPosition()
         {
             // This would use memory reading to get actual position
             // For now, return placeholder
@@ -344,7 +347,7 @@ namespace KenshiMultiplayer.Utility
             {
                 Type = type,
                 PlayerId = isServer ? "SERVER" : client?.CurrentUsername ?? "UNKNOWN",
-                Data = data as Dictionary<string, object> ?? new Dictionary<string, object> { ["data"] = data },
+                Data = data as Dictionary<string, object> ?? new() { ["data"] = data },
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Priority = GetActionPriority(type)
             };
@@ -355,16 +358,16 @@ namespace KenshiMultiplayer.Utility
         /// <summary>
         /// Get action priority
         /// </summary>
-        private int GetActionPriority(string type)
+        private static int GetActionPriority(string type)
         {
-            switch (type)
+            return type switch
             {
-                case "combat": return 1;
-                case "movement": return 2;
-                case "interaction": return 3;
-                case "trade": return 4;
-                default: return 5;
-            }
+                "combat" => 1,
+                "movement" => 2,
+                "interaction" => 3,
+                "trade" => 4,
+                _ => 5
+            };
         }
         
         /// <summary>
@@ -449,7 +452,7 @@ namespace KenshiMultiplayer.Utility
                 }
                 else if (key.Key == ConsoleKey.Backspace && password.Length > 0)
                 {
-                    password = password.Substring(0, password.Length - 1);
+                    password = password[..^1];
                     Console.Write("\b \b");
                 }
             }
