@@ -150,6 +150,33 @@ namespace KenshiMultiplayer.Networking
         }
 
         /// <summary>
+        /// Send chat message
+        /// </summary>
+        public static void SendChatMessage(this EnhancedClient client, string chatMessage)
+        {
+            try
+            {
+                var message = new GameMessage
+                {
+                    Type = MessageType.ChatMessage,
+                    PlayerId = client.GetPlayerId(),
+                    SessionId = client.GetSessionId(),
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    Data = new Dictionary<string, object>
+                    {
+                        { "message", chatMessage }
+                    }
+                };
+
+                client.SendMessage(message);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR sending chat message: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Helper to get player ID from client
         /// </summary>
         private static string GetPlayerId(this EnhancedClient client)

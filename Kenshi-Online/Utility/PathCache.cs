@@ -160,6 +160,7 @@ namespace KenshiMultiplayer.Utility
             {
                 var path = new CachedPath
                 {
+                    PathId = GeneratePathKey(start, end),
                     Start = start,
                     End = end,
                     Points = new List<Vector3>(),
@@ -169,7 +170,7 @@ namespace KenshiMultiplayer.Utility
 
                 // Sector-based pathfinding for long distances
                 var sectors = GetSectorPath(start, end);
-                
+
                 // Generate waypoints through sectors
                 Vector3 current = start;
                 foreach (var sector in sectors)
@@ -179,17 +180,17 @@ namespace KenshiMultiplayer.Utility
                     path.Distance += Vector3.Distance(current, waypoint);
                     current = waypoint;
                 }
-                
+
                 // Add final point
                 path.Points.Add(end);
                 path.Distance += Vector3.Distance(current, end);
-                
+
                 // Optimize path
                 path = OptimizePath(path);
-                
+
                 // Calculate checksum for synchronization
                 path.Checksum = CalculatePathChecksum(path);
-                
+
                 return path;
             });
         }
@@ -447,6 +448,24 @@ namespace KenshiMultiplayer.Utility
         }
 
         /// <summary>
+        /// Synchronize paths from server/client
+        /// </summary>
+        public void SynchronizePaths(List<CachedPath> paths)
+        {
+            foreach (var path in paths)
+            {
+                if (path == null || string.IsNullOrEmpty(path.PathId))
+                    continue;
+
+                // Add to both disk cache and memory cache
+                pathCache[path.PathId] = path;
+                memoryCache.Add(path.PathId, path);
+            }
+
+            Logger.Log($"Synchronized {paths.Count} paths to cache");
+        }
+
+        /// <summary>
         /// Get cache statistics
         /// </summary>
         public CacheStatistics GetStatistics()
@@ -478,15 +497,27 @@ namespace KenshiMultiplayer.Utility
     /// </summary>
     public class CachedPath
     {
+        public string PathId { get; set; }
         public Vector3 Start { get; set; }
         public Vector3 End { get; set; }
         public List<Vector3> Points { get; set; }
+
+        // Alias for compatibility with code expecting Waypoints
+        public List<Vector3> Waypoints
+        {
+            get => Points;
+            set => Points = value;
+        }
+
         public float Distance { get; set; }
         public string Checksum { get; set; }
         public DateTime GeneratedAt { get; set; }
 
         public void Serialize(BinaryWriter writer)
         {
+            // Write PathId
+            writer.Write(PathId ?? "");
+
             // Write start and end points
             writer.Write(Start.X);
             writer.Write(Start.Y);
@@ -494,7 +525,7 @@ namespace KenshiMultiplayer.Utility
             writer.Write(End.X);
             writer.Write(End.Y);
             writer.Write(End.Z);
-            
+
             // Write path points
             writer.Write(Points.Count);
             foreach (var point in Points)
@@ -503,7 +534,7 @@ namespace KenshiMultiplayer.Utility
                 writer.Write(point.Y);
                 writer.Write(point.Z);
             }
-            
+
             // Write metadata
             writer.Write(Distance);
             writer.Write(Checksum ?? "");
@@ -514,6 +545,7 @@ namespace KenshiMultiplayer.Utility
         {
             var path = new CachedPath
             {
+                PathId = reader.ReadString(),
                 Start = new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()),
                 End = new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()),
                 Points = new List<Vector3>()
