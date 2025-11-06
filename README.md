@@ -1,14 +1,25 @@
-# Kenshi Online (WIP)
+# 🎮 Kenshi Online - Complete Multiplayer Mod
 
 ![Kenshi Online Banner](https://via.placeholder.com/1200x300?text=Kenshi+Online+Multiplayer+Experience)
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/discord/962745762938572870?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/wEChtguNv6))
 [![GitHub Stars](https://img.shields.io/github/stars/The404Studios/Kenshi-Online?style=social)](https://github.com/The404Studios/Kenshi-Online)
+[![.NET 8.0](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
+[![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 
 ## 🌟 Overview
 
-**Kenshi Online** transforms the harsh single-player world of Kenshi into a shared multiplayer experience. Venture through Kenshi's unforgiving wasteland with friends by your side, building communities, engaging in combat, and writing your own stories together in this expansive sandbox world.
+**Kenshi Online** transforms the harsh single-player world of Kenshi into a **fully functional multiplayer experience**. This is a complete remake with actual game integration, native mod injection, and comprehensive multiplayer systems.
+
+**Now with:**
+- ✅ **Native DLL Mod Injection** - Runs directly inside Kenshi
+- ✅ **Real Game State Reading** - Accesses actual game memory structures
+- ✅ **Player Spawning System** - Spawn anywhere in the world
+- ✅ **Group Spawning** - Start with friends at the same location
+- ✅ **Faction System** - Complete faction management with persistence
+- ✅ **NPC Synchronization** - Share the world with all its inhabitants
+- ✅ **16+ Spawn Locations** - Choose your starting point
 
 ![Kenshi Wasteland](https://via.placeholder.com/800x400?text=Kenshi+Harsh+Wasteland+Environment)
 
