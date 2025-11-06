@@ -23,12 +23,12 @@ namespace KenshiMultiplayer.Networking
             Quantization    // Quantize floats to reduce precision
         }
 
-        private readonly Dictionary<string, object> _previousStates;
+        private readonly Dictionary<string, object?> _previousStates;
         private readonly CompressionStrategy _defaultStrategy;
 
         public CompressionEngine(CompressionStrategy defaultStrategy = CompressionStrategy.DeltaGZip)
         {
-            _previousStates = new Dictionary<string, object>();
+            _previousStates = new Dictionary<string, object?>();
             _defaultStrategy = defaultStrategy;
         }
 

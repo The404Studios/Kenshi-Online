@@ -17,7 +17,7 @@ namespace KenshiMultiplayer.Game
         private readonly string _kenshiSavePath;
         private readonly string _multiplayerSavePath;
 
-        public SaveGameLoader(string kenshiInstallPath = null)
+        public SaveGameLoader(string? kenshiInstallPath = null)
         {
             if (string.IsNullOrEmpty(kenshiInstallPath))
             {
@@ -44,7 +44,7 @@ namespace KenshiMultiplayer.Game
         /// <summary>
         /// Create a multiplayer save game for joining a server
         /// </summary>
-        public async Task<string> CreateMultiplayerSave(string serverName, string playerId, Position spawnPosition, string templateSaveName = null)
+        public async Task<string?> CreateMultiplayerSave(string serverName, string playerId, Position spawnPosition, string? templateSaveName = null)
         {
             try
             {
@@ -94,7 +94,7 @@ namespace KenshiMultiplayer.Game
             string serverName,
             string playerId,
             Position spawnPosition,
-            Action<string> onSaveCreated = null)
+            Action<string>? onSaveCreated = null)
         {
             try
             {

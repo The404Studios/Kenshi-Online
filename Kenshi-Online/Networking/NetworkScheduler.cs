@@ -24,10 +24,10 @@ namespace KenshiMultiplayer.Networking
 
         private class ScheduledMessage
         {
-            public string MessageId { get; set; }
+            public string MessageId { get; set; } = string.Empty;
             public MessagePriority Priority { get; set; }
-            public object Message { get; set; }
-            public Action<object> Callback { get; set; }
+            public object Message { get; set; } = new object();
+            public Action<object>? Callback { get; set; }
             public long ScheduledTime { get; set; }
             public long Deadline { get; set; }
             public int RetryCount { get; set; }
@@ -94,15 +94,15 @@ namespace KenshiMultiplayer.Networking
         /// <summary>
         /// Schedule a message for processing
         /// </summary>
-        public string ScheduleMessage(
+        public string? ScheduleMessage(
             object message,
-            Action<object> callback,
+            Action<object>? callback,
             MessagePriority priority = MessagePriority.Normal,
             int tier = 0,
             long delayMs = 0,
             long deadlineMs = 0,
             int maxRetries = 3,
-            string rateLimitKey = null,
+            string? rateLimitKey = null,
             long rateLimitMs = 0)
         {
             if (!_isRunning) return null;

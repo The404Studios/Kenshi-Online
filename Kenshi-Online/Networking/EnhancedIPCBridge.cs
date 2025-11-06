@@ -334,23 +334,28 @@ namespace KenshiMultiplayer.Networking
             );
         }
 
-        private async void HandleSpawnRequest(IPCMessage message)
+        private void HandleSpawnRequest(IPCMessage message)
         {
             // Handle spawn request
             var spawnData = JsonConvert.DeserializeObject<Dictionary<string, object>>(message.Payload);
 
-            Console.WriteLine($"Processing spawn request for: {spawnData.GetValueOrDefault("characterName", "Unknown")}");
+            if (spawnData != null)
+            {
+                Console.WriteLine($"Processing spawn request for: {spawnData.GetValueOrDefault("characterName", "Unknown")}");
 
-            // Validate and process spawn
-            // This is where the middleware does the heavy lifting
+                // Validate and process spawn
+                // This is where the middleware does the heavy lifting
+            }
         }
 
         private async void HandleJoinServer(IPCMessage message)
         {
             var joinData = JsonConvert.DeserializeObject<Dictionary<string, object>>(message.Payload);
 
-            string serverName = joinData.GetValueOrDefault("serverName", "Unknown").ToString();
-            string playerId = joinData.GetValueOrDefault("playerId", "Player").ToString();
+            if (joinData == null) return;
+
+            string serverName = joinData.GetValueOrDefault("serverName", "Unknown")?.ToString() ?? "Unknown";
+            string playerId = joinData.GetValueOrDefault("playerId", "Player")?.ToString() ?? "Player";
 
             // Get spawn position from server
             var spawnPosition = new Position
@@ -378,12 +383,12 @@ namespace KenshiMultiplayer.Networking
                         Payload = JsonConvert.SerializeObject(new
                         {
                             success = true,
-                            saveName = saveName,
+                            saveName,
                             spawnPosition = new { spawnPosition.X, spawnPosition.Y, spawnPosition.Z }
                         })
                     });
                 }
-            );
+            ).ConfigureAwait(false);
 
             if (!success)
             {
