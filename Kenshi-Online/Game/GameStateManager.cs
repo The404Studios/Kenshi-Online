@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Kenshi_Online.Data;
-using Kenshi_Online.Networking;
-using Kenshi_Online.Utility;
+using KenshiMultiplayer.Data;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
 
-namespace Kenshi_Online.Game
+namespace KenshiMultiplayer.Game
 {
     /// <summary>
     /// Central manager for game state synchronization between server and clients
@@ -36,10 +36,10 @@ namespace Kenshi_Online.Game
         public bool IsRunning => isRunning;
         public int ActivePlayerCount => activePlayers.Count;
 
-        public GameStateManager(KenshiGameBridge gameBridge, StateSynchronizer stateSynchronizer)
+        public GameStateManager(KenshiGameBridge gameBridge, StateSynchronizer stateSynchronizer = null)
         {
             this.gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
-            this.stateSynchronizer = stateSynchronizer ?? throw new ArgumentNullException(nameof(stateSynchronizer));
+            this.stateSynchronizer = stateSynchronizer; // Optional - for compatibility
 
             this.playerController = new PlayerController(gameBridge);
             this.spawnManager = new SpawnManager(gameBridge, playerController);
@@ -400,8 +400,8 @@ namespace Kenshi_Online.Game
                     Timestamp = DateTime.UtcNow
                 };
 
-                // Send via state synchronizer
-                stateSynchronizer.QueueStateUpdate(stateUpdate);
+                // Send via state synchronizer if available
+                stateSynchronizer?.QueueStateUpdate(stateUpdate);
 
                 // Broadcast to other players
                 OnPlayerStateChanged?.Invoke(playerId, playerData);

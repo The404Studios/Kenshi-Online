@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Kenshi_Online.Data;
-using Kenshi_Online.Networking;
-using Kenshi_Online.Utility;
+using KenshiMultiplayer.Data;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
 
-namespace Kenshi_Online.Game
+namespace KenshiMultiplayer.Game
 {
     /// <summary>
     /// Manages player spawning and multiplayer spawn coordination

@@ -6,11 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
-using Kenshi_Online.Utility;
-using Kenshi_Online.Data;
-using Kenshi_Online.Networking;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Data;
+using KenshiMultiplayer.Networking;
 
-namespace Kenshi_Online.Game
+namespace KenshiMultiplayer.Game
 {
     /// <summary>
     /// Direct bridge to Kenshi game engine via memory injection

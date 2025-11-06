@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
 
-namespace Kenshi_Online.Game
+namespace KenshiMultiplayer.Game
 {
     /// <summary>
     /// Reverse-engineered Kenshi game structures

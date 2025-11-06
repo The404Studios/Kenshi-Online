@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Kenshi_Online.Utility;
-using Kenshi_Online.Data;
-using Kenshi_Online.Networking;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Data;
+using KenshiMultiplayer.Networking;
 
-namespace Kenshi_Online.Networking
+namespace KenshiMultiplayer.Networking
 {
     /// <summary>
     /// Extensions to EnhancedClient for spawn functionality

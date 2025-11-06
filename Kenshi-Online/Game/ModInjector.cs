@@ -3,9 +3,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using Kenshi_Online.Utility;
+using KenshiMultiplayer.Utility;
 
-namespace Kenshi_Online.Game
+namespace KenshiMultiplayer.Game
 {
     /// <summary>
     /// DLL injector to load the Kenshi Online mod into Kenshi process

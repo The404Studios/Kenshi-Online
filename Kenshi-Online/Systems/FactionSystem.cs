@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using Kenshi_Online.Game;
-using Kenshi_Online.Utility;
-using Kenshi_Online.Data;
+using KenshiMultiplayer.Game;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Data;
 
-namespace Kenshi_Online.Systems
+namespace KenshiMultiplayer.Systems
 {
     /// <summary>
     /// Complete faction system with persistence and synchronization

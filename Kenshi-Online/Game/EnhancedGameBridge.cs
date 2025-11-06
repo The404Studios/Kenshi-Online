@@ -4,10 +4,10 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Linq;
-using Kenshi_Online.Utility;
-using Kenshi_Online.Data;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Data;
 
-namespace Kenshi_Online.Game
+namespace KenshiMultiplayer.Game
 {
     /// <summary>
     /// Enhanced game bridge that reads actual Kenshi structures
@@ -169,7 +169,7 @@ namespace Kenshi_Online.Game
             return IntPtr.Zero;
         }
 
-        private string ReadString(IntPtr address, int maxLength = 256)
+        public string ReadString(IntPtr address, int maxLength = 256)
         {
             if (address == IntPtr.Zero) return "";
 

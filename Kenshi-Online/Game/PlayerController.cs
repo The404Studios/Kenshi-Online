@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
-using Kenshi_Online.Data;
-using Kenshi_Online.Networking;
-using Kenshi_Online.Utility;
+using KenshiMultiplayer.Data;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
 
-namespace Kenshi_Online.Game
+namespace KenshiMultiplayer.Game
 {
     /// <summary>
     /// High-level player controller that manages player actions and state

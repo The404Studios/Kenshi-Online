@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Kenshi_Online.Game;
-using Kenshi_Online.Data;
-using Kenshi_Online.Networking;
-using Kenshi_Online.Utility;
+using KenshiMultiplayer.Game;
+using KenshiMultiplayer.Data;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
 
-namespace Kenshi_Online.Systems
+namespace KenshiMultiplayer.Systems
 {
     /// <summary>
     /// Synchronizes NPCs and world entities across clients

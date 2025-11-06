@@ -4,13 +4,13 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Kenshi_Online.Data;
-using Kenshi_Online.Managers;
-using Kenshi_Online.Networking;
-using Kenshi_Online.Utility;
-using Kenshi_Online.Game;
+using KenshiMultiplayer.Data;
+using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Game;
 
-namespace Kenshi_Online
+namespace KenshiMultiplayer
 {
     /// <summary>
     /// Enhanced startup program with full game integration

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using Kenshi_Online.Game;
-using Kenshi_Online.Networking;
+using KenshiMultiplayer.Game;
+using KenshiMultiplayer.Networking;
 
-namespace Kenshi_Online.Networking
+namespace KenshiMultiplayer.Networking
 {
     /// <summary>
     /// Extensions to EnhancedServer for game state management
