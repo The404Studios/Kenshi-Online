@@ -1,6 +1,7 @@
 using KenshiMultiplayer.Networking;
 using KenshiMultiplayer.Data;
 using KenshiMultiplayer.Managers;
+using KenshiMultiplayer.Game;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -20,12 +21,9 @@ namespace KenshiMultiplayer.Utility
     /// </summary>
     public class PathInjector
     {
-        // Kenshi memory addresses (version 0.98.50)
-        // These are from the RE_Kenshi research
-        private const long KENSHI_BASE = 0x140000000; // kenshi_x64.exe base
-        private const long HAVOK_PATHFIND_OFFSET = 0x1A3B240; // Havok AI pathfinding function
-        private const long NAVMESH_QUERY_OFFSET = 0x1A3B580; // NavMesh query function
-        private const long CHARACTER_CONTROLLER_OFFSET = 0x249BCB0; // Character controller base
+        // Version-specific memory offsets (detected at runtime)
+        private KenshiOffsets offsets = new KenshiOffsets();
+        private GameVersionDetector.KenshiVersion detectedVersion = GameVersionDetector.KenshiVersion.Unknown;
 
         private Process kenshiProcess;
         private IntPtr processHandle;
@@ -71,6 +69,31 @@ namespace KenshiMultiplayer.Utility
                     return false;
                 }
 
+                // Detect game version
+                detectedVersion = GameVersionDetector.DetectVersion(kenshiProcess);
+                Logger.Log($"Detected Kenshi version: {detectedVersion}");
+
+                if (detectedVersion == GameVersionDetector.KenshiVersion.Unknown)
+                {
+                    Logger.Log("WARNING: Unknown Kenshi version detected. Injection may fail.");
+                    Logger.Log("Supported versions: 0.98.49, 0.98.50, 0.98.51");
+                }
+
+                // Get version-specific offsets
+                try
+                {
+                    offsets = GameVersionDetector.GetOffsetsForVersion(detectedVersion);
+                    Logger.Log($"Loaded memory offsets for {detectedVersion}");
+                    Logger.Log($"  Base Address: 0x{offsets.BaseAddress:X}");
+                    Logger.Log($"  Havok Pathfind: 0x{offsets.HavokPathfindOffset:X}");
+                    Logger.Log($"  NavMesh Query: 0x{offsets.NavMeshQueryOffset:X}");
+                }
+                catch (NotSupportedException ex)
+                {
+                    Logger.Log($"ERROR: {ex.Message}");
+                    return false;
+                }
+
                 // Install hooks
                 InstallPathfindingHook();
                 InstallNavMeshHook();
@@ -95,7 +118,7 @@ namespace KenshiMultiplayer.Utility
         /// </summary>
         private void InstallPathfindingHook()
         {
-            IntPtr targetAddress = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)HAVOK_PATHFIND_OFFSET);
+            IntPtr targetAddress = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)offsets.HavokPathfindOffset);
 
             // Save original bytes
             originalPathfindBytes = new byte[14];
@@ -132,7 +155,7 @@ namespace KenshiMultiplayer.Utility
         /// </summary>
         private void InstallNavMeshHook()
         {
-            IntPtr targetAddress = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)NAVMESH_QUERY_OFFSET);
+            IntPtr targetAddress = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)offsets.NavMeshQueryOffset);
 
             // Save original bytes
             originalNavmeshBytes = new byte[14];
@@ -175,7 +198,7 @@ namespace KenshiMultiplayer.Utility
             code.AddRange(originalPathfindBytes.Take(5));
 
             // Jump back
-            IntPtr returnAddress = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)(HAVOK_PATHFIND_OFFSET + 5));
+            IntPtr returnAddress = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)(offsets.HavokPathfindOffset + 5));
             code.AddRange(CreateJump(IntPtr.Add(allocatedMemory, code.Count), returnAddress));
 
             return code.ToArray();
