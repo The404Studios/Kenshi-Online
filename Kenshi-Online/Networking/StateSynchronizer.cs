@@ -352,7 +352,7 @@ namespace KenshiMultiplayer.Networking
                     return false; // Old input
                 
                 // Check for speed hacks
-                if (input.Velocity.Magnitude() > 15.0f) // Max speed in Kenshi
+                if (input.Velocity.Length() > 15.0f) // Max speed in Kenshi
                     return false;
                 
                 // Check for teleportation

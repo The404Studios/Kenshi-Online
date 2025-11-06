@@ -12,6 +12,7 @@ namespace KenshiMultiplayer.Utility
         public const string Combat = "combat";
         public const string Health = "health";
         public const string Chat = "chat";
+        public const string ChatMessage = "chat"; // Alias for Chat
         public const string Reconnect = "reconnect";
         public const string AdminKick = "adminkick";
 

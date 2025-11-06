@@ -84,25 +84,25 @@ namespace KenshiMultiplayer.Utility
         }
 
         /// <summary>
-        /// Get or calculate a path between two points
+        /// Get or calculate a path between two points (async version)
         /// </summary>
         public async Task<CachedPath> GetPath(Vector3 start, Vector3 end, bool allowGeneration = true)
         {
             string pathKey = GeneratePathKey(start, end);
-            
+
             // Check memory cache first
             if (memoryCache.TryGet(pathKey, out CachedPath cachedPath))
             {
                 return cachedPath;
             }
-            
+
             // Check disk cache
             if (pathCache.TryGetValue(pathKey, out cachedPath))
             {
                 memoryCache.Add(pathKey, cachedPath);
                 return cachedPath;
             }
-            
+
             // Generate new path if allowed
             if (allowGeneration)
             {
@@ -113,7 +113,31 @@ namespace KenshiMultiplayer.Utility
                 }
                 return cachedPath;
             }
-            
+
+            return null;
+        }
+
+        /// <summary>
+        /// Synchronous version - only checks cache, does not generate
+        /// Use this when you can't await (e.g., in hooks/callbacks)
+        /// </summary>
+        public CachedPath GetPathSync(Vector3 start, Vector3 end)
+        {
+            string pathKey = GeneratePathKey(start, end);
+
+            // Check memory cache first
+            if (memoryCache.TryGet(pathKey, out CachedPath cachedPath))
+            {
+                return cachedPath;
+            }
+
+            // Check disk cache
+            if (pathCache.TryGetValue(pathKey, out cachedPath))
+            {
+                memoryCache.Add(pathKey, cachedPath);
+                return cachedPath;
+            }
+
             return null;
         }
 
@@ -463,6 +487,35 @@ namespace KenshiMultiplayer.Utility
             }
 
             Logger.Log($"Synchronized {paths.Count} paths to cache");
+        }
+
+        /// <summary>
+        /// Generate checksum for the entire cache
+        /// </summary>
+        public string GenerateCacheChecksum()
+        {
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                var data = new System.Text.StringBuilder();
+                foreach (var kvp in pathCache.OrderBy(p => p.Key))
+                {
+                    data.Append(kvp.Key);
+                    data.Append(kvp.Value.Checksum);
+                }
+
+                byte[] bytes = System.Text.Encoding.UTF8.GetBytes(data.ToString());
+                byte[] hash = sha256.ComputeHash(bytes);
+                return Convert.ToBase64String(hash);
+            }
+        }
+
+        /// <summary>
+        /// Save pre-baked paths to disk
+        /// </summary>
+        public async Task SaveBakedPaths()
+        {
+            await SaveCache();
+            Logger.Log($"Saved {pathCache.Count} pre-baked paths");
         }
 
         /// <summary>
