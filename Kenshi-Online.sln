@@ -5,16 +5,30 @@ VisualStudioVersion = 17.9.34622.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KenshiMultiplayer", "Kenshi-Online\KenshiMultiplayer.csproj", "{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KenshiOnlineMod", "KenshiOnlineMod\KenshiOnlineMod.vcxproj", "{A1B2C3D4-E5F6-4A5B-8C9D-1E2F3A4B5C6D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
 		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}.Debug|x64.Build.0 = Debug|Any CPU
 		{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}.Release|x64.ActiveCfg = Release|Any CPU
+		{3EA06FD5-DA0D-4F30-B935-7D8FB998FF5C}.Release|x64.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-4A5B-8C9D-1E2F3A4B5C6D}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{A1B2C3D4-E5F6-4A5B-8C9D-1E2F3A4B5C6D}.Debug|x64.ActiveCfg = Debug|x64
+		{A1B2C3D4-E5F6-4A5B-8C9D-1E2F3A4B5C6D}.Debug|x64.Build.0 = Debug|x64
+		{A1B2C3D4-E5F6-4A5B-8C9D-1E2F3A4B5C6D}.Release|Any CPU.ActiveCfg = Release|x64
+		{A1B2C3D4-E5F6-4A5B-8C9D-1E2F3A4B5C6D}.Release|x64.ActiveCfg = Release|x64
+		{A1B2C3D4-E5F6-4A5B-8C9D-1E2F3A4B5C6D}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -111,7 +111,13 @@ namespace KenshiMultiplayer.Managers
 
                 // Step 6: Initialize game bridge
                 Console.WriteLine("Establishing game bridge connection...");
-                _gameBridge = new KenshiGameBridge(_kenshiProcess!);
+                _gameBridge = new KenshiGameBridge();
+
+                // Connect to the running Kenshi process
+                if (!_gameBridge.ConnectToKenshi())
+                {
+                    Console.WriteLine("Warning: Failed to establish game bridge connection");
+                }
 
                 // Step 7: Load the world
                 Console.WriteLine($"Loading world: {ServerWorldName}");

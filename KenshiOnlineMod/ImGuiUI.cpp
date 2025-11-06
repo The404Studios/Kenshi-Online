@@ -87,30 +87,31 @@ namespace KenshiOnline
 
     void UIManager::RenderMainMenu()
     {
-        ImGui::SetNextWindowSize(ImVec2(400, 300));
-        ImGui::SetNextWindowPos(ImVec2(100, 100));
+        ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
 
         if (ImGui::Begin("Kenshi Online - Main Menu", &m_ShowMainMenu))
         {
             ImGui::Text("Welcome to Kenshi Online!");
             ImGui::Separator();
 
-            if (ImGui::Button("Server Browser", ImVec2(200, 40)))
+            ImVec2 buttonSize(200, 40);
+            if (ImGui::Button("Server Browser"))
             {
                 m_ShowServerBrowser = true;
             }
 
-            if (ImGui::Button("Friends List", ImVec2(200, 40)))
+            if (ImGui::Button("Friends List"))
             {
                 m_ShowFriendsList = true;
             }
 
-            if (ImGui::Button("Lobby Invites", ImVec2(200, 40)))
+            if (ImGui::Button("Lobby Invites"))
             {
                 m_ShowLobbyInvites = true;
             }
 
-            if (ImGui::Button("Settings", ImVec2(200, 40)))
+            if (ImGui::Button("Settings"))
             {
                 m_ShowSettings = true;
             }
@@ -128,7 +129,7 @@ namespace KenshiOnline
                 m_DirectConnectPort = atoi(portBuffer);
             }
 
-            if (ImGui::Button("Connect", ImVec2(200, 30)))
+            if (ImGui::Button("Connect"))
             {
                 ServerInfo directServer;
                 directServer.name = "Direct Connect";
@@ -146,7 +147,7 @@ namespace KenshiOnline
 
     void UIManager::RenderServerBrowser()
     {
-        ImGui::SetNextWindowSize(ImVec2(800, 600));
+        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
 
         if (ImGui::Begin("Server Browser", &m_ShowServerBrowser))
         {
@@ -163,77 +164,72 @@ namespace KenshiOnline
 
             ImGui::Separator();
 
-            // Server list table
-            if (ImGui::BeginTable("ServerList", 7,
-                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable))
+            // Server list using columns (compatible with older ImGui)
+            ImGui::Columns(7, "ServerColumns", true);
+            ImGui::Text("Name"); ImGui::NextColumn();
+            ImGui::Text("Players"); ImGui::NextColumn();
+            ImGui::Text("Map"); ImGui::NextColumn();
+            ImGui::Text("Mode"); ImGui::NextColumn();
+            ImGui::Text("Ping"); ImGui::NextColumn();
+            ImGui::Text("Version"); ImGui::NextColumn();
+            ImGui::Text("Lock"); ImGui::NextColumn();
+            ImGui::Separator();
+
+            // Filter servers
+            std::string filterStr(m_ServerFilterBuffer);
+            std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(), ::tolower);
+
+            for (int i = 0; i < m_Servers.size(); i++)
             {
-                ImGui::TableSetupColumn("Name");
-                ImGui::TableSetupColumn("Players");
-                ImGui::TableSetupColumn("Map");
-                ImGui::TableSetupColumn("Mode");
-                ImGui::TableSetupColumn("Ping");
-                ImGui::TableSetupColumn("Version");
-                ImGui::TableSetupColumn("Lock");
-                ImGui::TableHeadersRow();
+                const auto& server = m_Servers[i];
 
-                // Filter servers
-                std::string filterStr(m_ServerFilterBuffer);
-                std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(), ::tolower);
-
-                for (int i = 0; i < m_Servers.size(); i++)
+                // Apply filter
+                if (!filterStr.empty())
                 {
-                    const auto& server = m_Servers[i];
-
-                    // Apply filter
-                    if (!filterStr.empty())
+                    std::string serverName = server.name;
+                    std::transform(serverName.begin(), serverName.end(), serverName.begin(), ::tolower);
+                    if (serverName.find(filterStr) == std::string::npos)
                     {
-                        std::string serverName = server.name;
-                        std::transform(serverName.begin(), serverName.end(), serverName.begin(), ::tolower);
-                        if (serverName.find(filterStr) == std::string::npos)
-                        {
-                            continue;
-                        }
+                        continue;
                     }
-
-                    ImGui::TableNextRow();
-
-                    bool selected = (m_SelectedServerIndex == i);
-                    ImGui::TableSetColumnIndex(0);
-                    if (ImGui::Selectable(server.name.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns))
-                    {
-                        m_SelectedServerIndex = i;
-                    }
-
-                    ImGui::TableSetColumnIndex(1);
-                    char playerText[32];
-                    sprintf_s(playerText, "%d/%d", server.playerCount, server.maxPlayers);
-                    ImGui::Text(playerText);
-
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::Text(server.mapName.c_str());
-
-                    ImGui::TableSetColumnIndex(3);
-                    ImGui::Text(server.gameMode.c_str());
-
-                    ImGui::TableSetColumnIndex(4);
-                    ImGui::Text("%d ms", server.ping);
-
-                    ImGui::TableSetColumnIndex(5);
-                    ImGui::Text(server.version.c_str());
-
-                    ImGui::TableSetColumnIndex(6);
-                    ImGui::Text(server.passwordProtected ? "Yes" : "No");
                 }
 
-                ImGui::EndTable();
+                bool selected = (m_SelectedServerIndex == i);
+
+                if (ImGui::Selectable(server.name.c_str(), selected))
+                {
+                    m_SelectedServerIndex = i;
+                }
+                ImGui::NextColumn();
+
+                char playerText[32];
+                sprintf_s(playerText, "%d/%d", server.playerCount, server.maxPlayers);
+                ImGui::Text(playerText);
+                ImGui::NextColumn();
+
+                ImGui::Text(server.mapName.c_str());
+                ImGui::NextColumn();
+
+                ImGui::Text(server.gameMode.c_str());
+                ImGui::NextColumn();
+
+                ImGui::Text("%d ms", server.ping);
+                ImGui::NextColumn();
+
+                ImGui::Text(server.version.c_str());
+                ImGui::NextColumn();
+
+                ImGui::Text(server.passwordProtected ? "Yes" : "No");
+                ImGui::NextColumn();
             }
 
+            ImGui::Columns(1);
             ImGui::Separator();
 
             // Join button
             if (m_SelectedServerIndex >= 0 && m_SelectedServerIndex < m_Servers.size())
             {
-                if (ImGui::Button("Join Server", ImVec2(150, 30)))
+                if (ImGui::Button("Join Server"))
                 {
                     if (m_OnJoinServer)
                     {
@@ -250,15 +246,15 @@ namespace KenshiOnline
 
     void UIManager::RenderFriendsList()
     {
-        ImGui::SetNextWindowSize(ImVec2(500, 600));
+        ImGui::SetNextWindowSize(ImVec2(500, 600), ImGuiCond_FirstUseEver);
 
         if (ImGui::Begin("Friends List", &m_ShowFriendsList))
         {
             ImGui::InputText("Search", m_FriendSearchBuffer, sizeof(m_FriendSearchBuffer));
             ImGui::Separator();
 
-            // Friends list
-            if (ImGui::BeginChild("FriendsListChild", ImVec2(0, 500)))
+            // Friends list (use simple child window without size for compatibility)
+            ImGui::BeginChild("FriendsListChild");
             {
                 std::string searchStr(m_FriendSearchBuffer);
                 std::transform(searchStr.begin(), searchStr.end(), searchStr.begin(), ::tolower);
@@ -312,7 +308,7 @@ namespace KenshiOnline
 
                 if (selectedFriend.isOnline)
                 {
-                    if (ImGui::Button("Invite to Lobby", ImVec2(150, 30)))
+                    if (ImGui::Button("Invite to Lobby"))
                     {
                         if (m_OnInviteFriend)
                         {
@@ -324,7 +320,7 @@ namespace KenshiOnline
 
                     if (!selectedFriend.currentServer.empty())
                     {
-                        if (ImGui::Button("Join Server", ImVec2(150, 30)))
+                        if (ImGui::Button("Join Server"))
                         {
                             // TODO: Get server info and join
                         }
@@ -341,7 +337,7 @@ namespace KenshiOnline
 
     void UIManager::RenderLobbyInvites()
     {
-        ImGui::SetNextWindowSize(ImVec2(500, 400));
+        ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
 
         if (ImGui::Begin("Lobby Invites", &m_ShowLobbyInvites))
         {
@@ -357,7 +353,7 @@ namespace KenshiOnline
                     ImGui::Text("Lobby: %s (%d players)", invite.lobbyName.c_str(), invite.playerCount);
                     ImGui::Text("Time: %s", invite.timestamp.c_str());
 
-                    if (ImGui::Button(("Accept##" + invite.inviteId).c_str(), ImVec2(100, 30)))
+                    if (ImGui::Button(("Accept##" + invite.inviteId).c_str()))
                     {
                         if (m_OnAcceptInvite)
                         {
@@ -367,7 +363,7 @@ namespace KenshiOnline
 
                     ImGui::SameLine();
 
-                    if (ImGui::Button(("Decline##" + invite.inviteId).c_str(), ImVec2(100, 30)))
+                    if (ImGui::Button(("Decline##" + invite.inviteId).c_str()))
                     {
                         // Remove invite
                         // TODO: Implement decline
@@ -382,7 +378,7 @@ namespace KenshiOnline
 
     void UIManager::RenderSettings()
     {
-        ImGui::SetNextWindowSize(ImVec2(500, 400));
+        ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
 
         if (ImGui::Begin("Settings", &m_ShowSettings))
         {
@@ -398,8 +394,8 @@ namespace KenshiOnline
     void UIManager::RenderConnectionStatus()
     {
         // Small status window in corner
-        ImGui::SetNextWindowSize(ImVec2(300, 100));
-        ImGui::SetNextWindowPos(ImVec2(10, 10));
+        ImGui::SetNextWindowSize(ImVec2(300, 100), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
 
         if (ImGui::Begin("Connection Status", nullptr,
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar))
