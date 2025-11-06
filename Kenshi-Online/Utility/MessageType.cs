@@ -36,6 +36,8 @@ namespace KenshiMultiplayer.Utility
         public const string FactionLeave = "faction_leave";
         public const string FactionInvite = "faction_invite";
         public const string FactionRelation = "faction_relation";
+        public const string FactionData = "faction_data";
+        public const string GetFactions = "get_factions";
 
         // Friends system
         public const string FriendRequest = "friend_request";
@@ -134,5 +136,11 @@ namespace KenshiMultiplayer.Utility
         public const string SquadJoin = "squad_join";
         public const string SquadLeave = "squad_leave";
         public const string SquadCommand = "squad_command";
+        public const string SquadData = "squad_data";
+        public const string GetSquads = "get_squads";
+
+        // Building/World state
+        public const string BuildingData = "building_data";
+        public const string GetBuildings = "get_buildings";
     }
 }
