@@ -13,6 +13,24 @@ namespace KenshiMultiplayer.Networking
         public float RotationX { get; set; } // Rotation around X axis
         public float RotationY { get; set; } // Rotation around Y axis
         public float RotationZ { get; set; } // Rotation around Z axis (yaw)
+
+        // Short aliases for rotation properties
+        public float RotX
+        {
+            get => RotationX;
+            set => RotationX = value;
+        }
+        public float RotY
+        {
+            get => RotationY;
+            set => RotationY = value;
+        }
+        public float RotZ
+        {
+            get => RotationZ;
+            set => RotationZ = value;
+        }
+
         public long Timestamp { get; set; } // For synchronization and interpolation
 
         // Default constructor

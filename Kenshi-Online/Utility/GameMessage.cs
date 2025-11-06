@@ -10,13 +10,13 @@ namespace KenshiMultiplayer.Utility
     public class GameMessage
     {
         // Basic message properties
-        public string Type { get; set; }
-        public string PlayerId { get; set; }
-        public string LobbyId { get; set; }
+        public string Type { get; set; } = string.Empty;
+        public string PlayerId { get; set; } = string.Empty;
+        public string LobbyId { get; set; } = string.Empty;
         public Dictionary<string, object> Data { get; set; } = new Dictionary<string, object>();
 
         // Security and tracking properties
-        public string SessionId { get; set; }  // For authentication
+        public string SessionId { get; set; } = string.Empty;  // For authentication
         public long Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         public string MessageId { get; set; } = Guid.NewGuid().ToString();
         public int SequenceNumber { get; set; } = 0;  // For detecting missing packets
@@ -27,11 +27,11 @@ namespace KenshiMultiplayer.Utility
 
         // Delta compression
         public bool IsDelta { get; set; } = false;
-        public string BaseMessageId { get; set; }  // Reference to the full message this delta is based on
+        public string BaseMessageId { get; set; } = string.Empty;  // Reference to the full message this delta is based on
 
         // Acknowledgment
         public bool RequiresAck { get; set; } = false;
-        public string AckId { get; set; }  // If this is an ACK, which message it acknowledges
+        public string AckId { get; set; } = string.Empty;  // If this is an ACK, which message it acknowledges
 
         // Priority (higher numbers = more important)
         public int Priority { get; set; } = 1;

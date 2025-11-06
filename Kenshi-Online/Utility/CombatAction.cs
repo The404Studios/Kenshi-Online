@@ -17,6 +17,8 @@ namespace KenshiMultiplayer.Utility
         public string AttackType { get; set; }    // Slash, Blunt, Cut, Pierce, etc.
         public string TargetLimb { get; set; }    // Head, Chest, LeftArm, etc.
         public float Power { get; set; } = 1.0f;  // Attack power multiplier (0.0-2.0)
+        public float Damage { get; set; }         // Base damage value
+        public float Range { get; set; } = 2.0f;  // Attack range in meters
         public bool IsCritical { get; set; }      // Whether this is a critical hit
         public long Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -164,11 +166,43 @@ namespace KenshiMultiplayer.Utility
     // Combat result class - returned after combat resolution
     public class CombatResult
     {
+        // Core properties
+        public string AttackerId { get; set; }
+        public string TargetId { get; set; }
+        public long Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        // Hit/Miss properties
         public bool Hit { get; set; }
+        public bool Miss { get; set; }
+        public bool Success { get; set; }
+        public string Reason { get; set; }
+
+        // Damage properties
         public int Damage { get; set; }
         public string DamageType { get; set; }
+        public float BleedDamage { get; set; }
+        public LimbDamageResult LimbDamage { get; set; }
+
+        // Location properties
         public string AffectedLimb { get; set; }
+        public string HitLocation { get; set; }
+
+        // Block properties
+        public bool Blocked { get; set; }
+        public float BlockDamage { get; set; }
+        public bool BlockBroken { get; set; }
+
+        // Critical/Special properties
         public bool IsCritical { get; set; }
+        public bool Critical { get; set; }
+        public bool Dismemberment { get; set; }
+        public string SeveredLimb { get; set; }
+
+        // Knockback properties
+        public bool Knockback { get; set; }
+        public float KnockbackForce { get; set; }
+
+        // Effects and messages
         public List<StatusEffect> AppliedEffects { get; set; } = new List<StatusEffect>();
         public string ResultMessage { get; set; }
 

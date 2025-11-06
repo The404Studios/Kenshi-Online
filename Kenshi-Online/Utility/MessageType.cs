@@ -12,6 +12,7 @@ namespace KenshiMultiplayer.Utility
         public const string Combat = "combat";
         public const string Health = "health";
         public const string Chat = "chat";
+        public const string ChatMessage = "chat"; // Alias for Chat
         public const string Reconnect = "reconnect";
         public const string AdminKick = "adminkick";
 
@@ -101,5 +102,37 @@ namespace KenshiMultiplayer.Utility
         // Ping/heartbeat for connection validation
         public const string Ping = "ping";
         public const string Pong = "pong";
+
+        // Player spawning
+        public const string SpawnRequest = "spawn_request";
+        public const string PlayerSpawned = "player_spawned";
+        public const string PlayerDespawned = "player_despawned";
+        public const string PlayerRespawn = "player_respawn";
+
+        // Group/Friend spawning
+        public const string GroupSpawnRequest = "group_spawn_request";
+        public const string GroupSpawnCreated = "group_spawn_created";
+        public const string GroupSpawnReady = "group_spawn_ready";
+        public const string GroupSpawnCompleted = "group_spawn_completed";
+        public const string GroupSpawnCancelled = "group_spawn_cancelled";
+
+        // Player join/leave
+        public const string PlayerJoined = "player_joined";
+        public const string PlayerLeft = "player_left";
+        public const string PlayerStateUpdate = "player_state_update";
+
+        // Game commands
+        public const string MoveCommand = "move_command";
+        public const string AttackCommand = "attack_command";
+        public const string FollowCommand = "follow_command";
+        public const string PickupCommand = "pickup_command";
+        public const string InteractCommand = "interact_command";
+
+        // Squad commands
+        public const string SquadCreate = "squad_create";
+        public const string SquadDisband = "squad_disband";
+        public const string SquadJoin = "squad_join";
+        public const string SquadLeave = "squad_leave";
+        public const string SquadCommand = "squad_command";
     }
 }
