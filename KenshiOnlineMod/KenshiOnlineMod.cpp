@@ -4,14 +4,15 @@
  * Communicates with the C# server for multiplayer functionality
  */
 
+// Include winsock2 BEFORE Windows.h to avoid redefinition errors
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <Windows.h>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <thread>
 #include <mutex>
-#include <winsock2.h>
-#include <ws2tcpip.h>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -48,12 +49,18 @@ namespace Kenshi
         constexpr uintptr_t PlayerSquadCount = 0x24C5A28;
         constexpr uintptr_t FactionList = 0x24D2100;
         constexpr uintptr_t FactionCount = 0x24D2108;
+        constexpr uintptr_t AllSquadsList = 0x24C5B00;
+        constexpr uintptr_t AllSquadsCount = 0x24C5B08;
+        constexpr uintptr_t BuildingList = 0x24D3200;
+        constexpr uintptr_t BuildingCount = 0x24D3208;
     }
 
     namespace Functions
     {
         constexpr uintptr_t SpawnCharacter = 0x8B3C80;
         constexpr uintptr_t IssueCommand = 0x8D5000;
+        constexpr uintptr_t CreateSquad = 0x8E2400;
+        constexpr uintptr_t PlaceBuilding = 0x9A1C00;
     }
 }
 
@@ -133,6 +140,58 @@ struct Faction
     uint8_t isActive;
 };
 
+struct FactionRelation
+{
+    int targetFactionID;
+    int relationValue; // -100 to +100
+    uint8_t isEnemy;
+    uint8_t isAlly;
+    uint8_t permanentWar;
+    uint8_t permanentPeace;
+};
+
+struct Squad
+{
+    void* vtable;
+    int squadID;
+    char* name;
+    void* leader;
+
+    void* memberList;
+    int memberCount;
+    int maxMembers;
+
+    void* orders;
+    void* formation;
+
+    uint8_t isPlayerSquad;
+    uint8_t isActive;
+};
+
+struct Building
+{
+    void* vtable;
+    int buildingID;
+    char* name;
+    int buildingType;
+
+    Vector3 position;
+    Vector3 rotation;
+
+    void* owner; // Faction or character
+    int ownerFactionID;
+
+    float health;
+    float maxHealth;
+
+    void* inventory;
+    void* production;
+
+    uint8_t isConstructed;
+    uint8_t isDamaged;
+    uint8_t isPlayerOwned;
+};
+
 #pragma endregion
 
 #pragma region Helper Functions
@@ -197,6 +256,185 @@ std::vector<Faction*> GetAllFactions()
     }
 
     return factions;
+}
+
+Faction* GetFactionByID(int factionID)
+{
+    auto factions = GetAllFactions();
+    for (auto* faction : factions)
+    {
+        if (faction && faction->factionID == factionID)
+        {
+            return faction;
+        }
+    }
+    return nullptr;
+}
+
+bool SetFactionRelation(int faction1ID, int faction2ID, int relationValue)
+{
+    Faction* faction1 = GetFactionByID(faction1ID);
+    if (!faction1 || !faction1->relations) return false;
+
+    // Faction relations are stored as an array of FactionRelation structs
+    FactionRelation* relations = (FactionRelation*)faction1->relations;
+
+    // Find existing relation or create new one
+    for (int i = 0; i < faction1->relationCount; i++)
+    {
+        if (relations[i].targetFactionID == faction2ID)
+        {
+            // Update existing relation
+            Write<int>((uintptr_t)&relations[i].relationValue, relationValue);
+
+            // Update flags based on relation value
+            Write<uint8_t>((uintptr_t)&relations[i].isEnemy, relationValue < -50 ? 1 : 0);
+            Write<uint8_t>((uintptr_t)&relations[i].isAlly, relationValue > 50 ? 1 : 0);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void SendFactionData()
+{
+    if (g_Socket == INVALID_SOCKET) return;
+
+    try
+    {
+        auto factions = GetAllFactions();
+
+        for (auto* faction : factions)
+        {
+            if (faction == nullptr || faction->name == nullptr) continue;
+
+            char buffer[512];
+            snprintf(buffer, sizeof(buffer),
+                "FACTION_DATA|%d|%s|%d|%d|%d|%d\n",
+                faction->factionID,
+                faction->name,
+                faction->factionType,
+                faction->wealth,
+                faction->isPlayerFaction ? 1 : 0,
+                faction->memberCount
+            );
+
+            send(g_Socket, buffer, (int)strlen(buffer), 0);
+        }
+    }
+    catch (...)
+    {
+        // Ignore errors
+    }
+}
+
+std::vector<Squad*> GetAllSquads()
+{
+    std::vector<Squad*> squads;
+
+    uintptr_t listAddr = g_KenshiBase + Kenshi::Offsets::AllSquadsList;
+    uintptr_t countAddr = g_KenshiBase + Kenshi::Offsets::AllSquadsCount;
+
+    int count = Read<int>(countAddr);
+    Squad** list = Read<Squad**>(listAddr);
+
+    for (int i = 0; i < count && i < 512; i++)
+    {
+        if (list[i] != nullptr && list[i]->isActive)
+        {
+            squads.push_back(list[i]);
+        }
+    }
+
+    return squads;
+}
+
+void SendSquadData()
+{
+    if (g_Socket == INVALID_SOCKET) return;
+
+    try
+    {
+        auto squads = GetAllSquads();
+
+        for (auto* squad : squads)
+        {
+            if (squad == nullptr || squad->name == nullptr) continue;
+
+            char buffer[512];
+            snprintf(buffer, sizeof(buffer),
+                "SQUAD_DATA|%d|%s|%d|%d|%d\n",
+                squad->squadID,
+                squad->name,
+                squad->memberCount,
+                squad->maxMembers,
+                squad->isPlayerSquad ? 1 : 0
+            );
+
+            send(g_Socket, buffer, (int)strlen(buffer), 0);
+        }
+    }
+    catch (...)
+    {
+        // Ignore errors
+    }
+}
+
+std::vector<Building*> GetAllBuildings()
+{
+    std::vector<Building*> buildings;
+
+    uintptr_t listAddr = g_KenshiBase + Kenshi::Offsets::BuildingList;
+    uintptr_t countAddr = g_KenshiBase + Kenshi::Offsets::BuildingCount;
+
+    int count = Read<int>(countAddr);
+    Building** list = Read<Building**>(listAddr);
+
+    for (int i = 0; i < count && i < 2048; i++)
+    {
+        if (list[i] != nullptr && list[i]->isConstructed)
+        {
+            buildings.push_back(list[i]);
+        }
+    }
+
+    return buildings;
+}
+
+void SendBuildingData()
+{
+    if (g_Socket == INVALID_SOCKET) return;
+
+    try
+    {
+        auto buildings = GetAllBuildings();
+
+        for (auto* building : buildings)
+        {
+            if (building == nullptr) continue;
+
+            char buffer[512];
+            snprintf(buffer, sizeof(buffer),
+                "BUILDING_DATA|%d|%s|%d|%.2f|%.2f|%.2f|%d|%.2f|%.2f\n",
+                building->buildingID,
+                building->name ? building->name : "Unknown",
+                building->buildingType,
+                building->position.x,
+                building->position.y,
+                building->position.z,
+                building->ownerFactionID,
+                building->health,
+                building->maxHealth
+            );
+
+            send(g_Socket, buffer, (int)strlen(buffer), 0);
+        }
+    }
+    catch (...)
+    {
+        // Ignore errors
+    }
 }
 
 #pragma endregion
@@ -378,7 +616,58 @@ void ReceiveCommands()
                 if (sscanf(token, "FACTION|%d|%d|%d", &faction1, &faction2, &relation) == 3)
                 {
                     // Set faction relation
-                    // TODO: Implement faction relation setting
+                    if (SetFactionRelation(faction1, faction2, relation))
+                    {
+                        // Also set the reverse relation
+                        SetFactionRelation(faction2, faction1, relation);
+                        std::cout << "Set faction relation: " << faction1 << " <-> " << faction2 << " = " << relation << "\n";
+                    }
+                }
+            }
+            else if (strcmp(command, "GET_FACTIONS") == 0)
+            {
+                // Send all faction data to server
+                SendFactionData();
+            }
+            else if (strcmp(command, "GET_SQUADS") == 0)
+            {
+                // Send all squad data to server
+                SendSquadData();
+            }
+            else if (strcmp(command, "GET_BUILDINGS") == 0)
+            {
+                // Send all building data to server
+                SendBuildingData();
+            }
+            else if (strcmp(command, "SQUAD_COMMAND") == 0)
+            {
+                int squadID, commandType;
+                float x, y, z;
+                if (sscanf(token, "SQUAD_COMMAND|%d|%d|%f|%f|%f", &squadID, &commandType, &x, &y, &z) == 5)
+                {
+                    // Issue command to squad
+                    // commandType: 0=Move, 1=Attack, 2=Follow, 3=Hold
+                    std::cout << "Squad command: " << squadID << " type:" << commandType << " pos:(" << x << "," << y << "," << z << ")\n";
+                    // TODO: Implement squad command execution
+                }
+            }
+            else if (strcmp(command, "BUILDING_UPDATE") == 0)
+            {
+                int buildingID;
+                float health;
+                if (sscanf(token, "BUILDING_UPDATE|%d|%f", &buildingID, &health) == 2)
+                {
+                    // Update building health
+                    auto buildings = GetAllBuildings();
+                    for (auto* building : buildings)
+                    {
+                        if (building && building->buildingID == buildingID)
+                        {
+                            Write<float>((uintptr_t)&building->health, health);
+                            std::cout << "Updated building " << buildingID << " health to " << health << "\n";
+                            break;
+                        }
+                    }
                 }
             }
 
