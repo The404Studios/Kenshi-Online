@@ -12,6 +12,8 @@ namespace KenshiMultiplayer.Utility
         // Basic message properties
         public string Type { get; set; } = string.Empty;
         public string PlayerId { get; set; } = string.Empty;
+        public string SenderId { get; set; } = string.Empty;
+        public string TargetId { get; set; } = string.Empty;
         public string LobbyId { get; set; } = string.Empty;
         public Dictionary<string, object> Data { get; set; } = new Dictionary<string, object>();
 

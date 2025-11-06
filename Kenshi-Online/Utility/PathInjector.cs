@@ -336,7 +336,7 @@ namespace KenshiMultiplayer.Utility
         private IntPtr CallOriginalPathfinding(IntPtr character, IntPtr startPos, IntPtr endPos, IntPtr outPath)
         {
             // Create a function pointer to the original code
-            IntPtr originalFunc = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)HAVOK_PATHFIND_OFFSET + 14);
+            IntPtr originalFunc = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)offsets.HavokPathfindOffset + 14);
 
             // This would need proper calling convention handling
             // For now, return failure to use cached paths only
@@ -374,7 +374,7 @@ namespace KenshiMultiplayer.Utility
                 // Restore original pathfinding bytes
                 if (originalPathfindBytes != null)
                 {
-                    IntPtr targetAddress = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)HAVOK_PATHFIND_OFFSET);
+                    IntPtr targetAddress = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)offsets.HavokPathfindOffset);
                     VirtualProtectEx(processHandle, targetAddress, (UIntPtr)originalPathfindBytes.Length,
                         MemoryProtection.ExecuteReadWrite, out var oldProtect);
                     WriteProcessMemory(processHandle, targetAddress, originalPathfindBytes, originalPathfindBytes.Length, out _);

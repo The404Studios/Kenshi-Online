@@ -71,6 +71,7 @@ namespace KenshiMultiplayer.Utility
         public const string StatusEffect = "status_effect";
 
         // Quest system
+        public const string Quest = "quest";
         public const string QuestOffer = "quest_offer";
         public const string QuestAccept = "quest_accept";
         public const string QuestDecline = "quest_decline";

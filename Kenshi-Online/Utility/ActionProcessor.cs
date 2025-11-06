@@ -610,7 +610,10 @@ namespace KenshiMultiplayer.Utility
             // Could be based on faction standing, player level, etc.
             var player1 = worldState.GetPlayer(a1.PlayerId);
             var player2 = worldState.GetPlayer(a2.PlayerId);
-            
+
+            if (player1 == null || player2 == null)
+                return a1.Timestamp < a2.Timestamp ? a1 : a2;
+
             if (player1.Level > player2.Level)
                 return a1;
             else if (player2.Level > player1.Level)
@@ -627,14 +630,17 @@ namespace KenshiMultiplayer.Utility
             // Check who has the resources
             var player1 = worldState.GetPlayer(a1.PlayerId);
             var player2 = worldState.GetPlayer(a2.PlayerId);
-            
+
+            if (player1 == null || player2 == null)
+                return a1.Timestamp < a2.Timestamp ? a1 : a2;
+
             var item = a1.GetData<string>("itemId");
             var quantity1 = a1.GetData<int>("quantity");
             var quantity2 = a2.GetData<int>("quantity");
-            
+
             bool p1HasResources = player1.HasItem(item, quantity1);
             bool p2HasResources = player2.HasItem(item, quantity2);
-            
+
             if (p1HasResources && !p2HasResources)
                 return a1;
             else if (p2HasResources && !p1HasResources)
