@@ -508,20 +508,5 @@ namespace KenshiMultiplayer.Game
         }
 
         #endregion
-
-        /// <summary>
-        /// State update for synchronization
-        /// </summary>
-        public class StateUpdate
-        {
-            public string Type { get; set; } = string.Empty;
-            public string EntityId { get; set; } = string.Empty;
-            public System.Collections.Generic.Dictionary<string, object> Data { get; set; } = new System.Collections.Generic.Dictionary<string, object>();
-            public string PlayerId { get; set; } = string.Empty;
-            public Position? Position { get; set; }
-            public float Health { get; set; }
-            public PlayerState CurrentState { get; set; }
-            public DateTime Timestamp { get; set; }
-        }
     }
 }
