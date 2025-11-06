@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using KenshiMultiplayer.Game;
 using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Utility;
+using KenshiMultiplayer.Data;
 
 namespace KenshiMultiplayer.Networking
 {
