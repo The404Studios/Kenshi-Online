@@ -173,19 +173,19 @@ namespace KenshiMultiplayer.Utility
 
         // Hit/Miss properties
         public bool Hit { get; set; }
-        public bool Miss => !Hit;
-        public bool Success => Hit;
+        public bool Miss { get; set; }
+        public bool Success { get; set; }
         public string Reason { get; set; }
 
         // Damage properties
         public int Damage { get; set; }
         public string DamageType { get; set; }
         public float BleedDamage { get; set; }
-        public float LimbDamage { get; set; }
+        public LimbDamageResult LimbDamage { get; set; }
 
         // Location properties
         public string AffectedLimb { get; set; }
-        public string HitLocation => AffectedLimb;
+        public string HitLocation { get; set; }
 
         // Block properties
         public bool Blocked { get; set; }
@@ -194,7 +194,7 @@ namespace KenshiMultiplayer.Utility
 
         // Critical/Special properties
         public bool IsCritical { get; set; }
-        public bool Critical => IsCritical;
+        public bool Critical { get; set; }
         public bool Dismemberment { get; set; }
         public string SeveredLimb { get; set; }
 

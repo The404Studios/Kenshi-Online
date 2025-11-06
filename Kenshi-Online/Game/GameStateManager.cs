@@ -514,6 +514,9 @@ namespace KenshiMultiplayer.Game
         /// </summary>
         public class StateUpdate
         {
+            public string Type { get; set; }
+            public string EntityId { get; set; }
+            public System.Collections.Generic.Dictionary<string, object> Data { get; set; }
             public string PlayerId { get; set; }
             public Position Position { get; set; }
             public float Health { get; set; }
