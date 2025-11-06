@@ -109,9 +109,17 @@
   <ItemGroup>
     <ClCompile Include="KenshiOnlineMod.cpp" />
     <ClCompile Include="ImGuiUI.cpp" />
+    <ClCompile Include="OgreController.cpp" />
+    <ClCompile Include="AnimationController.cpp" />
+    <ClCompile Include="ServerAPI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImGuiUI.h" />
+    <ClInclude Include="OgreController.h" />
+    <ClInclude Include="AnimationController.h" />
+    <ClInclude Include="PlayerController.h" />
+    <ClInclude Include="NetworkController.h" />
+    <ClInclude Include="ServerAPI.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CMakeLists.txt" />
