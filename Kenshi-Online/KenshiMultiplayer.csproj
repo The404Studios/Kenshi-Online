@@ -5,6 +5,7 @@
     <RootNamespace>KenshiMultiplayer</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Fasm.NET" Version="1.70.3.2" />

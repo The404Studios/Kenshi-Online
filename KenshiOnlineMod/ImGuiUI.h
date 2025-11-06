@@ -6,6 +6,29 @@
 #include <functional>
 
 // Forward declarations for ImGui (assuming ImGui is linked separately)
+struct ImVec2 { float x, y; ImVec2(float _x = 0, float _y = 0) : x(_x), y(_y) {} };
+struct ImVec4 { float x, y, z, w; };
+
+// ImGui enums and flags
+enum ImGuiCond_
+{
+    ImGuiCond_Always = 1 << 0,
+    ImGuiCond_Once = 1 << 1,
+    ImGuiCond_FirstUseEver = 1 << 2,
+    ImGuiCond_Appearing = 1 << 3
+};
+
+enum ImGuiWindowFlags_
+{
+    ImGuiWindowFlags_None = 0,
+    ImGuiWindowFlags_NoTitleBar = 1 << 0,
+    ImGuiWindowFlags_NoResize = 1 << 1,
+    ImGuiWindowFlags_NoMove = 1 << 2,
+    ImGuiWindowFlags_NoScrollbar = 1 << 3,
+    ImGuiWindowFlags_NoScrollWithMouse = 1 << 4,
+    ImGuiWindowFlags_NoCollapse = 1 << 5,
+};
+
 namespace ImGui
 {
     bool Begin(const char* name, bool* p_open = nullptr, int flags = 0);
@@ -13,23 +36,16 @@ namespace ImGui
     void Text(const char* fmt, ...);
     bool Button(const char* label);
     bool InputText(const char* label, char* buf, size_t buf_size);
-    bool BeginTable(const char* str_id, int column, int flags = 0);
-    void EndTable();
-    void TableNextRow();
-    void TableSetColumnIndex(int column_n);
     bool Selectable(const char* label, bool selected = false);
     void SameLine();
     void Separator();
-    bool BeginChild(const char* str_id, const ImVec2& size = ImVec2(0, 0), bool border = false);
+    bool BeginChild(const char* str_id);
     void EndChild();
-    bool BeginCombo(const char* label, const char* preview_value);
-    void EndCombo();
-    void SetNextWindowSize(const ImVec2& size);
-    void SetNextWindowPos(const ImVec2& pos);
+    void SetNextWindowSize(const ImVec2& size, int cond = 0);
+    void SetNextWindowPos(const ImVec2& pos, int cond = 0);
+    void Columns(int count = 1, const char* id = nullptr, bool border = true);
+    void NextColumn();
 }
-
-struct ImVec2 { float x, y; ImVec2(float _x = 0, float _y = 0) : x(_x), y(_y) {} };
-struct ImVec4 { float x, y, z, w; };
 
 namespace KenshiOnline
 {

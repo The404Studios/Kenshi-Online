@@ -123,7 +123,7 @@ namespace KenshiOnline
             ImGui::InputText("Address", m_DirectConnectAddress, sizeof(m_DirectConnectAddress));
 
             char portBuffer[16];
-            sprintf_s(portBuffer, "%d", m_DirectConnectPort);
+            sprintf_s(portBuffer, sizeof(portBuffer), "%d", m_DirectConnectPort);
             if (ImGui::InputText("Port", portBuffer, sizeof(portBuffer)))
             {
                 m_DirectConnectPort = atoi(portBuffer);
@@ -203,7 +203,7 @@ namespace KenshiOnline
                 ImGui::NextColumn();
 
                 char playerText[32];
-                sprintf_s(playerText, "%d/%d", server.playerCount, server.maxPlayers);
+                sprintf_s(playerText, sizeof(playerText), "%d/%d", server.playerCount, server.maxPlayers);
                 ImGui::Text(playerText);
                 ImGui::NextColumn();
 
