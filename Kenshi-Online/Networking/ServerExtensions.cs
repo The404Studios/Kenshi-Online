@@ -90,7 +90,7 @@ namespace KenshiMultiplayer.Networking
                     DisplayName = playerId,
                     Health = 100,
                     MaxHealth = 100,
-                    CurrentState = Data.PlayerState.Idle
+                    CurrentState = PlayerState.Idle
                 };
 
                 // Add player to game

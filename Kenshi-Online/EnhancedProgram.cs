@@ -375,7 +375,7 @@ namespace KenshiMultiplayer
                 DisplayName = playerId,
                 Health = 100,
                 MaxHealth = 100,
-                Position = null,
+                Position = new Position(),
                 CurrentState = PlayerState.Idle
             };
 
