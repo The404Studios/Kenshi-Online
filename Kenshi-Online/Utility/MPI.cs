@@ -14,11 +14,11 @@ namespace KenshiMultiplayer.Utility
     public class MultiplayerIntegration
     {
         // Core components
-        private DeterministicPathManager pathManager;
-        private ActionProcessor actionProcessor;
-        private EnhancedServer server;
-        private EnhancedClient client;
-        private GameModManager modManager;
+        private DeterministicPathManager? pathManager;
+        private ActionProcessor? actionProcessor;
+        private EnhancedServer? server;
+        private EnhancedClient? client;
+        private GameModManager? modManager;
         
         // Configuration
         private readonly string kenshiPath;
@@ -89,27 +89,32 @@ namespace KenshiMultiplayer.Utility
         private async Task InitializeServer()
         {
             Logger.Log("Starting server mode...");
-            
+
             // Create server instance
             server = new EnhancedServer(kenshiPath);
-            
+
+            // Create required managers
+            var worldStateManager = new WorldStateManager();
+            var networkManager = new NetworkManager();
+            var pathCache = new PathCache("pathcache");
+            var pathInjector = new PathInjector(pathCache);
+
             // Initialize action processor
-            actionProcessor = new ActionProcessor(pathManager, server);
-            
+            actionProcessor = new ActionProcessor(worldStateManager, pathInjector, networkManager);
+
             // Set up message handlers
             SetupServerMessageHandlers();
-            
+
             // Start server
             Task.Run(() => server.Start(port));
-            
+
             // Start action processing
             actionProcessor.StartProcessing();
-            
+
             // Pre-cache common paths
             Logger.Log("Pre-baking common paths for clients...");
-            var pathCache = new PathCache("pathcache");
             await pathCache.PreBakeCommonPaths();
-            
+
             Logger.Log($"Server started on port {port}");
         }
         
@@ -335,15 +340,15 @@ namespace KenshiMultiplayer.Utility
                 return;
             }
             
-            var action = new GameAction
+            var action = new PlayerAction
             {
                 Type = type,
                 PlayerId = isServer ? "SERVER" : client?.CurrentUsername ?? "UNKNOWN",
-                Data = System.Text.Json.JsonSerializer.Serialize(data),
+                Data = data as Dictionary<string, object> ?? new Dictionary<string, object> { ["data"] = data },
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Priority = GetActionPriority(type)
             };
-            
+
             actionProcessor.QueueAction(action);
         }
         
