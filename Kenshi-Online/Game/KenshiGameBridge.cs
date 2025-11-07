@@ -291,7 +291,7 @@ namespace KenshiMultiplayer.Game
                         RotationZ = spawnPosition.RotZ,
                         Health = playerData.Health,
                         MaxHealth = playerData.MaxHealth,
-                        FactionId = playerData.FactionId
+                        FactionId = int.TryParse(playerData.FactionId, out int factionId) ? factionId : 0
                     };
 
                     // Write character name
