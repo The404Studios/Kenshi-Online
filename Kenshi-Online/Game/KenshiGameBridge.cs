@@ -98,16 +98,16 @@ namespace KenshiMultiplayer.Game
         }
         #endregion
 
-        private Process kenshiProcess;
+        private Process? kenshiProcess;
         private IntPtr processHandle;
         private bool isConnected;
         private readonly object lockObject = new object();
-        private Timer updateTimer;
+        private Timer? updateTimer;
         private Dictionary<string, IntPtr> spawnedCharacters = new Dictionary<string, IntPtr>();
         private const string LOG_PREFIX = "[KenshiGameBridge] ";
 
         public bool IsConnected => isConnected;
-        public Process KenshiProcess => kenshiProcess;
+        public Process? KenshiProcess => kenshiProcess;
 
         #region Initialization
 
@@ -402,7 +402,7 @@ namespace KenshiMultiplayer.Game
         /// <summary>
         /// Get player position from game
         /// </summary>
-        public Position GetPlayerPosition(string playerId)
+        public Position? GetPlayerPosition(string playerId)
         {
             if (!spawnedCharacters.TryGetValue(playerId, out IntPtr characterPtr))
                 return null;
@@ -626,7 +626,7 @@ namespace KenshiMultiplayer.Game
 
         #region State Monitoring
 
-        private void UpdateGameState(object state)
+        private void UpdateGameState(object? state)
         {
             if (!isConnected)
                 return;
@@ -664,7 +664,7 @@ namespace KenshiMultiplayer.Game
             }
         }
 
-        public event Action<string, Position> OnPlayerPositionChanged;
+        public event Action<string, Position>? OnPlayerPositionChanged;
 
         #endregion
 
