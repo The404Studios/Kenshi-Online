@@ -79,7 +79,7 @@ namespace KenshiOnline
         // Authentication
         bool IsLoggedIn() const { return m_IsLoggedIn; }
         const std::string& GetUsername() const { return m_Username; }
-        void SetLoggedIn(bool logged in, const std::string& username = "");
+        void SetLoggedIn(bool loggedIn, const std::string& username = "");
 
         // Data management
         void SetServers(const std::vector<ServerInfo>& servers);

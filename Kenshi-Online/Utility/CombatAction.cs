@@ -138,7 +138,7 @@ namespace KenshiMultiplayer.Utility
     // Status effect class for combat
     public class StatusEffect
     {
-        public string Type { get; set; }       // Bleed, Stun, Poison, etc.
+        public string Type { get; set; } = ""; // Bleed, Stun, Poison, etc.
         public float Duration { get; set; }    // In seconds
         public float Power { get; set; } = 1.0f; // Effect power multiplier
         public long AppliedAt { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
