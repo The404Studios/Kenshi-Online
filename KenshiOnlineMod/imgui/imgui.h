@@ -16,7 +16,18 @@ struct ImVec4 {
 };
 
 struct ImGuiContext;
-struct ImDrawData;
+
+// Draw data structure (minimal definition)
+struct ImDrawData {
+    bool Valid;
+    void* CmdLists;
+    int CmdListsCount;
+    int TotalIdxCount;
+    int TotalVtxCount;
+    ImVec2 DisplayPos;
+    ImVec2 DisplaySize;
+    ImVec2 FramebufferScale;
+};
 
 struct ImGuiIO {
     int ConfigFlags;

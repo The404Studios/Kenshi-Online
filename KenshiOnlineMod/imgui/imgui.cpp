@@ -13,7 +13,7 @@ namespace ImGui {
     static int g_DummyInt = 0;
     static ImGuiContext* g_Context = nullptr;
     static ImGuiIO g_IO = {};
-    static ImDrawData g_DrawData = {};
+    static ImDrawData g_DrawData = { false, nullptr, 0, 0, 0, {}, {}, {} };
 
     ImGuiContext* CreateContext() {
         if (!g_Context) {
