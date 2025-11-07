@@ -74,6 +74,11 @@ namespace ImGui {
         return false;
     }
 
+    bool InputText(const char* label, char* buf, size_t buf_size) {
+        // Stub: Never modified
+        return false;
+    }
+
     bool InputText(const char* label, char* buf, size_t buf_size, int flags) {
         // Stub: Never modified
         return false;
@@ -81,6 +86,11 @@ namespace ImGui {
 
     bool InputInt(const char* label, int* v, int step, int step_fast, int flags) {
         // Stub: Never modified
+        return false;
+    }
+
+    bool Selectable(const char* label, bool selected) {
+        // Stub: Never selected
         return false;
     }
 

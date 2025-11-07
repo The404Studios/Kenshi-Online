@@ -80,11 +80,13 @@ namespace ImGui {
     bool RadioButton(const char* label, bool active);
 
     // Widgets: Input
-    bool InputText(const char* label, char* buf, size_t buf_size, int flags = 0);
+    bool InputText(const char* label, char* buf, size_t buf_size);
+    bool InputText(const char* label, char* buf, size_t buf_size, int flags);
     bool InputInt(const char* label, int* v, int step = 1, int step_fast = 100, int flags = 0);
 
     // Widgets: Selectables
-    bool Selectable(const char* label, bool selected = false, int flags = 0);
+    bool Selectable(const char* label, bool selected);
+    bool Selectable(const char* label, bool selected, int flags);
 
     // Layout
     void Separator();
