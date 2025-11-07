@@ -17,8 +17,11 @@
 #include <thread>
 #include <mutex>
 #include "ImGuiUI.h"
+#include "DirectX11Hook.h"
 
 #pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
 
 // Forward declarations
 void InitializeMod();
@@ -724,18 +727,33 @@ void InitializeMod()
     InstallHooks();
     std::cout << "Hooks installed!\n";
 
-    // Initialize UI Manager
-    std::cout << "Initializing UI...\n";
-    g_UIManager = new KenshiOnline::UIManager();
-    HWND gameWindow = FindWindowA(nullptr, "Kenshi");
-    if (gameWindow && g_UIManager->Initialize(gameWindow))
+    // Wait for Kenshi to initialize its render system
+    std::cout << "Waiting for Kenshi render system to initialize...\n";
+    Sleep(5000); // Wait 5 seconds for game to fully load
+
+    // Initialize DirectX 11 hooks and ImGui
+    std::cout << "Initializing DirectX 11 hooks...\n";
+    if (KenshiOnline::DirectX11Hook::Get().Initialize())
     {
-        std::cout << "UI Manager initialized!\n";
-        g_UIManager->ShowMainMenu(true);
+        std::cout << "DirectX 11 hooks initialized!\n";
+
+        // Create UI Manager
+        g_UIManager = new KenshiOnline::UIManager();
+        HWND gameWindow = FindWindowA(nullptr, "Kenshi");
+        if (gameWindow && g_UIManager->Initialize(gameWindow))
+        {
+            std::cout << "UI Manager initialized!\n";
+            // Login screen shows by default
+        }
+        else
+        {
+            std::cout << "Warning: Failed to initialize UI Manager\n";
+        }
     }
     else
     {
-        std::cout << "Warning: Failed to initialize UI Manager\n";
+        std::cout << "ERROR: Failed to initialize DirectX 11 hooks!\n";
+        std::cout << "ImGui will not be available.\n";
     }
 
     // Start input monitoring thread
@@ -808,6 +826,9 @@ void ShutdownMod()
         delete g_UIManager;
         g_UIManager = nullptr;
     }
+
+    // Cleanup DirectX hooks
+    KenshiOnline::DirectX11Hook::Get().Shutdown();
 
     if (g_Socket != INVALID_SOCKET)
     {

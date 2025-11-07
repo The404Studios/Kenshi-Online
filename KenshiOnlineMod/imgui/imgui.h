@@ -1,6 +1,8 @@
 #pragma once
 
 // Minimal ImGui header for Kenshi Online
+#define IMGUI_CHECKVERSION()
+
 struct ImVec2 {
     float x, y;
     ImVec2() : x(0), y(0) {}
@@ -11,6 +13,15 @@ struct ImVec4 {
     float x, y, z, w;
     ImVec4() : x(0), y(0), z(0), w(0) {}
     ImVec4(float _x, float _y, float _z, float _w) : x(_x), y(_y), z(_z), w(_w) {}
+};
+
+struct ImGuiContext;
+struct ImDrawData;
+
+struct ImGuiIO {
+    int ConfigFlags;
+    bool WantCaptureMouse;
+    bool WantCaptureKeyboard;
 };
 
 enum ImGuiCond_ {
@@ -56,7 +67,23 @@ enum ImGuiInputTextFlags_ {
 
 typedef void* ImTextureID;
 
+enum ImGuiConfigFlags_ {
+    ImGuiConfigFlags_None = 0,
+    ImGuiConfigFlags_NoMouseCursorChange = 1 << 0,
+};
+
 namespace ImGui {
+    // Context management
+    ImGuiContext* CreateContext();
+    void DestroyContext(ImGuiContext* ctx = nullptr);
+    ImGuiIO& GetIO();
+
+    // Main
+    void NewFrame();
+    void EndFrame();
+    void Render();
+    ImDrawData* GetDrawData();
+
     // Window functions
     bool Begin(const char* name, bool* p_open = nullptr, int flags = 0);
     void End();

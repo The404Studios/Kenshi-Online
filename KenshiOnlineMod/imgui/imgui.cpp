@@ -11,6 +11,40 @@
 namespace ImGui {
     static bool g_DummyBool = false;
     static int g_DummyInt = 0;
+    static ImGuiContext* g_Context = nullptr;
+    static ImGuiIO g_IO = {};
+    static ImDrawData g_DrawData = {};
+
+    ImGuiContext* CreateContext() {
+        if (!g_Context) {
+            g_Context = (ImGuiContext*)1; // Dummy pointer
+        }
+        return g_Context;
+    }
+
+    void DestroyContext(ImGuiContext* ctx) {
+        g_Context = nullptr;
+    }
+
+    ImGuiIO& GetIO() {
+        return g_IO;
+    }
+
+    void NewFrame() {
+        // Stub: Prepare for new frame
+    }
+
+    void EndFrame() {
+        // Stub: End frame
+    }
+
+    void Render() {
+        // Stub: Finalize draw data
+    }
+
+    ImDrawData* GetDrawData() {
+        return &g_DrawData;
+    }
 
     bool Begin(const char* name, bool* p_open, int flags) {
         // Stub: Always return true to render contents

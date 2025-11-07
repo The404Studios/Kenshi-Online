@@ -109,6 +109,7 @@
   <ItemGroup>
     <ClCompile Include="KenshiOnlineMod.cpp" />
     <ClCompile Include="ImGuiUI.cpp" />
+    <ClCompile Include="DirectX11Hook.cpp" />
     <ClCompile Include="OgreController.cpp" />
     <ClCompile Include="AnimationController.cpp" />
     <ClCompile Include="PlayerController.cpp" />
@@ -119,6 +120,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImGuiUI.h" />
+    <ClInclude Include="DirectX11Hook.h" />
     <ClInclude Include="OgreController.h" />
     <ClInclude Include="AnimationController.h" />
     <ClInclude Include="PlayerController.h" />
