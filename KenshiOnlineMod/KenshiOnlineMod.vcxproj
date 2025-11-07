@@ -111,6 +111,9 @@
     <ClCompile Include="ImGuiUI.cpp" />
     <ClCompile Include="OgreController.cpp" />
     <ClCompile Include="AnimationController.cpp" />
+    <ClCompile Include="PlayerController.cpp" />
+    <ClCompile Include="NetworkController.cpp" />
+    <ClCompile Include="AIController.cpp" />
     <ClCompile Include="ServerAPI.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -119,6 +122,7 @@
     <ClInclude Include="AnimationController.h" />
     <ClInclude Include="PlayerController.h" />
     <ClInclude Include="NetworkController.h" />
+    <ClInclude Include="AIController.h" />
     <ClInclude Include="ServerAPI.h" />
   </ItemGroup>
   <ItemGroup>

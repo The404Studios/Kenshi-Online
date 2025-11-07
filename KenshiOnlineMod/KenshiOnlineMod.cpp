@@ -4,6 +4,9 @@
  * Communicates with the C# server for multiplayer functionality
  */
 
+// Disable CRT security warnings for performance-critical game code
+#define _CRT_SECURE_NO_WARNINGS
+
 // Include winsock2 BEFORE Windows.h to avoid redefinition errors
 #include <winsock2.h>
 #include <ws2tcpip.h>
