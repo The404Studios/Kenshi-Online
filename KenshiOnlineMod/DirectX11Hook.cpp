@@ -2,20 +2,9 @@
 #include "DirectX11Hook.h"
 #include "ImGuiUI.h"
 #include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_dx11.h"
+#include "imgui/backends/imgui_impl_win32.h"
 #include <iostream>
-
-// ImGui DirectX 11 backend (we'll implement minimal version)
-namespace ImGui
-{
-    bool ImGui_ImplDX11_Init(ID3D11Device* device, ID3D11DeviceContext* context);
-    void ImGui_ImplDX11_Shutdown();
-    void ImGui_ImplDX11_NewFrame();
-    void ImGui_ImplDX11_RenderDrawData(void* draw_data);
-
-    bool ImGui_ImplWin32_Init(HWND hwnd);
-    void ImGui_ImplWin32_Shutdown();
-    void ImGui_ImplWin32_NewFrame();
-}
 
 namespace KenshiOnline
 {
@@ -271,44 +260,6 @@ namespace KenshiOnline
     }
 }
 
-// Minimal ImGui backend implementations (stubs for now)
-namespace ImGui
-{
-    bool ImGui_ImplDX11_Init(ID3D11Device* device, ID3D11DeviceContext* context)
-    {
-        // TODO: Implement full DirectX 11 backend
-        // For now, just return true
-        return true;
-    }
-
-    void ImGui_ImplDX11_Shutdown()
-    {
-        // TODO: Cleanup DirectX 11 resources
-    }
-
-    void ImGui_ImplDX11_NewFrame()
-    {
-        // TODO: Setup render state
-    }
-
-    void ImGui_ImplDX11_RenderDrawData(void* draw_data)
-    {
-        // TODO: Render ImGui draw commands with DirectX 11
-    }
-
-    bool ImGui_ImplWin32_Init(HWND hwnd)
-    {
-        // TODO: Implement Windows backend
-        return true;
-    }
-
-    void ImGui_ImplWin32_Shutdown()
-    {
-        // TODO: Cleanup Windows resources
-    }
-
-    void ImGui_ImplWin32_NewFrame()
-    {
-        // TODO: Update input state
-    }
-}
+// Note: ImGui backend implementations are now provided by official ImGui files
+// imgui_impl_dx11.cpp and imgui_impl_win32.cpp
+// These are downloaded and included via setup_imgui.bat
