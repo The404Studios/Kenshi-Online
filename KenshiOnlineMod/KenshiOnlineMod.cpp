@@ -16,6 +16,7 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include "ImGuiUI.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -23,6 +24,7 @@
 void InitializeMod();
 void ShutdownMod();
 void NetworkThread();
+void InputThread();
 bool ConnectToServer(const char* address, int port);
 void SendGameState();
 void ReceiveCommands();
@@ -31,7 +33,11 @@ void ReceiveCommands();
 HMODULE g_ModuleHandle = nullptr;
 SOCKET g_Socket = INVALID_SOCKET;
 bool g_Running = false;
+bool g_ShowUI = true; // Show UI by default on startup
 std::mutex g_Mutex;
+
+// UI Manager
+KenshiOnline::UIManager* g_UIManager = nullptr;
 
 // Kenshi base address (will be calculated at runtime)
 uintptr_t g_KenshiBase = 0;
@@ -718,6 +724,26 @@ void InitializeMod()
     InstallHooks();
     std::cout << "Hooks installed!\n";
 
+    // Initialize UI Manager
+    std::cout << "Initializing UI...\n";
+    g_UIManager = new KenshiOnline::UIManager();
+    HWND gameWindow = FindWindowA(nullptr, "Kenshi");
+    if (gameWindow && g_UIManager->Initialize(gameWindow))
+    {
+        std::cout << "UI Manager initialized!\n";
+        g_UIManager->ShowMainMenu(true);
+    }
+    else
+    {
+        std::cout << "Warning: Failed to initialize UI Manager\n";
+    }
+
+    // Start input monitoring thread
+    g_Running = true;
+    std::thread inputThread(InputThread);
+    inputThread.detach();
+    std::cout << "Input monitoring started!\n";
+
     // Connect to server
     std::cout << "Connecting to server at " << SERVER_ADDRESS << ":" << SERVER_PORT << "...\n";
     if (ConnectToServer(SERVER_ADDRESS, SERVER_PORT))
@@ -725,7 +751,6 @@ void InitializeMod()
         std::cout << "Connected to server!\n";
 
         // Start network thread
-        g_Running = true;
         std::thread networkThread(NetworkThread);
         networkThread.detach();
 
@@ -733,17 +758,56 @@ void InitializeMod()
     }
     else
     {
-        std::cout << "Failed to connect to server!\n";
+        std::cout << "Warning: Failed to connect to server (will show login UI)\n";
     }
 
-    std::cout << "\nKenshi Online Mod initialized!\n";
-    std::cout << "You can now play Kenshi in multiplayer mode!\n";
+    std::cout << "\n=================================\n";
+    std::cout << "Kenshi Online Mod initialized!\n";
+    std::cout << "Press F1 to toggle multiplayer menu\n";
     std::cout << "=================================\n";
+}
+
+// Input monitoring thread to detect F1 key press
+void InputThread()
+{
+    bool f1WasPressed = false;
+
+    while (g_Running)
+    {
+        // Check if F1 is pressed (VK_F1 = 0x70)
+        bool f1IsPressed = (GetAsyncKeyState(VK_F1) & 0x8000) != 0;
+
+        if (f1IsPressed && !f1WasPressed)
+        {
+            // F1 was just pressed (not held)
+            g_ShowUI = !g_ShowUI;
+
+            if (g_UIManager)
+            {
+                g_UIManager->ShowMainMenu(g_ShowUI);
+            }
+
+            std::cout << (g_ShowUI ? "UI shown (F1)" : "UI hidden (F1)") << "\n";
+        }
+
+        f1WasPressed = f1IsPressed;
+
+        // Sleep to avoid burning CPU
+        Sleep(50);
+    }
 }
 
 void ShutdownMod()
 {
     g_Running = false;
+
+    // Cleanup UI
+    if (g_UIManager)
+    {
+        g_UIManager->Shutdown();
+        delete g_UIManager;
+        g_UIManager = nullptr;
+    }
 
     if (g_Socket != INVALID_SOCKET)
     {

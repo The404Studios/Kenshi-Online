@@ -9,11 +9,14 @@
 namespace KenshiOnline
 {
     UIManager::UIManager()
-        : m_ShowMainMenu(true)
+        : m_ShowMainMenu(false) // Start with login screen
         , m_ShowServerBrowser(false)
         , m_ShowFriendsList(false)
         , m_ShowLobbyInvites(false)
         , m_ShowSettings(false)
+        , m_ShowLogin(true) // Show login by default
+        , m_ShowRegister(false)
+        , m_IsLoggedIn(false)
         , m_ConnectedServer(nullptr)
         , m_SelectedServerIndex(-1)
         , m_SelectedFriendIndex(-1)
@@ -24,6 +27,13 @@ namespace KenshiOnline
         memset(m_ServerFilterBuffer, 0, sizeof(m_ServerFilterBuffer));
         memset(m_FriendSearchBuffer, 0, sizeof(m_FriendSearchBuffer));
         memset(m_DirectConnectAddress, 0, sizeof(m_DirectConnectAddress));
+        memset(m_LoginUsername, 0, sizeof(m_LoginUsername));
+        memset(m_LoginPassword, 0, sizeof(m_LoginPassword));
+        memset(m_RegisterUsername, 0, sizeof(m_RegisterUsername));
+        memset(m_RegisterEmail, 0, sizeof(m_RegisterEmail));
+        memset(m_RegisterPassword, 0, sizeof(m_RegisterPassword));
+        memset(m_RegisterPasswordConfirm, 0, sizeof(m_RegisterPasswordConfirm));
+        memset(m_StatusMessage, 0, sizeof(m_StatusMessage));
         strcpy_s(m_DirectConnectAddress, "127.0.0.1");
     }
 
@@ -71,14 +81,23 @@ namespace KenshiOnline
         // ImGui_ImplWin32_NewFrame();
         // ImGui::NewFrame();
 
-        // Render UI windows
-        if (m_ShowMainMenu) RenderMainMenu();
-        if (m_ShowServerBrowser) RenderServerBrowser();
-        if (m_ShowFriendsList) RenderFriendsList();
-        if (m_ShowLobbyInvites) RenderLobbyInvites();
-        if (m_ShowSettings) RenderSettings();
+        // Show login/register if not logged in
+        if (!m_IsLoggedIn)
+        {
+            if (m_ShowLogin) RenderLogin();
+            if (m_ShowRegister) RenderRegister();
+        }
+        else
+        {
+            // Render main UI windows when logged in
+            if (m_ShowMainMenu) RenderMainMenu();
+            if (m_ShowServerBrowser) RenderServerBrowser();
+            if (m_ShowFriendsList) RenderFriendsList();
+            if (m_ShowLobbyInvites) RenderLobbyInvites();
+            if (m_ShowSettings) RenderSettings();
 
-        RenderConnectionStatus();
+            RenderConnectionStatus();
+        }
 
         // End ImGui frame
         // ImGui::Render();
@@ -428,6 +447,32 @@ namespace KenshiOnline
     void UIManager::ShowFriendsList(bool show) { m_ShowFriendsList = show; }
     void UIManager::ShowLobbyInvites(bool show) { m_ShowLobbyInvites = show; }
     void UIManager::ShowSettings(bool show) { m_ShowSettings = show; }
+    void UIManager::ShowLogin(bool show) { m_ShowLogin = show; m_ShowRegister = !show; }
+    void UIManager::ShowRegister(bool show) { m_ShowRegister = show; m_ShowLogin = !show; }
+
+    void UIManager::SetLoggedIn(bool loggedIn, const std::string& username)
+    {
+        m_IsLoggedIn = loggedIn;
+        m_Username = username;
+
+        if (loggedIn)
+        {
+            // Switch to main menu after login
+            m_ShowLogin = false;
+            m_ShowRegister = false;
+            m_ShowMainMenu = true;
+            strcpy_s(m_StatusMessage, "Login successful!");
+        }
+        else
+        {
+            // Clear sensitive data on logout
+            memset(m_LoginPassword, 0, sizeof(m_LoginPassword));
+            memset(m_RegisterPassword, 0, sizeof(m_RegisterPassword));
+            memset(m_RegisterPasswordConfirm, 0, sizeof(m_RegisterPasswordConfirm));
+            m_ShowMainMenu = false;
+            m_ShowLogin = true;
+        }
+    }
 
     void UIManager::SetServers(const std::vector<ServerInfo>& servers)
     {
@@ -475,6 +520,16 @@ namespace KenshiOnline
         m_OnDisconnect = callback;
     }
 
+    void UIManager::SetOnLogin(std::function<void(const std::string&, const std::string&)> callback)
+    {
+        m_OnLogin = callback;
+    }
+
+    void UIManager::SetOnRegister(std::function<void(const std::string&, const std::string&, const std::string&)> callback)
+    {
+        m_OnRegister = callback;
+    }
+
     bool UIManager::WantsMouseCapture()
     {
         // return ImGui::GetIO().WantCaptureMouse;
@@ -485,5 +540,145 @@ namespace KenshiOnline
     {
         // return ImGui::GetIO().WantCaptureKeyboard;
         return false;
+    }
+
+    // Login Screen
+    void UIManager::RenderLogin()
+    {
+        ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(500, 300), ImGuiCond_FirstUseEver);
+
+        if (ImGui::Begin("Kenshi Online - Login", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
+        {
+            ImGui::Text("Welcome to Kenshi Online!");
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Username field
+            ImGui::Text("Username:");
+            ImGui::InputText("##username", m_LoginUsername, sizeof(m_LoginUsername));
+            ImGui::Spacing();
+
+            // Password field
+            ImGui::Text("Password:");
+            ImGui::InputText("##password", m_LoginPassword, sizeof(m_LoginPassword));
+            ImGui::Spacing();
+            ImGui::Spacing();
+
+            // Login button
+            if (ImGui::Button("Login"))
+            {
+                if (strlen(m_LoginUsername) > 0 && strlen(m_LoginPassword) > 0)
+                {
+                    if (m_OnLogin)
+                    {
+                        m_OnLogin(std::string(m_LoginUsername), std::string(m_LoginPassword));
+                    }
+                }
+                else
+                {
+                    strcpy_s(m_StatusMessage, "Please enter username and password");
+                }
+            }
+
+            ImGui::SameLine();
+
+            // Register button
+            if (ImGui::Button("Register"))
+            {
+                ShowRegister(true);
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+
+            // Status message
+            if (strlen(m_StatusMessage) > 0)
+            {
+                ImGui::Text("%s", m_StatusMessage);
+            }
+        }
+        ImGui::End();
+    }
+
+    // Register Screen
+    void UIManager::RenderRegister()
+    {
+        ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(500, 250), ImGuiCond_FirstUseEver);
+
+        if (ImGui::Begin("Kenshi Online - Register", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
+        {
+            ImGui::Text("Create Your Account");
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Username field
+            ImGui::Text("Username:");
+            ImGui::InputText("##reg_username", m_RegisterUsername, sizeof(m_RegisterUsername));
+            ImGui::Spacing();
+
+            // Email field
+            ImGui::Text("Email:");
+            ImGui::InputText("##reg_email", m_RegisterEmail, sizeof(m_RegisterEmail));
+            ImGui::Spacing();
+
+            // Password field
+            ImGui::Text("Password:");
+            ImGui::InputText("##reg_password", m_RegisterPassword, sizeof(m_RegisterPassword));
+            ImGui::Spacing();
+
+            // Confirm password field
+            ImGui::Text("Confirm Password:");
+            ImGui::InputText("##reg_password_confirm", m_RegisterPasswordConfirm, sizeof(m_RegisterPasswordConfirm));
+            ImGui::Spacing();
+            ImGui::Spacing();
+
+            // Register button
+            if (ImGui::Button("Create Account"))
+            {
+                if (strlen(m_RegisterUsername) > 0 && strlen(m_RegisterEmail) > 0 &&
+                    strlen(m_RegisterPassword) > 0 && strlen(m_RegisterPasswordConfirm) > 0)
+                {
+                    if (strcmp(m_RegisterPassword, m_RegisterPasswordConfirm) == 0)
+                    {
+                        if (m_OnRegister)
+                        {
+                            m_OnRegister(
+                                std::string(m_RegisterUsername),
+                                std::string(m_RegisterEmail),
+                                std::string(m_RegisterPassword)
+                            );
+                        }
+                    }
+                    else
+                    {
+                        strcpy_s(m_StatusMessage, "Passwords do not match!");
+                    }
+                }
+                else
+                {
+                    strcpy_s(m_StatusMessage, "Please fill in all fields");
+                }
+            }
+
+            ImGui::SameLine();
+
+            // Back to login button
+            if (ImGui::Button("Back to Login"))
+            {
+                ShowLogin(true);
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+
+            // Status message
+            if (strlen(m_StatusMessage) > 0)
+            {
+                ImGui::Text("%s", m_StatusMessage);
+            }
+        }
+        ImGui::End();
     }
 }

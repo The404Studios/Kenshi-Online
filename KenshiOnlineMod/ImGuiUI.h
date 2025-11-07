@@ -73,6 +73,13 @@ namespace KenshiOnline
         void ShowFriendsList(bool show = true);
         void ShowLobbyInvites(bool show = true);
         void ShowSettings(bool show = true);
+        void ShowLogin(bool show = true);
+        void ShowRegister(bool show = true);
+
+        // Authentication
+        bool IsLoggedIn() const { return m_IsLoggedIn; }
+        const std::string& GetUsername() const { return m_Username; }
+        void SetLoggedIn(bool logged in, const std::string& username = "");
 
         // Data management
         void SetServers(const std::vector<ServerInfo>& servers);
@@ -86,6 +93,8 @@ namespace KenshiOnline
         void SetOnAcceptInvite(std::function<void(const LobbyInvite&)> callback);
         void SetOnRefreshServers(std::function<void()> callback);
         void SetOnDisconnect(std::function<void()> callback);
+        void SetOnLogin(std::function<void(const std::string&, const std::string&)> callback);
+        void SetOnRegister(std::function<void(const std::string&, const std::string&, const std::string&)> callback);
 
         // Input
         bool WantsMouseCapture();
@@ -99,6 +108,8 @@ namespace KenshiOnline
         void RenderLobbyInvites();
         void RenderSettings();
         void RenderConnectionStatus();
+        void RenderLogin();
+        void RenderRegister();
 
         // UI State
         bool m_ShowMainMenu;
@@ -106,6 +117,12 @@ namespace KenshiOnline
         bool m_ShowFriendsList;
         bool m_ShowLobbyInvites;
         bool m_ShowSettings;
+        bool m_ShowLogin;
+        bool m_ShowRegister;
+
+        // Authentication State
+        bool m_IsLoggedIn;
+        std::string m_Username;
 
         // Data
         std::vector<ServerInfo> m_Servers;
@@ -122,6 +139,13 @@ namespace KenshiOnline
         char m_FriendSearchBuffer[256];
         char m_DirectConnectAddress[256];
         int m_DirectConnectPort;
+        char m_LoginUsername[256];
+        char m_LoginPassword[256];
+        char m_RegisterUsername[256];
+        char m_RegisterEmail[256];
+        char m_RegisterPassword[256];
+        char m_RegisterPasswordConfirm[256];
+        char m_StatusMessage[512];
 
         // Callbacks
         std::function<void(const ServerInfo&)> m_OnJoinServer;
@@ -129,6 +153,8 @@ namespace KenshiOnline
         std::function<void(const LobbyInvite&)> m_OnAcceptInvite;
         std::function<void()> m_OnRefreshServers;
         std::function<void()> m_OnDisconnect;
+        std::function<void(const std::string&, const std::string&)> m_OnLogin;
+        std::function<void(const std::string&, const std::string&, const std::string&)> m_OnRegister;
 
         // Initialization
         HWND m_Hwnd;
