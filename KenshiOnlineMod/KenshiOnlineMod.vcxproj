@@ -115,6 +115,7 @@
     <ClCompile Include="NetworkController.cpp" />
     <ClCompile Include="AIController.cpp" />
     <ClCompile Include="ServerAPI.cpp" />
+    <ClCompile Include="imgui\imgui.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImGuiUI.h" />
@@ -124,6 +125,7 @@
     <ClInclude Include="NetworkController.h" />
     <ClInclude Include="AIController.h" />
     <ClInclude Include="ServerAPI.h" />
+    <ClInclude Include="imgui\imgui.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CMakeLists.txt" />

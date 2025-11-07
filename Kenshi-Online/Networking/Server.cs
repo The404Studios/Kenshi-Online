@@ -518,9 +518,17 @@ namespace KenshiMultiplayer.Networking
                         if (parts.Length >= 4)
                         {
                             string lobbyId = parts[0];
-                            bool isPrivate = bool.Parse(parts[1]);
+                            if (!bool.TryParse(parts[1], out bool isPrivate))
+                            {
+                                Console.WriteLine("Invalid boolean value for isPrivate");
+                                continue;
+                            }
                             string password = parts[2];
-                            int maxPlayers = int.Parse(parts[3]);
+                            if (!int.TryParse(parts[3], out int maxPlayers))
+                            {
+                                Console.WriteLine("Invalid integer value for maxPlayers");
+                                continue;
+                            }
 
                             CreateLobby(lobbyId, isPrivate, password, maxPlayers);
                             Console.WriteLine($"Lobby {lobbyId} created");

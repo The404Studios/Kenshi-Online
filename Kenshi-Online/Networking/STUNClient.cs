@@ -59,7 +59,7 @@ namespace KenshiMultiplayer.Networking
                     {
                         string[] parts = stunServer.Split(':');
                         string host = parts[0];
-                        int port = parts.Length > 1 ? int.Parse(parts[1]) : 3478; // Default STUN port
+                        int port = parts.Length > 1 && int.TryParse(parts[1], out int parsedPort) ? parsedPort : 3478; // Default STUN port
 
                         IPAddress[] addresses = await Dns.GetHostAddressesAsync(host);
                         if (addresses.Length == 0) continue;
