@@ -77,7 +77,7 @@ namespace KenshiMultiplayer.Utility
             {
                 using (Aes aes = Aes.Create())
                 {
-                    aes.Key = Encoding.UTF8.GetBytes(encryptionKey);
+                    aes.Key = Convert.FromBase64String(encryptionKey);
                     aes.IV = initVector;
                     aes.Mode = CipherMode.CBC;
                     aes.Padding = PaddingMode.PKCS7;
@@ -112,7 +112,7 @@ namespace KenshiMultiplayer.Utility
 
                 using (Aes aes = Aes.Create())
                 {
-                    aes.Key = Encoding.UTF8.GetBytes(encryptionKey);
+                    aes.Key = Convert.FromBase64String(encryptionKey);
                     aes.IV = initVector;
                     aes.Mode = CipherMode.CBC;
                     aes.Padding = PaddingMode.PKCS7;
