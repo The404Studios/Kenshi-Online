@@ -70,6 +70,12 @@ Re_Kenshi is a native C++ plugin that injects into Kenshi and provides an in-gam
   - Organized by category (World, Characters, Combat, etc.)
   - Pattern metadata with version tracking
   - Custom pattern addition support
+- **GameStateManager**: Integrated game state management
+  - Automatic scanning of critical game structures
+  - Cached player and world state data
+  - Proximity-based queries (characters, buildings)
+  - Comprehensive diagnostics and statistics
+  - Pattern resolution with RIP-relative support
 
 ### Development & Testing
 - **Testing Framework**: Complete unit and integration testing utilities
@@ -252,7 +258,8 @@ Re_Kenshi_Plugin/
 │   ├── TestingUtilities.h            # Testing framework
 │   ├── Logger.h                      # Logging system
 │   ├── Utilities.h                   # Utility helpers
-│   └── PatternDatabase.h             # Pattern repository
+│   ├── PatternDatabase.h             # Pattern repository
+│   └── GameStateManager.h            # Centralized game state management
 ├── src/                              # Implementation files
 │   ├── dllmain.cpp                   # DLL entry point (7-phase init)
 │   ├── OgreOverlay.cpp
@@ -272,11 +279,15 @@ Re_Kenshi_Plugin/
 │   ├── TestingUtilities.cpp
 │   ├── Logger.cpp
 │   ├── Utilities.cpp
-│   └── PatternDatabase.cpp
+│   ├── PatternDatabase.cpp
+│   └── GameStateManager.cpp
 ├── examples/                         # Usage examples
 │   ├── BasicUsageExample.cpp         # Comprehensive usage guide
 │   ├── ConfigurationExample.cpp      # Configuration examples
-│   └── TestingExample.cpp            # Testing framework examples
+│   ├── TestingExample.cpp            # Testing framework examples
+│   ├── LoggerExample.cpp             # Logging system examples (12 examples)
+│   ├── UtilitiesExample.cpp          # Utility helpers examples (11 examples)
+│   └── PatternDatabaseExample.cpp    # Pattern database examples (12 examples)
 ├── docs/                             # Documentation
 │   ├── ARCHITECTURE_REDESIGN.md      # System architecture
 │   ├── BUILDING.md                   # Build instructions
@@ -357,7 +368,8 @@ MIT License - see LICENSE file
 - [x] Comprehensive logging system with multiple output targets
 - [x] Utility helpers (string, math, time, file, memory, hash, system, random, debug, json)
 - [x] Pattern database with 50+ pre-defined Kenshi patterns
-- [x] Example files for all major features
+- [x] GameStateManager for centralized game state management
+- [x] Example files for all major features (6 comprehensive example files with 50+ examples)
 - [x] Comprehensive documentation (ARCHITECTURE, BUILDING, RE guide, etc.)
 
 ### 🚧 In Progress
