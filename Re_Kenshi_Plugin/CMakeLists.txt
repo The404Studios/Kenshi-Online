@@ -34,6 +34,9 @@ set(SOURCES
     src/Utilities.cpp
     src/PatternDatabase.cpp
     src/GameStateManager.cpp
+    src/PatternResolver.cpp
+    src/PatternInterpreter.cpp
+    src/PatternCoordinator.cpp
 )
 
 set(HEADERS
@@ -57,6 +60,9 @@ set(HEADERS
     include/Utilities.h
     include/PatternDatabase.h
     include/GameStateManager.h
+    include/PatternResolver.h
+    include/PatternInterpreter.h
+    include/PatternCoordinator.h
 )
 
 # Create library
