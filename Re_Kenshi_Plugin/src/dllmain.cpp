@@ -1,4 +1,5 @@
 #include "../include/PatternCoordinator.h"
+#include "../include/KServerModIntegration.h"
 #include "../include/Logger.h"
 #include "../include/Configuration.h"
 #include <windows.h>
@@ -11,6 +12,7 @@
 
 using namespace ReKenshi;
 using namespace ReKenshi::Patterns;
+using namespace ReKenshi::KServerMod;
 using namespace ReKenshi::Logging;
 using namespace ReKenshi::Config;
 
@@ -144,6 +146,20 @@ public:
         // Enable auto-update
         coordinator.EnableAutoUpdate(true);
         coordinator.SetUpdateRate(10.0f);  // 10 Hz
+
+        // Initialize KServerMod integration (adds spawning, game speed control, etc.)
+        LOG_INFO("Initializing KServerMod integration...");
+        auto& kserverMod = KServerModManager::GetInstance();
+        if (kserverMod.Initialize()) {
+            LOG_INFO("✓ KServerMod features available:");
+            LOG_INFO("  - Item spawning");
+            LOG_INFO("  - Character/Squad spawning");
+            LOG_INFO("  - Game speed control");
+            LOG_INFO("  - Faction management");
+        } else {
+            LOG_WARNING("KServerMod integration partially initialized - some features may not work");
+            LOG_WARNING("This is normal if not running GOG 1.0.68 version");
+        }
 
         LOG_INFO("Connecting to client service via IPC...");
 

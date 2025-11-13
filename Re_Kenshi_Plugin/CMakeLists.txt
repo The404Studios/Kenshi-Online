@@ -37,6 +37,7 @@ set(SOURCES
     src/PatternResolver.cpp
     src/PatternInterpreter.cpp
     src/PatternCoordinator.cpp
+    src/KServerModIntegration.cpp
 )
 
 set(HEADERS
@@ -63,6 +64,7 @@ set(HEADERS
     include/PatternResolver.h
     include/PatternInterpreter.h
     include/PatternCoordinator.h
+    include/KServerModIntegration.h
 )
 
 # Create library
