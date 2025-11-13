@@ -3,6 +3,8 @@
 #include "ImGuiRenderer.h"
 #include "MemoryScanner.h"
 #include "KenshiStructures.h"
+#include "GameEventManager.h"
+#include "MultiplayerSyncManager.h"
 #include <windows.h>
 #include <thread>
 #include <chrono>
@@ -176,6 +178,16 @@ bool Plugin::Initialize() {
         }
     }
 
+    // Phase 6: Initialize game event manager
+    OutputDebugStringA("[Re_Kenshi] Phase 6: Initializing game event manager...\n");
+    m_eventManager = std::make_unique<Events::GameEventManager>();
+    m_eventManager->Initialize(m_gameWorldPtr, m_characterListPtr, m_playerControllerPtr);
+
+    // Phase 7: Initialize multiplayer sync manager
+    OutputDebugStringA("[Re_Kenshi] Phase 7: Initializing multiplayer sync manager...\n");
+    m_syncManager = std::make_unique<Multiplayer::MultiplayerSyncManager>();
+    m_syncManager->Initialize(m_ipcClient.get(), m_eventManager.get(), m_playerControllerPtr);
+
     m_initialized = true;
     OutputDebugStringA("[Re_Kenshi] Initialization complete!\n");
 
@@ -227,6 +239,8 @@ void Plugin::PrintDiagnostics() {
     log << "D3D11 Hook: " << (m_d3d11Hook && m_d3d11Hook->IsInitialized() ? "Active" : "Inactive") << "\n";
     log << "ImGui Renderer: " << (m_imguiRenderer && m_imguiRenderer->IsInitialized() ? "Active" : "Inactive") << "\n";
     log << "OGRE Overlay: " << (m_overlay && m_overlay->IsVisible() ? "Active" : "Inactive") << "\n";
+    log << "Event Manager: " << (m_eventManager && m_eventManager->IsInitialized() ? "Active" : "Inactive") << "\n";
+    log << "Sync Manager: " << (m_syncManager && m_syncManager->IsInitialized() ? "Active" : "Inactive") << "\n";
     log << "Game World Ptr: 0x" << std::hex << m_gameWorldPtr << "\n";
     log << "Character List Ptr: 0x" << std::hex << m_characterListPtr << "\n";
     log << "Player Controller Ptr: 0x" << std::hex << m_playerControllerPtr << "\n";
@@ -242,6 +256,8 @@ void Plugin::Shutdown() {
 
     OutputDebugStringA("[Re_Kenshi] Shutting down...\n");
 
+    m_syncManager.reset();
+    m_eventManager.reset();
     m_uiScreenManager.reset();
     m_uiRenderer.reset();
     m_imguiRenderer.reset();
@@ -267,6 +283,16 @@ void Plugin::Update(float deltaTime) {
     // Update input
     if (m_inputHandler) {
         m_inputHandler->Update();
+    }
+
+    // Update game event manager (detects game events)
+    if (m_eventManager) {
+        m_eventManager->Update(deltaTime);
+    }
+
+    // Update multiplayer sync manager (syncs game state)
+    if (m_syncManager) {
+        m_syncManager->Update(deltaTime);
     }
 
     // Update game state reading (if needed for multiplayer)

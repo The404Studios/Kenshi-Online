@@ -30,6 +30,14 @@ namespace UI {
     class UIScreenManager;
 }
 
+namespace Events {
+    class GameEventManager;
+}
+
+namespace Multiplayer {
+    class MultiplayerSyncManager;
+}
+
 /**
  * Main plugin class - manages the lifecycle of the Re_Kenshi plugin
  */
@@ -50,6 +58,8 @@ public:
     Rendering::D3D11Hook* GetD3D11Hook() { return m_d3d11Hook.get(); }
     UI::ImGuiRenderer* GetImGuiRenderer() { return m_imguiRenderer.get(); }
     UI::UIScreenManager* GetUIScreenManager() { return m_uiScreenManager.get(); }
+    Events::GameEventManager* GetEventManager() { return m_eventManager.get(); }
+    Multiplayer::MultiplayerSyncManager* GetSyncManager() { return m_syncManager.get(); }
 
     // State
     bool IsInitialized() const { return m_initialized; }
@@ -79,6 +89,8 @@ private:
     std::unique_ptr<Rendering::D3D11Hook> m_d3d11Hook;
     std::unique_ptr<UI::ImGuiRenderer> m_imguiRenderer;
     std::unique_ptr<UI::UIScreenManager> m_uiScreenManager;
+    std::unique_ptr<Events::GameEventManager> m_eventManager;
+    std::unique_ptr<Multiplayer::MultiplayerSyncManager> m_syncManager;
 
     // Game structure pointers (found via pattern scanning)
     uintptr_t m_gameWorldPtr = 0;

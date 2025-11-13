@@ -24,6 +24,8 @@ set(SOURCES
     src/KenshiStructures.cpp
     src/D3D11Hook.cpp
     src/ImGuiRenderer.cpp
+    src/GameEventManager.cpp
+    src/MultiplayerSyncManager.cpp
 )
 
 set(HEADERS
@@ -37,6 +39,8 @@ set(HEADERS
     include/KenshiStructures.h
     include/D3D11Hook.h
     include/ImGuiRenderer.h
+    include/GameEventManager.h
+    include/MultiplayerSyncManager.h
 )
 
 # Create library
