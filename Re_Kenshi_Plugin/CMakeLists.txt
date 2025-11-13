@@ -30,6 +30,9 @@ set(SOURCES
     src/PerformanceProfiler.cpp
     src/Configuration.cpp
     src/TestingUtilities.cpp
+    src/Logger.cpp
+    src/Utilities.cpp
+    src/PatternDatabase.cpp
 )
 
 set(HEADERS
@@ -49,6 +52,9 @@ set(HEADERS
     include/PerformanceProfiler.h
     include/Configuration.h
     include/TestingUtilities.h
+    include/Logger.h
+    include/Utilities.h
+    include/PatternDatabase.h
 )
 
 # Create library
