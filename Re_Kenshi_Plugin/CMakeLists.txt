@@ -20,6 +20,10 @@ set(SOURCES
     src/IPCClient.cpp
     src/UIRenderer.cpp
     src/MessageProtocol.cpp
+    src/MemoryScanner.cpp
+    src/KenshiStructures.cpp
+    src/D3D11Hook.cpp
+    src/ImGuiRenderer.cpp
 )
 
 set(HEADERS
@@ -29,6 +33,10 @@ set(HEADERS
     include/IPCClient.h
     include/UIRenderer.h
     include/MessageProtocol.h
+    include/MemoryScanner.h
+    include/KenshiStructures.h
+    include/D3D11Hook.h
+    include/ImGuiRenderer.h
 )
 
 # Create library
@@ -55,6 +63,9 @@ if(WIN32)
         kernel32
         user32
         gdi32
+        psapi
+        d3d11
+        dxgi
     )
 endif()
 
