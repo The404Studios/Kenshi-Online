@@ -47,6 +47,30 @@ Re_Kenshi is a native C++ plugin that injects into Kenshi and provides an in-gam
   - Memory usage tracking
   - Report generation
 
+### Infrastructure & Utilities
+- **Logging System**: Thread-safe comprehensive logging
+  - Multiple output targets (DebugString, File, Console)
+  - Configurable log levels (Trace, Debug, Info, Warning, Error, Critical)
+  - Timestamped and thread-ID tagged messages
+  - ScopedLogger for automatic function tracking
+  - Formatted logging with printf-style macros
+- **Utility Helpers**: Extensive helper functions
+  - StringUtils: Conversion, trimming, splitting, formatting
+  - MathUtils: Vector operations, distance, interpolation, angles
+  - TimeUtils: Timestamps, sleep, duration formatting
+  - MemoryUtils: Safe memory operations, validation, module info
+  - FileUtils: File operations, directory listing
+  - HashUtils: FNV-1a, CRC32, pattern hashing
+  - SystemUtils: Process info, CPU/memory monitoring
+  - RandomUtils: Random number generation
+  - DebugUtils: Hex dumps, breakpoints, debugger detection
+  - JsonUtils: JSON string escaping, object building
+- **Pattern Database**: Centralized pattern repository
+  - 50+ pre-defined patterns for Kenshi structures
+  - Organized by category (World, Characters, Combat, etc.)
+  - Pattern metadata with version tracking
+  - Custom pattern addition support
+
 ### Development & Testing
 - **Testing Framework**: Complete unit and integration testing utilities
   - Test assertions and test suites
@@ -225,7 +249,10 @@ Re_Kenshi_Plugin/
 │   ├── MultiplayerSyncManager.h      # Multiplayer synchronization
 │   ├── PerformanceProfiler.h         # Performance profiling
 │   ├── Configuration.h               # Configuration system
-│   └── TestingUtilities.h            # Testing framework
+│   ├── TestingUtilities.h            # Testing framework
+│   ├── Logger.h                      # Logging system
+│   ├── Utilities.h                   # Utility helpers
+│   └── PatternDatabase.h             # Pattern repository
 ├── src/                              # Implementation files
 │   ├── dllmain.cpp                   # DLL entry point (7-phase init)
 │   ├── OgreOverlay.cpp
@@ -242,7 +269,10 @@ Re_Kenshi_Plugin/
 │   ├── MultiplayerSyncManager.cpp
 │   ├── PerformanceProfiler.cpp
 │   ├── Configuration.cpp
-│   └── TestingUtilities.cpp
+│   ├── TestingUtilities.cpp
+│   ├── Logger.cpp
+│   ├── Utilities.cpp
+│   └── PatternDatabase.cpp
 ├── examples/                         # Usage examples
 │   ├── BasicUsageExample.cpp         # Comprehensive usage guide
 │   ├── ConfigurationExample.cpp      # Configuration examples
@@ -324,6 +354,9 @@ MIT License - see LICENSE file
 - [x] Testing framework with unit and integration tests
 - [x] D3D11 hooking infrastructure
 - [x] IPC client and protocol implementation
+- [x] Comprehensive logging system with multiple output targets
+- [x] Utility helpers (string, math, time, file, memory, hash, system, random, debug, json)
+- [x] Pattern database with 50+ pre-defined Kenshi patterns
 - [x] Example files for all major features
 - [x] Comprehensive documentation (ARCHITECTURE, BUILDING, RE guide, etc.)
 
