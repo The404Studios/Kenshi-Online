@@ -6,13 +6,55 @@ Re_Kenshi is a native C++ plugin that injects into Kenshi and provides an in-gam
 
 ## Features
 
+### Core Systems
 - **F1 Overlay**: Press F1 to toggle the in-game multiplayer menu
 - **OGRE Integration**: Renders directly on Kenshi's rendering pipeline
+- **D3D11 Hook**: DirectX 11 VTable hooking for overlay rendering
 - **IPC Bridge**: High-performance named pipe communication with C# backend
 - **Input Capture**: Keyboard/mouse input handling for UI interactions
 - **Sign-In System**: Authenticate with your Kenshi Online account
 - **Server Browser**: Browse and connect to multiplayer servers
-- **Real-time Updates**: Game state synchronization via IPC
+
+### Reverse Engineering & Memory
+- **Memory Scanner**: Pattern scanning with wildcard support for version-independent memory access
+- **RIP-relative Resolution**: Automatic x64 instruction address resolution
+- **Game Structures**: Comprehensive reverse-engineered Kenshi data structures
+  - CharacterData, WorldStateData, SquadData, FactionData, InventoryData
+  - BuildingData, NPCData, WorldObjectData, AnimalData, ShopData, WeatherData
+- **Safe Memory Operations**: Exception-handled memory read/write with validation
+
+### Multiplayer & Events
+- **Event System**: Real-time game event detection and distribution
+  - 20+ event types (character damage, movement, death, day changes, etc.)
+  - Subscription-based callbacks
+  - 10 Hz polling with intelligent state caching
+- **Multiplayer Sync Manager**: Intelligent state synchronization
+  - Configurable sync rate and flags
+  - Threshold-based updates (position, health, rotation)
+  - Network player management
+  - Statistics tracking (packets, bytes, latency)
+
+### Configuration & Performance
+- **Configuration System**: Comprehensive JSON-based configuration
+  - IPC settings, multiplayer settings, event settings
+  - Performance profiling options
+  - Input bindings, rendering options, debug settings
+  - Preset configurations (low latency, balanced, low bandwidth)
+- **Performance Profiling**: Built-in profiling and monitoring
+  - High-resolution timers
+  - RAII-style ProfileScope for automatic profiling
+  - Frame time tracking and FPS monitoring
+  - Memory usage tracking
+  - Report generation
+
+### Development & Testing
+- **Testing Framework**: Complete unit and integration testing utilities
+  - Test assertions and test suites
+  - Mock objects (IPC client, etc.)
+  - Memory testing utilities
+  - Performance benchmarking
+  - Integration test helpers
+- **Comprehensive Examples**: Multiple example files demonstrating all features
 
 ## Architecture
 
@@ -165,25 +207,56 @@ Edit `Re_Kenshi_Config.json` in the Kenshi directory:
 
 ```
 Re_Kenshi_Plugin/
-├── CMakeLists.txt          # Build configuration
-├── include/                # Public headers
-│   ├── Re_Kenshi_Plugin.h  # Main plugin interface
-│   ├── OgreOverlay.h       # OGRE rendering
-│   ├── InputHandler.h      # Input capture
-│   ├── IPCClient.h         # IPC communication
-│   ├── UIRenderer.h        # UI rendering
-│   └── MessageProtocol.h   # IPC message protocol
-├── src/                    # Implementation files
-│   ├── dllmain.cpp         # DLL entry point
+├── CMakeLists.txt                    # Build configuration
+├── re_kenshi_config.json             # Default configuration file
+├── include/                          # Public headers
+│   ├── Re_Kenshi_Plugin.h            # Main plugin interface
+│   ├── OgreOverlay.h                 # OGRE rendering
+│   ├── InputHandler.h                # Input capture
+│   ├── IPCClient.h                   # IPC communication
+│   ├── UIRenderer.h                  # UI rendering
+│   ├── MessageProtocol.h             # IPC message protocol
+│   ├── MemoryScanner.h               # Pattern scanning & memory operations
+│   ├── KenshiStructures.h            # Core game structures
+│   ├── KenshiAdvancedStructures.h    # Advanced game structures
+│   ├── D3D11Hook.h                   # DirectX 11 hooking
+│   ├── ImGuiRenderer.h               # ImGui integration
+│   ├── GameEventManager.h            # Event system
+│   ├── MultiplayerSyncManager.h      # Multiplayer synchronization
+│   ├── PerformanceProfiler.h         # Performance profiling
+│   ├── Configuration.h               # Configuration system
+│   └── TestingUtilities.h            # Testing framework
+├── src/                              # Implementation files
+│   ├── dllmain.cpp                   # DLL entry point (7-phase init)
 │   ├── OgreOverlay.cpp
 │   ├── InputHandler.cpp
 │   ├── IPCClient.cpp
 │   ├── UIRenderer.cpp
-│   └── MessageProtocol.cpp
-└── vendor/                 # Third-party libraries
-    ├── ogre/               # OGRE SDK
-    ├── rapidjson/          # JSON parsing
-    └── imgui/              # Optional UI framework
+│   ├── MessageProtocol.cpp
+│   ├── MemoryScanner.cpp
+│   ├── KenshiStructures.cpp
+│   ├── KenshiAdvancedStructures.cpp
+│   ├── D3D11Hook.cpp
+│   ├── ImGuiRenderer.cpp
+│   ├── GameEventManager.cpp
+│   ├── MultiplayerSyncManager.cpp
+│   ├── PerformanceProfiler.cpp
+│   ├── Configuration.cpp
+│   └── TestingUtilities.cpp
+├── examples/                         # Usage examples
+│   ├── BasicUsageExample.cpp         # Comprehensive usage guide
+│   ├── ConfigurationExample.cpp      # Configuration examples
+│   └── TestingExample.cpp            # Testing framework examples
+├── docs/                             # Documentation
+│   ├── ARCHITECTURE_REDESIGN.md      # System architecture
+│   ├── BUILDING.md                   # Build instructions
+│   ├── RE_KENSHI_IMPLEMENTATION.md   # Implementation roadmap
+│   ├── REVERSE_ENGINEERING.md        # RE guide (70+ pages)
+│   └── MULTIPLAYER_INTEGRATION.md    # Multiplayer guide
+└── vendor/                           # Third-party libraries
+    ├── ogre/                         # OGRE SDK (external)
+    ├── rapidjson/                    # JSON parsing
+    └── imgui/                        # Optional UI framework
 ```
 
 ### Adding Features
@@ -239,14 +312,32 @@ MIT License - see LICENSE file
 - **ImGui**: Omar Cornut
 - **RapidJSON**: Tencent
 
-## TODO
+## Status & TODO
 
-- [ ] Complete OGRE integration (requires OGRE headers)
-- [ ] Implement full UI rendering (consider ImGui)
-- [ ] Add pattern scanning for OGRE instance discovery
+### ✅ Completed
+- [x] Memory scanner with pattern matching and RIP-relative resolution
+- [x] Comprehensive game structure reverse engineering
+- [x] Event system with 20+ event types
+- [x] Multiplayer synchronization manager
+- [x] Performance profiling system
+- [x] Configuration system with JSON support
+- [x] Testing framework with unit and integration tests
+- [x] D3D11 hooking infrastructure
+- [x] IPC client and protocol implementation
+- [x] Example files for all major features
+- [x] Comprehensive documentation (ARCHITECTURE, BUILDING, RE guide, etc.)
+
+### 🚧 In Progress
+- [ ] Complete OGRE integration (requires OGRE SDK headers)
+- [ ] Full UI rendering implementation (ImGui integration stubbed)
+- [ ] Pattern scanning for OGRE instance discovery
+
+### 📋 Future Enhancements
 - [ ] Support for OpenGL rendering (in addition to D3D11)
 - [ ] Hot-reload support for faster development
 - [ ] Voice chat integration
-- [ ] In-game settings UI
+- [ ] In-game settings UI (configuration editor)
 - [ ] Minimap overlay with player positions
-- [ ] Performance profiling tools
+- [ ] Advanced anti-cheat integration
+- [ ] Mod compatibility framework
+- [ ] Replay system for recording gameplay

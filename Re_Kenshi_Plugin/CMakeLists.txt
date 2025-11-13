@@ -22,10 +22,14 @@ set(SOURCES
     src/MessageProtocol.cpp
     src/MemoryScanner.cpp
     src/KenshiStructures.cpp
+    src/KenshiAdvancedStructures.cpp
     src/D3D11Hook.cpp
     src/ImGuiRenderer.cpp
     src/GameEventManager.cpp
     src/MultiplayerSyncManager.cpp
+    src/PerformanceProfiler.cpp
+    src/Configuration.cpp
+    src/TestingUtilities.cpp
 )
 
 set(HEADERS
@@ -37,10 +41,14 @@ set(HEADERS
     include/MessageProtocol.h
     include/MemoryScanner.h
     include/KenshiStructures.h
+    include/KenshiAdvancedStructures.h
     include/D3D11Hook.h
     include/ImGuiRenderer.h
     include/GameEventManager.h
     include/MultiplayerSyncManager.h
+    include/PerformanceProfiler.h
+    include/Configuration.h
+    include/TestingUtilities.h
 )
 
 # Create library

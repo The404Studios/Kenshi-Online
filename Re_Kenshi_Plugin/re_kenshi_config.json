@@ -1,0 +1,71 @@
+{
+  "ipc": {
+    "pipeName": "ReKenshi_IPC",
+    "connectTimeout": 5000,
+    "readTimeout": 1000,
+    "writeTimeout": 1000,
+    "reconnectInterval": 5000,
+    "autoReconnect": true,
+    "maxMessageSize": 1048576
+  },
+  "multiplayer": {
+    "syncRate": 10,
+    "positionThreshold": 0.5,
+    "healthThreshold": 1,
+    "rotationThreshold": 0.1,
+    "syncPosition": true,
+    "syncRotation": true,
+    "syncHealth": true,
+    "syncInventory": false,
+    "syncStats": false,
+    "maxPlayers": 64
+  },
+  "events": {
+    "pollRate": 10,
+    "trackCharacterEvents": true,
+    "trackWorldEvents": true,
+    "trackCombatEvents": true,
+    "trackInventoryEvents": false,
+    "trackQuestEvents": false,
+    "maxEventHistory": 100
+  },
+  "performance": {
+    "enabled": false,
+    "trackFrameTime": true,
+    "trackMemory": true,
+    "trackCPU": false,
+    "reportInterval": 60,
+    "printToDebugOutput": true,
+    "saveToFile": false,
+    "reportFilePath": "performance_report.txt"
+  },
+  "input": {
+    "toggleOverlayKey": "0x70",
+    "toggleDebugKey": "0x71",
+    "enableHotkeys": true,
+    "blockGameInput": false
+  },
+  "rendering": {
+    "useD3D11Hook": true,
+    "useOGREOverlay": false,
+    "useImGui": true,
+    "overlayScale": 1,
+    "overlayWidth": 800,
+    "overlayHeight": 600,
+    "vsync": true
+  },
+  "debug": {
+    "logLevel": 3,
+    "outputToDebugString": true,
+    "outputToFile": false,
+    "logFilePath": "re_kenshi.log",
+    "printDiagnostics": false,
+    "diagnosticInterval": 10
+  },
+  "memoryScanner": {
+    "enablePatternCache": true,
+    "validateAddresses": true,
+    "scanTimeout": 5000,
+    "rescanOnFailure": true
+  }
+}
