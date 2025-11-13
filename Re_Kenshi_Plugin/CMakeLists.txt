@@ -33,6 +33,7 @@ set(SOURCES
     src/Logger.cpp
     src/Utilities.cpp
     src/PatternDatabase.cpp
+    src/GameStateManager.cpp
 )
 
 set(HEADERS
@@ -55,6 +56,7 @@ set(HEADERS
     include/Logger.h
     include/Utilities.h
     include/PatternDatabase.h
+    include/GameStateManager.h
 )
 
 # Create library
