@@ -1,56 +1,334 @@
-#include "Re_Kenshi_Plugin.h"
-#include "D3D11Hook.h"
-#include "ImGuiRenderer.h"
-#include "MemoryScanner.h"
-#include "KenshiStructures.h"
-#include "GameEventManager.h"
-#include "MultiplayerSyncManager.h"
+#include "../include/PatternCoordinator.h"
+#include "../include/Logger.h"
+#include "../include/Configuration.h"
 #include <windows.h>
 #include <thread>
 #include <chrono>
 #include <sstream>
+#include <vector>
+#include <unordered_map>
+#include <mutex>
 
 using namespace ReKenshi;
+using namespace ReKenshi::Patterns;
+using namespace ReKenshi::Logging;
+using namespace ReKenshi::Config;
 
-// Global plugin instance
+//=============================================================================
+// Simple IPC Client for Named Pipes
+//=============================================================================
+
+class SimpleIPCClient {
+public:
+    SimpleIPCClient(const std::string& pipeName) : m_pipeName(pipeName), m_pipe(INVALID_HANDLE_VALUE) {}
+
+    ~SimpleIPCClient() {
+        Disconnect();
+    }
+
+    bool Connect() {
+        std::string fullPipeName = "\\\\.\\pipe\\" + m_pipeName;
+
+        m_pipe = CreateFileA(
+            fullPipeName.c_str(),
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            nullptr,
+            OPEN_EXISTING,
+            0,
+            nullptr
+        );
+
+        if (m_pipe == INVALID_HANDLE_VALUE) {
+            return false;
+        }
+
+        DWORD mode = PIPE_READMODE_MESSAGE;
+        SetNamedPipeHandleState(m_pipe, &mode, nullptr, nullptr);
+
+        return true;
+    }
+
+    void Disconnect() {
+        if (m_pipe != INVALID_HANDLE_VALUE) {
+            CloseHandle(m_pipe);
+            m_pipe = INVALID_HANDLE_VALUE;
+        }
+    }
+
+    bool IsConnected() const {
+        return m_pipe != INVALID_HANDLE_VALUE;
+    }
+
+    bool Send(const std::string& json) {
+        if (!IsConnected()) return false;
+
+        std::string message = json + "\n";
+        DWORD bytesWritten;
+
+        return WriteFile(m_pipe, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, nullptr);
+    }
+
+    bool Receive(std::string& json) {
+        if (!IsConnected()) return false;
+
+        char buffer[8192];
+        DWORD bytesRead;
+
+        if (ReadFile(m_pipe, buffer, sizeof(buffer) - 1, &bytesRead, nullptr)) {
+            buffer[bytesRead] = '\0';
+            json = std::string(buffer, bytesRead);
+            return true;
+        }
+
+        return false;
+    }
+
+private:
+    std::string m_pipeName;
+    HANDLE m_pipe;
+};
+
+//=============================================================================
+// Remote Player Data
+//=============================================================================
+
+struct RemotePlayer {
+    std::string playerId;
+    float posX = 0.0f;
+    float posY = 0.0f;
+    float posZ = 0.0f;
+    float health = 100.0f;
+    bool isAlive = true;
+    uint64_t lastUpdate = 0;
+};
+
+//=============================================================================
+// Re_Kenshi Multiplayer Plugin
+//=============================================================================
+
+class ReKenshiPlugin {
+public:
+    static ReKenshiPlugin& GetInstance() {
+        static ReKenshiPlugin instance;
+        return instance;
+    }
+
+    bool Initialize() {
+        if (m_initialized) return true;
+
+        LOG_INFO("╔════════════════════════════════════════════════════════╗");
+        LOG_INFO("║          Re_Kenshi Multiplayer Plugin v1.0            ║");
+        LOG_INFO("╚════════════════════════════════════════════════════════╝");
+
+        // Initialize logger
+        auto& logger = Logger::GetInstance();
+        logger.SetLogLevel(LogLevel::Info);
+        logger.SetOutputTargets(LogOutput::DebugString | LogOutput::File);
+        logger.SetLogFile("ReKenshi.log");
+        logger.EnableTimestamps(true);
+
+        LOG_INFO("Initializing pattern coordinator...");
+
+        // Initialize pattern coordinator (does all the heavy lifting!)
+        auto& coordinator = PatternCoordinator::GetInstance();
+        if (!coordinator.Initialize()) {
+            LOG_ERROR("Failed to initialize pattern coordinator!");
+            return false;
+        }
+
+        LOG_INFO_F("Resolved %d/%d patterns",
+                   coordinator.GetResolvedPatternCount(),
+                   coordinator.GetTotalPatternCount());
+
+        // Enable auto-update
+        coordinator.EnableAutoUpdate(true);
+        coordinator.SetUpdateRate(10.0f);  // 10 Hz
+
+        LOG_INFO("Connecting to client service via IPC...");
+
+        // Connect to IPC (client service)
+        m_ipcClient = std::make_unique<SimpleIPCClient>("ReKenshi_IPC");
+        if (!m_ipcClient->Connect()) {
+            LOG_WARNING("Failed to connect to client service. Make sure ReKenshiClientService is running!");
+            LOG_WARNING("You can still use the plugin, but multiplayer won't work.");
+        } else {
+            LOG_INFO("✓ Connected to client service");
+        }
+
+        m_initialized = true;
+        LOG_INFO("Plugin initialized successfully!");
+
+        return true;
+    }
+
+    void Update(float deltaTime) {
+        if (!m_initialized) return;
+
+        m_timeSinceLastUpdate += deltaTime;
+
+        // Update pattern coordinator
+        auto& coordinator = PatternCoordinator::GetInstance();
+        coordinator.Update(deltaTime);
+
+        // Send player updates (10 Hz)
+        if (m_timeSinceLastUpdate >= 0.1f) {
+            SendPlayerUpdate();
+            ReceiveRemotePlayers();
+            m_timeSinceLastUpdate = 0.0f;
+        }
+    }
+
+    void Shutdown() {
+        if (!m_initialized) return;
+
+        LOG_INFO("Shutting down plugin...");
+
+        m_ipcClient->Disconnect();
+        m_ipcClient.reset();
+
+        m_initialized = false;
+        LOG_INFO("Plugin shut down successfully");
+    }
+
+    const std::unordered_map<std::string, RemotePlayer>& GetRemotePlayers() const {
+        return m_remotePlayers;
+    }
+
+private:
+    ReKenshiPlugin() = default;
+
+    void SendPlayerUpdate() {
+        if (!m_ipcClient || !m_ipcClient->IsConnected()) {
+            // Try reconnecting
+            if (m_ipcClient) {
+                m_ipcClient->Connect();
+            }
+            return;
+        }
+
+        auto& coordinator = PatternCoordinator::GetInstance();
+
+        // Read player character data
+        Kenshi::CharacterData playerData;
+        if (coordinator.GetCharacterData(PatternNames::PLAYER_CHARACTER, playerData)) {
+            // Build JSON message
+            std::ostringstream json;
+            json << "{";
+            json << "\"Type\":\"player_update\",";
+            json << "\"Data\":{";
+            json << "\"posX\":" << playerData.position.x << ",";
+            json << "\"posY\":" << playerData.position.y << ",";
+            json << "\"posZ\":" << playerData.position.z << ",";
+            json << "\"health\":" << playerData.health << ",";
+            json << "\"isAlive\":" << (playerData.isAlive ? "true" : "false");
+            json << "}}";
+
+            m_ipcClient->Send(json.str());
+        }
+    }
+
+    void ReceiveRemotePlayers() {
+        if (!m_ipcClient || !m_ipcClient->IsConnected()) return;
+
+        std::string json;
+        while (m_ipcClient->Receive(json)) {
+            ParseRemotePlayerMessage(json);
+        }
+    }
+
+    void ParseRemotePlayerMessage(const std::string& json) {
+        // Very simple JSON parsing (for production, use a proper JSON library)
+        if (json.find("\"Type\":\"remote_player\"") != std::string::npos) {
+            RemotePlayer player;
+
+            // Extract PlayerId
+            size_t playerIdPos = json.find("\"PlayerId\":\"");
+            if (playerIdPos != std::string::npos) {
+                playerIdPos += 12;  // Length of "PlayerId":""
+                size_t endPos = json.find("\"", playerIdPos);
+                player.playerId = json.substr(playerIdPos, endPos - playerIdPos);
+            }
+
+            // Extract position and health
+            player.posX = ExtractFloat(json, "\"posX\":");
+            player.posY = ExtractFloat(json, "\"posY\":");
+            player.posZ = ExtractFloat(json, "\"posZ\":");
+            player.health = ExtractFloat(json, "\"health\":");
+            player.isAlive = json.find("\"isAlive\":true") != std::string::npos;
+            player.lastUpdate = GetTickCount64();
+
+            // Store remote player
+            std::lock_guard<std::mutex> lock(m_remotePlayersMutex);
+            m_remotePlayers[player.playerId] = player;
+        }
+    }
+
+    float ExtractFloat(const std::string& json, const std::string& key) {
+        size_t pos = json.find(key);
+        if (pos != std::string::npos) {
+            pos += key.length();
+            size_t endPos = json.find_first_of(",}", pos);
+            if (endPos != std::string::npos) {
+                try {
+                    return std::stof(json.substr(pos, endPos - pos));
+                }
+                catch (...) {
+                    return 0.0f;
+                }
+            }
+        }
+        return 0.0f;
+    }
+
+    bool m_initialized = false;
+    std::unique_ptr<SimpleIPCClient> m_ipcClient;
+    std::unordered_map<std::string, RemotePlayer> m_remotePlayers;
+    std::mutex m_remotePlayersMutex;
+    float m_timeSinceLastUpdate = 0.0f;
+};
+
+//=============================================================================
+// Plugin Update Thread
+//=============================================================================
+
 static std::thread g_updateThread;
 static bool g_running = false;
 
-/**
- * Main update loop for the plugin
- */
 void PluginUpdateLoop() {
-    auto& plugin = Plugin::GetInstance();
+    auto& plugin = ReKenshiPlugin::GetInstance();
 
-    const auto targetFrameTime = std::chrono::milliseconds(16); // ~60 FPS
     auto lastTime = std::chrono::high_resolution_clock::now();
 
     while (g_running) {
         auto currentTime = std::chrono::high_resolution_clock::now();
-        auto deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+        float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
         lastTime = currentTime;
 
-        // Update plugin
         plugin.Update(deltaTime);
 
-        // Sleep to maintain frame rate
-        std::this_thread::sleep_for(targetFrameTime);
+        // Sleep for 16ms (~60 FPS)
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 }
 
-/**
- * DLL Entry Point
- */
+//=============================================================================
+// DLL Entry Point
+//=============================================================================
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
     switch (ul_reason_for_call) {
     case DLL_PROCESS_ATTACH: {
-        // Disable thread library calls for performance
         DisableThreadLibraryCalls(hModule);
 
         // Initialize plugin
-        auto& plugin = Plugin::GetInstance();
+        auto& plugin = ReKenshiPlugin::GetInstance();
         if (!plugin.Initialize()) {
-            MessageBoxA(nullptr, "Failed to initialize Re_Kenshi Plugin", "Error", MB_OK | MB_ICONERROR);
+            MessageBoxA(nullptr,
+                "Failed to initialize Re_Kenshi Multiplayer Plugin!\n\n"
+                "Check ReKenshi.log for details.",
+                "Re_Kenshi Error",
+                MB_OK | MB_ICONERROR);
             return FALSE;
         }
 
@@ -58,20 +336,24 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         g_running = true;
         g_updateThread = std::thread(PluginUpdateLoop);
 
-        MessageBoxA(nullptr, "Re_Kenshi Plugin loaded successfully!\nPress F1 to open menu.",
-                   "Re_Kenshi", MB_OK | MB_ICONINFORMATION);
+        MessageBoxA(nullptr,
+            "Re_Kenshi Multiplayer Plugin loaded successfully!\n\n"
+            "Make sure to start:\n"
+            "1. ReKenshiServer (on server machine)\n"
+            "2. ReKenshiClientService (on this machine)\n\n"
+            "Your game state will be synchronized automatically!",
+            "Re_Kenshi",
+            MB_OK | MB_ICONINFORMATION);
         break;
     }
 
     case DLL_PROCESS_DETACH: {
-        // Stop update thread
         g_running = false;
         if (g_updateThread.joinable()) {
             g_updateThread.join();
         }
 
-        // Shutdown plugin
-        auto& plugin = Plugin::GetInstance();
+        auto& plugin = ReKenshiPlugin::GetInstance();
         plugin.Shutdown();
         break;
     }
@@ -80,288 +362,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     case DLL_THREAD_DETACH:
         break;
     }
+
     return TRUE;
 }
-
-namespace ReKenshi {
-
-Plugin& Plugin::GetInstance() {
-    static Plugin instance;
-    return instance;
-}
-
-bool Plugin::Initialize() {
-    if (m_initialized) {
-        return true;
-    }
-
-    OutputDebugStringA("[Re_Kenshi] Starting initialization...\n");
-
-    // Phase 1: Memory scanning to find game structures
-    OutputDebugStringA("[Re_Kenshi] Phase 1: Scanning for game structures...\n");
-    if (!InitializeGameStructures()) {
-        OutputDebugStringA("[Re_Kenshi] Warning: Failed to find some game structures\n");
-        // Continue anyway - not critical for basic functionality
-    }
-
-    // Phase 2: Initialize IPC client
-    OutputDebugStringA("[Re_Kenshi] Phase 2: Initializing IPC client...\n");
-    m_ipcClient = std::make_unique<IPC::IPCClient>();
-    if (!m_ipcClient->Connect()) {
-        MessageBoxA(nullptr, "Failed to connect to Kenshi Online backend.\nMake sure the service is running.",
-                   "IPC Error", MB_OK | MB_ICONWARNING);
-        // Continue anyway - we can retry connection later
-    }
-
-    // Phase 3: Initialize input handler
-    OutputDebugStringA("[Re_Kenshi] Phase 3: Initializing input handler...\n");
-    m_inputHandler = std::make_unique<InputHandler>();
-    HWND gameWindow = FindWindowA("OgreD3D11Wnd", nullptr); // Kenshi's window class
-    if (!gameWindow) {
-        gameWindow = GetForegroundWindow(); // Fallback to current window
-    }
-
-    if (!m_inputHandler->Initialize(gameWindow)) {
-        OutputDebugStringA("[Re_Kenshi] ERROR: Failed to initialize input handler\n");
-        return false;
-    }
-
-    // Set F1 callback to toggle overlay
-    m_inputHandler->SetF1Callback([this]() {
-        SetOverlayVisible(!m_overlayVisible);
-    });
-
-    // Phase 4: Initialize D3D11 hook for rendering
-    OutputDebugStringA("[Re_Kenshi] Phase 4: Initializing D3D11 hook...\n");
-    m_d3d11Hook = std::make_unique<Rendering::D3D11Hook>();
-    if (!m_d3d11Hook->Initialize()) {
-        OutputDebugStringA("[Re_Kenshi] Warning: Failed to initialize D3D11 hook\n");
-        // Try OGRE fallback
-        m_overlay = std::make_unique<OgreOverlay>();
-        if (!m_overlay->Initialize()) {
-            MessageBoxA(nullptr, "Failed to initialize rendering system.\nUI features disabled.",
-                       "Rendering Error", MB_OK | MB_ICONWARNING);
-        }
-    } else {
-        // Initialize ImGui renderer
-        OutputDebugStringA("[Re_Kenshi] Initializing ImGui renderer...\n");
-        m_imguiRenderer = std::make_unique<UI::ImGuiRenderer>();
-        if (m_imguiRenderer->Initialize(
-            m_d3d11Hook->GetWindowHandle(),
-            m_d3d11Hook->GetDevice(),
-            m_d3d11Hook->GetContext())) {
-
-            // Set Present callback for rendering
-            m_d3d11Hook->SetPresentCallback([this](IDXGISwapChain*, ID3D11Device*, ID3D11DeviceContext*) {
-                if (m_overlayVisible && m_imguiRenderer) {
-                    m_imguiRenderer->BeginFrame();
-                    if (m_uiScreenManager) {
-                        m_uiScreenManager->Render();
-                    }
-                    m_imguiRenderer->EndFrame();
-                    m_imguiRenderer->Render();
-                }
-            });
-
-            // Initialize UI screen manager
-            m_uiScreenManager = std::make_unique<UI::UIScreenManager>();
-            m_uiScreenManager->Initialize();
-        }
-    }
-
-    // Phase 5: Initialize UI renderer (fallback if ImGui not available)
-    if (!m_uiScreenManager) {
-        OutputDebugStringA("[Re_Kenshi] Using legacy UI renderer...\n");
-        m_uiRenderer = std::make_unique<UIRenderer>();
-        if (!m_uiRenderer->Initialize(m_overlay.get(), m_ipcClient.get())) {
-            OutputDebugStringA("[Re_Kenshi] Warning: UI renderer initialization failed\n");
-        }
-    }
-
-    // Phase 6: Initialize game event manager
-    OutputDebugStringA("[Re_Kenshi] Phase 6: Initializing game event manager...\n");
-    m_eventManager = std::make_unique<Events::GameEventManager>();
-    m_eventManager->Initialize(m_gameWorldPtr, m_characterListPtr, m_playerControllerPtr);
-
-    // Phase 7: Initialize multiplayer sync manager
-    OutputDebugStringA("[Re_Kenshi] Phase 7: Initializing multiplayer sync manager...\n");
-    m_syncManager = std::make_unique<Multiplayer::MultiplayerSyncManager>();
-    m_syncManager->Initialize(m_ipcClient.get(), m_eventManager.get(), m_playerControllerPtr);
-
-    m_initialized = true;
-    OutputDebugStringA("[Re_Kenshi] Initialization complete!\n");
-
-    // Print diagnostic info
-    PrintDiagnostics();
-
-    return true;
-}
-
-bool Plugin::InitializeGameStructures() {
-    // Scan for important game patterns
-    std::ostringstream log;
-
-    // Find game world
-    auto pattern = Memory::MemoryScanner::ParsePattern(Memory::KenshiPatterns::GAME_WORLD);
-    uintptr_t gameWorldAddr = Memory::MemoryScanner::FindPattern("kenshi_x64.exe", pattern);
-    if (gameWorldAddr) {
-        m_gameWorldPtr = Memory::MemoryScanner::ResolveRelativeAddress(gameWorldAddr, 7);
-        log << "[Re_Kenshi] Found Game World at: 0x" << std::hex << m_gameWorldPtr << std::endl;
-    }
-
-    // Find character list
-    pattern = Memory::MemoryScanner::ParsePattern(Memory::KenshiPatterns::CHARACTER_LIST);
-    uintptr_t charListAddr = Memory::MemoryScanner::FindPattern("kenshi_x64.exe", pattern);
-    if (charListAddr) {
-        m_characterListPtr = Memory::MemoryScanner::ResolveRelativeAddress(charListAddr, 7);
-        log << "[Re_Kenshi] Found Character List at: 0x" << std::hex << m_characterListPtr << std::endl;
-    }
-
-    // Find player controller
-    pattern = Memory::MemoryScanner::ParsePattern(Memory::KenshiPatterns::PLAYER_CONTROLLER);
-    uintptr_t playerCtrlAddr = Memory::MemoryScanner::FindPattern("kenshi_x64.exe", pattern);
-    if (playerCtrlAddr) {
-        m_playerControllerPtr = Memory::MemoryScanner::ResolveRelativeAddress(playerCtrlAddr, 7);
-        log << "[Re_Kenshi] Found Player Controller at: 0x" << std::hex << m_playerControllerPtr << std::endl;
-    }
-
-    std::string logStr = log.str();
-    OutputDebugStringA(logStr.c_str());
-
-    return (m_gameWorldPtr != 0) || (m_characterListPtr != 0);
-}
-
-void Plugin::PrintDiagnostics() {
-    std::ostringstream log;
-    log << "\n========== Re_Kenshi Diagnostics ==========\n";
-    log << "IPC Client: " << (m_ipcClient && m_ipcClient->IsConnected() ? "Connected" : "Disconnected") << "\n";
-    log << "Input Handler: " << (m_inputHandler ? "Initialized" : "Not initialized") << "\n";
-    log << "D3D11 Hook: " << (m_d3d11Hook && m_d3d11Hook->IsInitialized() ? "Active" : "Inactive") << "\n";
-    log << "ImGui Renderer: " << (m_imguiRenderer && m_imguiRenderer->IsInitialized() ? "Active" : "Inactive") << "\n";
-    log << "OGRE Overlay: " << (m_overlay && m_overlay->IsVisible() ? "Active" : "Inactive") << "\n";
-    log << "Event Manager: " << (m_eventManager && m_eventManager->IsInitialized() ? "Active" : "Inactive") << "\n";
-    log << "Sync Manager: " << (m_syncManager && m_syncManager->IsInitialized() ? "Active" : "Inactive") << "\n";
-    log << "Game World Ptr: 0x" << std::hex << m_gameWorldPtr << "\n";
-    log << "Character List Ptr: 0x" << std::hex << m_characterListPtr << "\n";
-    log << "Player Controller Ptr: 0x" << std::hex << m_playerControllerPtr << "\n";
-    log << "==========================================\n\n";
-
-    OutputDebugStringA(log.str().c_str());
-}
-
-void Plugin::Shutdown() {
-    if (!m_initialized) {
-        return;
-    }
-
-    OutputDebugStringA("[Re_Kenshi] Shutting down...\n");
-
-    m_syncManager.reset();
-    m_eventManager.reset();
-    m_uiScreenManager.reset();
-    m_uiRenderer.reset();
-    m_imguiRenderer.reset();
-    m_d3d11Hook.reset();
-    m_overlay.reset();
-    m_inputHandler.reset();
-    m_ipcClient.reset();
-
-    m_initialized = false;
-    OutputDebugStringA("[Re_Kenshi] Shutdown complete\n");
-}
-
-void Plugin::Update(float deltaTime) {
-    if (!m_initialized) {
-        return;
-    }
-
-    // Update IPC client (process messages)
-    if (m_ipcClient) {
-        m_ipcClient->Update();
-    }
-
-    // Update input
-    if (m_inputHandler) {
-        m_inputHandler->Update();
-    }
-
-    // Update game event manager (detects game events)
-    if (m_eventManager) {
-        m_eventManager->Update(deltaTime);
-    }
-
-    // Update multiplayer sync manager (syncs game state)
-    if (m_syncManager) {
-        m_syncManager->Update(deltaTime);
-    }
-
-    // Update game state reading (if needed for multiplayer)
-    UpdateGameState(deltaTime);
-
-    // Update and render UI if visible (legacy renderer)
-    if (m_overlayVisible && m_overlay && m_uiRenderer) {
-        m_overlay->Render(deltaTime);
-        m_uiRenderer->Render(deltaTime);
-    }
-
-    // Note: ImGui rendering happens in D3D11 Present callback
-}
-
-void Plugin::UpdateGameState(float deltaTime) {
-    // Read game state for multiplayer synchronization
-    // This is called every frame, so keep it lightweight
-
-    if (!m_ipcClient || !m_ipcClient->IsConnected()) {
-        return;
-    }
-
-    // TODO: Read player position, health, etc. and send updates via IPC
-    // Example:
-    /*
-    if (m_playerControllerPtr) {
-        uintptr_t playerPtr = 0;
-        if (Memory::MemoryScanner::ReadMemory(m_playerControllerPtr, playerPtr) && playerPtr) {
-            Kenshi::CharacterData character;
-            if (Kenshi::GameDataReader::ReadCharacter(playerPtr, character)) {
-                // Send player update via IPC
-                // m_ipcClient->SendAsync(...);
-            }
-        }
-    }
-    */
-}
-
-void Plugin::SetOverlayVisible(bool visible) {
-    m_overlayVisible = visible;
-
-    OutputDebugStringA(visible ? "[Re_Kenshi] Overlay shown\n" : "[Re_Kenshi] Overlay hidden\n");
-
-    if (m_overlay) {
-        if (visible) {
-            m_overlay->Show();
-        } else {
-            m_overlay->Hide();
-        }
-    }
-
-    if (m_inputHandler) {
-        m_inputHandler->SetCaptureInput(visible);
-    }
-
-    // Show/hide UI
-    if (m_uiScreenManager) {
-        if (visible) {
-            m_uiScreenManager->ShowScreen(UI::UIScreenType::MainMenu);
-        } else {
-            m_uiScreenManager->HideScreen();
-        }
-    } else if (m_uiRenderer) {
-        if (visible) {
-            m_uiRenderer->ShowScreen(UIScreen::MAIN_MENU);
-        } else {
-            m_uiRenderer->HideScreen();
-        }
-    }
-}
-
-} // namespace ReKenshi
