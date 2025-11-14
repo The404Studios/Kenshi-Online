@@ -1,26 +1,40 @@
 Kenshi Online Multiplayer System
 Version: 2.0.0
-Build Date: 2024-01-15
-Codename: "Complete Remake"
+Build Date: 2025-01-14
+Codename: "Complete Remake - Production Ready"
 
 Components:
+- KenshiOnline.Launcher: v2.0.0 (NEW! Unified application)
 - KenshiOnline.Core: v2.0.0
-- KenshiOnline.Server: v2.0.0
-- KenshiOnline.ClientService: v2.0.0
+- KenshiOnline.Server: v2.0.0 (Legacy, use Launcher)
+- KenshiOnline.ClientService: v2.0.0 (Legacy, use Launcher)
 - Re_Kenshi_Plugin: v2.0.0
 
-Features:
+Game Modes:
+- Solo Mode: One-click local multiplayer (NEW!)
+- Host Mode: Server with auto IP detection (NEW!)
+- Join Mode: Client with connection strings (NEW!)
+
+Multiplayer Features:
 - Full entity synchronization (Players, NPCs, Items)
 - Server-authoritative combat and inventory
 - Dynamic world state (time, weather, game speed)
-- Chat system (5 channels)
+- Chat system (5 channels: Global, Squad, Proximity, Whisper, System)
 - Squad/Party system (up to 8 members)
 - Friend system (up to 100 friends)
-- Trading system (player-to-player)
+- Trading system (secure player-to-player)
 - Admin commands (20+ commands)
-- Session management
-- Spatial optimization
-- 20 Hz server updates
+- Session management with heartbeat
+- Spatial optimization (100m grid)
+- 20 Hz server updates with delta sync
+
+Quality of Life:
+- PLAY.bat: One-click launcher (NEW!)
+- Build_Plugin.bat: Automated C++ build (NEW!)
+- Server history: Last 10 servers saved (NEW!)
+- Connection strings: Easy server sharing (NEW!)
+- Auto-configuration: IP detection, ports (NEW!)
+- Settings persistence: JSON config (NEW!)
 
 Languages:
 - English (Full support)
