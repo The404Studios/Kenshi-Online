@@ -19,7 +19,7 @@ echo.
 echo Press Ctrl+C to disconnect
 echo.
 
-cd KenshiOnline.ClientService\bin\Release\net8.0
+cd bin\Release\ClientService
 start /B KenshiOnlineClientService.exe %SERVER_IP% %PORT%
 
 echo Client service is running!

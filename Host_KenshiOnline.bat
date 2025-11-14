@@ -19,7 +19,7 @@ echo.
 echo Press Ctrl+C to stop the server
 echo.
 
-cd KenshiOnline.Server\bin\Release\net8.0
+cd bin\Release\Server
 start /B KenshiOnlineServer.exe %PORT%
 
 echo Server is running!

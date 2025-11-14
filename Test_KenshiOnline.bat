@@ -15,11 +15,11 @@ echo.
 pause
 
 echo [1/4] Starting server...
-start "Kenshi Online Server" cmd /k "cd KenshiOnline.Server\bin\Release\net8.0 && KenshiOnlineServer.exe 7777"
+start "Kenshi Online Server" cmd /k "cd bin\Release\Server && KenshiOnlineServer.exe 7777"
 timeout /t 3 /nobreak > nul
 
 echo [2/4] Starting client service...
-start "Kenshi Online Client" cmd /k "cd KenshiOnline.ClientService\bin\Release\net8.0 && KenshiOnlineClientService.exe 127.0.0.1 7777"
+start "Kenshi Online Client" cmd /k "cd bin\Release\ClientService && KenshiOnlineClientService.exe 127.0.0.1 7777"
 timeout /t 3 /nobreak > nul
 
 echo [3/4] Services started!
