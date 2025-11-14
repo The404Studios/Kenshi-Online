@@ -1,0 +1,145 @@
+{
+  "_comment": "Kenshi Online - Example Server Configuration",
+  "_description": "This file shows all available server settings with recommended values",
+
+  "ServerInfo": {
+    "ServerName": "My Kenshi Server",
+    "Description": "A friendly survival server",
+    "MaxPlayers": 32,
+    "Port": 7777,
+    "Password": "",
+    "_passwordNote": "Leave empty for public server, or set a password for private"
+  },
+
+  "GameSettings": {
+    "GameSpeed": 1.0,
+    "_gameSpeedNote": "1.0 = normal, 2.0 = 2x speed, 0.5 = half speed",
+    "TimeScale": 1.0,
+    "WeatherEnabled": true,
+    "DynamicWeather": true,
+    "StartingTime": 6.0,
+    "_startingTimeNote": "Starting hour (0-24), 6.0 = 6:00 AM"
+  },
+
+  "SyncSettings": {
+    "TickRate": 20,
+    "_tickRateNote": "Server updates per second (10-60, recommended: 20)",
+    "SyncRadius": 100.0,
+    "_syncRadiusNote": "Synchronization radius in meters",
+    "PriorityUpdateEnabled": true,
+    "DeltaSyncEnabled": true,
+    "_deltaSyncNote": "Only send changed data (recommended: true for 80% bandwidth reduction)"
+  },
+
+  "CombatSettings": {
+    "ServerAuthoritative": true,
+    "_serverAuthoritativeNote": "Server validates all combat (prevents cheating)",
+    "DamageMultiplier": 1.0,
+    "FriendlyFire": false,
+    "PvPEnabled": true,
+    "AutoReviveEnabled": false
+  },
+
+  "InventorySettings": {
+    "ServerAuthoritative": true,
+    "SharedInventory": false,
+    "_sharedInventoryNote": "If true, squad members share inventory",
+    "ItemDuplicationCheck": true,
+    "MaxInventorySize": 200
+  },
+
+  "ChatSettings": {
+    "GlobalChatEnabled": true,
+    "ProximityChatEnabled": true,
+    "ProximityChatRadius": 50.0,
+    "SquadChatEnabled": true,
+    "WhisperEnabled": true,
+    "SpamProtectionEnabled": true,
+    "MessageCooldown": 1.0,
+    "_messageCooldownNote": "Seconds between messages",
+    "ProfanityFilterEnabled": false,
+    "MaxMessageLength": 200
+  },
+
+  "SquadSettings": {
+    "MaxSquadSize": 8,
+    "AllowSquadInvites": true,
+    "RequireLeaderApproval": true
+  },
+
+  "FriendSettings": {
+    "MaxFriends": 100,
+    "FriendRequestExpiration": 24,
+    "_friendRequestExpirationNote": "Hours until friend request expires"
+  },
+
+  "TradingSettings": {
+    "TradingEnabled": true,
+    "TradeTimeout": 300,
+    "_tradeTimeoutNote": "Seconds before trade auto-cancels (300 = 5 minutes)",
+    "ServerValidation": true
+  },
+
+  "SessionSettings": {
+    "HeartbeatInterval": 30,
+    "_heartbeatIntervalNote": "Seconds between heartbeat pings",
+    "ConnectionTimeout": 300,
+    "_connectionTimeoutNote": "Seconds before idle disconnect (300 = 5 minutes)",
+    "MaxConnectionAttempts": 3,
+    "ReconnectDelay": 5
+  },
+
+  "AdminSettings": {
+    "AdminPassword": "",
+    "_adminPasswordNote": "Set a password for admin commands (leave empty to disable)",
+    "AllowRemoteAdmin": false,
+    "LogAdminCommands": true,
+    "Admins": [
+      "admin_player_id_1",
+      "admin_player_id_2"
+    ]
+  },
+
+  "PerformanceSettings": {
+    "MaxEntitiesPerUpdate": 100,
+    "SpatialGridCellSize": 100.0,
+    "_spatialGridCellSizeNote": "Grid cell size in meters for optimization",
+    "EnablePerformanceLogging": false,
+    "MemoryLimit": 2048,
+    "_memoryLimitNote": "Maximum memory usage in MB"
+  },
+
+  "LoggingSettings": {
+    "LogLevel": "Info",
+    "_logLevelOptions": "Debug, Info, Warning, Error",
+    "LogToFile": true,
+    "LogToConsole": true,
+    "LogDirectory": "logs",
+    "MaxLogFileSize": 10,
+    "_maxLogFileSizeNote": "Maximum log file size in MB",
+    "KeepLogDays": 7
+  },
+
+  "SecuritySettings": {
+    "EnableAnticheat": true,
+    "MaxSpeedThreshold": 50.0,
+    "_maxSpeedThresholdNote": "Maximum player speed before flagging",
+    "PositionValidation": true,
+    "InventoryValidation": true,
+    "BanSystem": {
+      "Enabled": true,
+      "BanList": [],
+      "BanDuration": 86400,
+      "_banDurationNote": "Default ban duration in seconds (86400 = 24 hours)"
+    }
+  },
+
+  "NetworkSettings": {
+    "BindAddress": "0.0.0.0",
+    "_bindAddressNote": "0.0.0.0 = all interfaces, 127.0.0.1 = localhost only",
+    "UseIPv6": false,
+    "MaxPacketSize": 8192,
+    "CompressionEnabled": false,
+    "_compressionNote": "Enable packet compression (experimental)"
+  }
+}

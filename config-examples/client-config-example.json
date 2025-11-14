@@ -1,0 +1,143 @@
+{
+  "_comment": "Kenshi Online - Example Client Configuration",
+  "_description": "This file shows all available client settings with recommended values",
+
+  "PlayerInfo": {
+    "PlayerName": "MyPlayerName",
+    "_playerNameNote": "Your display name in multiplayer (max 32 characters)",
+    "PreferredColor": "#FF5733",
+    "_preferredColorNote": "Your player color in hex format (optional)"
+  },
+
+  "ConnectionSettings": {
+    "DefaultPort": 7777,
+    "AutoConnect": false,
+    "_autoConnectNote": "Automatically connect to last server on startup",
+    "LastServer": "",
+    "_lastServerNote": "Last server IP:Port (auto-filled)",
+    "ConnectionTimeout": 30,
+    "_connectionTimeoutNote": "Seconds before connection attempt fails",
+    "RetryAttempts": 3,
+    "RetryDelay": 5
+  },
+
+  "ServerHistory": {
+    "SaveHistory": true,
+    "MaxHistoryEntries": 10,
+    "RecentServers": []
+  },
+
+  "GraphicsSettings": {
+    "ShowFPS": true,
+    "ShowPing": true,
+    "ShowPlayerNames": true,
+    "PlayerNameDistance": 50.0,
+    "_playerNameDistanceNote": "Max distance to show player names (meters)",
+    "ShowHealthBars": true,
+    "NameplateStyle": "Simple",
+    "_nameplateStyleOptions": "Simple, Detailed, Minimal"
+  },
+
+  "AudioSettings": {
+    "VoiceChatEnabled": false,
+    "_voiceChatNote": "Voice chat (planned feature)",
+    "VoiceVolume": 100,
+    "MasterVolume": 100,
+    "PushToTalk": true,
+    "PushToTalkKey": "V"
+  },
+
+  "ChatSettings": {
+    "DefaultChannel": "Global",
+    "_defaultChannelOptions": "Global, Squad, Proximity, Whisper",
+    "ShowTimestamps": true,
+    "ChatFontSize": 14,
+    "MaxChatLines": 100,
+    "ChatOpacity": 0.8,
+    "FilterProfanity": false,
+    "ShowJoinLeaveMessages": true,
+    "ChatSoundEnabled": true
+  },
+
+  "UISettings": {
+    "ShowMinimap": true,
+    "MinimapSize": "Medium",
+    "_minimapSizeOptions": "Small, Medium, Large",
+    "MinimapOpacity": 0.9,
+    "ShowCompass": true,
+    "ShowCoordinates": false,
+    "UIScale": 1.0,
+    "_uiScaleNote": "UI scaling (0.5 - 2.0)"
+  },
+
+  "GameplaySettings": {
+    "AutoLoot": false,
+    "QuickSlots": true,
+    "ShowDamageNumbers": true,
+    "ConfirmTrade": true,
+    "ConfirmDrop": true,
+    "AutoAcceptSquadInvites": false,
+    "AutoAcceptFriendRequests": false
+  },
+
+  "NotificationSettings": {
+    "FriendOnlineNotification": true,
+    "SquadInviteNotification": true,
+    "TradeRequestNotification": true,
+    "WhisperNotification": true,
+    "SystemNotifications": true,
+    "NotificationSound": true,
+    "NotificationDuration": 5,
+    "_notificationDurationNote": "Seconds to show notifications"
+  },
+
+  "PerformanceSettings": {
+    "NetworkUpdateRate": 20,
+    "_networkUpdateRateNote": "Client send rate (10-60, must match server)",
+    "InterpolationEnabled": true,
+    "_interpolationNote": "Smooth player movement between updates",
+    "PredictionEnabled": true,
+    "_predictionNote": "Client-side movement prediction",
+    "MaxCachedEntities": 500,
+    "CullingDistance": 150.0,
+    "_cullingDistanceNote": "Hide entities beyond this distance (meters)"
+  },
+
+  "DebugSettings": {
+    "ShowDebugInfo": false,
+    "ShowNetworkStats": false,
+    "ShowEntityCount": false,
+    "LogNetworkMessages": false,
+    "DeveloperMode": false
+  },
+
+  "HotkeySettings": {
+    "ToggleChat": "Enter",
+    "ToggleSquadChat": "Y",
+    "ToggleProximityChat": "U",
+    "ToggleMap": "M",
+    "ToggleFriendsList": "F",
+    "ToggleSettings": "Escape",
+    "QuickSave": "F5",
+    "QuickLoad": "F9"
+  },
+
+  "PrivacySettings": {
+    "ShowOnlineStatus": true,
+    "AllowFriendRequests": true,
+    "AllowSquadInvites": true,
+    "AllowTradeRequests": true,
+    "ShowLocation": true,
+    "ShowActivity": true
+  },
+
+  "AdvancedSettings": {
+    "IPCPipeName": "KenshiOnline_IPC",
+    "_ipcPipeNameNote": "Named pipe for plugin communication (advanced)",
+    "BufferSize": 4096,
+    "CompressionLevel": 0,
+    "_compressionLevelNote": "0 = none, 1-9 = low to high compression",
+    "CustomProtocolPort": 0,
+    "_customProtocolPortNote": "0 = use default, >0 = custom port"
+  }
+}
