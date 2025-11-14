@@ -1,0 +1,34 @@
+{
+  "server": {
+    "port": 7777,
+    "maxPlayers": 10,
+    "timeout": 300000,
+    "description": "My Kenshi Server"
+  },
+  "client": {
+    "serverAddress": "localhost",
+    "serverPort": 7777,
+    "reconnectDelay": 5000,
+    "maxReconnectAttempts": 10
+  },
+  "plugin": {
+    "updateRate": 10,
+    "logLevel": "Info",
+    "enableKServerMod": true,
+    "pipeName": "ReKenshi_IPC"
+  },
+  "gameplay": {
+    "syncPosition": true,
+    "syncHealth": true,
+    "syncInventory": false,
+    "syncCombat": false,
+    "gameSpeedSync": false
+  },
+  "advanced": {
+    "patternScanRetries": 3,
+    "patternScanDelay": 100,
+    "cacheTTL": 1000,
+    "useKServerModOffsets": true,
+    "fallbackToPatterns": true
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "_comment": "Kenshi Online Configuration",
+
+  "player": {
+    "player_name": "Player",
+    "player_id": "auto_generate"
+  },
+
+  "server": {
+    "address": "127.0.0.1",
+    "port": 7777,
+    "auto_connect": false
+  },
+
+  "network": {
+    "update_rate_hz": 10,
+    "heartbeat_interval_seconds": 30,
+    "timeout_seconds": 300
+  },
+
+  "sync": {
+    "sync_radius": 100.0,
+    "spatial_grid_size": 100.0,
+    "position_threshold": 0.01,
+    "rotation_threshold": 0.01
+  },
+
+  "debug": {
+    "log_level": "Info",
+    "log_file": "KenshiOnline.log",
+    "enable_timestamps": true,
+    "enable_console": true
+  },
+
+  "features": {
+    "combat_sync": true,
+    "inventory_sync": true,
+    "world_sync": true,
+    "npc_sync": false,
+    "building_sync": false
+  }
+}
