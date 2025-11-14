@@ -1,7 +1,10 @@
-# 🎮 Re_Kenshi Multiplayer Mod
+# 🎮 Kenshi Online v2.0 - Complete Multiplayer System
 
 **Play Kenshi with your friends in real-time!**
 
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-2.0-blue.svg)]()
+[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)]()
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/discord/962745762938572870?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/wEChtguNv6))
 [![GitHub Stars](https://img.shields.io/github/stars/The404Studios/Kenshi-Online?style=social)](https://github.com/The404Studios/Kenshi-Online)
@@ -12,30 +15,30 @@
 
 **Want to play with a friend RIGHT NOW?**
 
-1. **Double-click:** `Setup_First_Time.bat` (one-time build, ~3 minutes)
-2. **Host or join:**
-   - 🏠 **Host a server?** → Run `Host_Server.bat`
-   - 🤝 **Join a friend?** → Run `Join_Friend.bat`
-   - 💻 **Test locally?** → Run `Play_Localhost.bat`
-3. **Start Kenshi** and inject the plugin with a DLL injector
-4. **Play together!** 🎉
+1. **Run the Launcher:** `Launcher.bat`
+2. **First time? Build:** Select Option 3: Build All (~2 minutes)
+3. **Host or join:**
+   - 🏠 **Host a server?** → Select Option 1: Host Server
+   - 🤝 **Join a friend?** → Select Option 2: Join Server
+4. **Start Kenshi** and inject `Re_Kenshi_Plugin.dll` with a DLL injector
+5. **Play together!** 🎉
 
-**📖 See [QUICK_START.md](QUICK_START.md) for step-by-step instructions!**
+**📖 See [QUICK_START_V2.md](QUICK_START_V2.md) for detailed step-by-step instructions!**
 
 ---
 
 ## 🌟 Overview
 
-**Kenshi Online** transforms the harsh single-player world of Kenshi into a **fully functional multiplayer experience**. This is a complete remake with actual game integration, native mod injection, and comprehensive multiplayer systems.
+**Kenshi Online v2.0** is a **complete ground-up remake** of the multiplayer system, featuring production-ready architecture with full entity synchronization, server-authoritative combat, inventory management, and dynamic world state.
 
-**Now with:**
-- ✅ **Native DLL Mod Injection** - Runs directly inside Kenshi
-- ✅ **Real Game State Reading** - Accesses actual game memory structures
-- ✅ **Player Spawning System** - Spawn anywhere in the world
-- ✅ **Group Spawning** - Start with friends at the same location
-- ✅ **Faction System** - Complete faction management with persistence
-- ✅ **NPC Synchronization** - Share the world with all its inhabitants
-- ✅ **16+ Spawn Locations** - Choose your starting point
+**What's New in v2.0:**
+- ✅ **Complete Entity System** - Proper Player, NPC, and Item entities
+- ✅ **Server-Authoritative** - Combat and inventory validated server-side
+- ✅ **Real-Time Synchronization** - 20 Hz server updates with delta sync
+- ✅ **Spatial Optimization** - Grid-based range queries for performance
+- ✅ **Admin Commands** - Full server administration toolkit
+- ✅ **Session Management** - Player lobby with heartbeat and timeout
+- ✅ **Dynamic World State** - Time, weather, and game speed control
 
 ![Kenshi Wasteland](https://via.placeholder.com/800x400?text=Kenshi+Harsh+Wasteland+Environment)
 
