@@ -15,6 +15,7 @@ option(BUILD_SHARED_LIBS "Build shared library" ON)
 # Source files
 set(SOURCES
     src/dllmain.cpp
+    src/KenshiOnlinePlugin.cpp
     src/OgreOverlay.cpp
     src/InputHandler.cpp
     src/IPCClient.cpp
@@ -42,6 +43,9 @@ set(SOURCES
 
 set(HEADERS
     include/Re_Kenshi_Plugin.h
+    include/NetworkProtocol.h
+    include/NetworkClient.h
+    include/EntityBridge.h
     include/OgreOverlay.h
     include/InputHandler.h
     include/IPCClient.h
@@ -76,6 +80,7 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor
 )
 
 # Windows-specific settings
@@ -109,8 +114,10 @@ endif()
 # add_subdirectory(vendor/imgui)
 # target_link_libraries(${PROJECT_NAME} PRIVATE imgui)
 
-# RapidJSON for JSON serialization
-target_include_directories(${PROJECT_NAME} PRIVATE vendor/rapidjson/include)
+# nlohmann/json for JSON serialization (header-only library)
+# Download json.hpp using: Download_Dependencies.bat
+# Or manually from: https://github.com/nlohmann/json/releases/latest
+# Place at: vendor/nlohmann/json.hpp
 
 # Install
 install(TARGETS ${PROJECT_NAME}

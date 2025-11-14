@@ -11,6 +11,26 @@ The launcher will:
 
 ---
 
+## FIRST TIME SETUP (C++ Plugin)
+
+**Before playing, build the C++ plugin once:**
+
+```batch
+Build_Plugin.bat
+```
+
+This will:
+1. Download dependencies (nlohmann/json)
+2. Build the C++ plugin with CMake
+3. Output to `bin/Release/Plugin/Re_Kenshi_Plugin.dll`
+
+**Requirements:**
+- Visual Studio 2022 with C++ support
+- CMake
+- (The script will check and guide you)
+
+---
+
 ## HOW TO PLAY
 
 ### Option 1: SOLO MODE (Easiest - Play Alone)
