@@ -11,19 +11,20 @@
 [![.NET 8.0](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 
-## ⚡ Quick Start (5 Minutes)
+## ⚡ ONE-CLICK START - Play in 3 Minutes!
 
-**Want to play with a friend RIGHT NOW?**
+**New in v2.0: Unified Launcher - Everything in one exe!**
 
-1. **Run the Launcher:** `Launcher.bat`
-2. **First time? Build:** Select Option 3: Build All (~2 minutes)
-3. **Host or join:**
-   - 🏠 **Host a server?** → Select Option 1: Host Server
-   - 🤝 **Join a friend?** → Select Option 2: Join Server
-4. **Start Kenshi** and inject `Re_Kenshi_Plugin.dll` with a DLL injector
-5. **Play together!** 🎉
+1. **Double-click:** `PLAY.bat` (builds automatically on first run)
+2. **Choose mode:**
+   - 🎮 **[1] Solo Mode** - Play alone (easiest for testing)
+   - 🏠 **[2] Host Server** - Play with friends
+   - 🤝 **[3] Join Server** - Join a friend's server
+3. **Start Kenshi** and inject `bin/Release/Plugin/Re_Kenshi_Plugin.dll`
+4. **Play together!** 🎉
 
-**📖 See [QUICK_START_V2.md](QUICK_START_V2.md) for detailed step-by-step instructions!**
+**📖 See [EASY_START.md](EASY_START.md) for the ultra-simple guide!**
+**📖 See [QUICK_START_V2.md](QUICK_START_V2.md) for detailed instructions!**
 
 ---
 
@@ -32,10 +33,13 @@
 **Kenshi Online v2.0** is a **complete ground-up remake** of the multiplayer system, featuring production-ready architecture with full entity synchronization, server-authoritative combat, inventory management, and dynamic world state.
 
 **What's New in v2.0:**
+- ✅ **Unified Launcher** - Single executable with GUI for all modes (Solo/Host/Join)
+- ✅ **One-Click Setup** - PLAY.bat builds and runs everything automatically
 - ✅ **Complete Entity System** - Proper Player, NPC, and Item entities
 - ✅ **Server-Authoritative** - Combat and inventory validated server-side
 - ✅ **Real-Time Synchronization** - 20 Hz server updates with delta sync
 - ✅ **Spatial Optimization** - Grid-based range queries for performance
+- ✅ **Social Features** - Chat, squads, friends, and trading systems
 - ✅ **Admin Commands** - Full server administration toolkit
 - ✅ **Session Management** - Player lobby with heartbeat and timeout
 - ✅ **Dynamic World State** - Time, weather, and game speed control

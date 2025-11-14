@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KenshiOnline.Server", "Kens
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KenshiOnline.ClientService", "KenshiOnline.ClientService\KenshiOnline.ClientService.csproj", "{C3D4E5F6-A7B8-4C5D-8E7F-9A0B1C2D3E4F}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KenshiOnline.Launcher", "KenshiOnline.Launcher\KenshiOnline.Launcher.csproj", "{E4F5A6B7-C8D9-4E5F-8A7B-9C0D1E2F3A4B}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Re_Kenshi_Plugin", "Re_Kenshi_Plugin\CMakeLists.txt", "{D4E5F6A7-B8C9-4D5E-8F7A-9B0C1D2E3F4A}"
 EndProject
 Global
@@ -43,6 +45,14 @@ Global
 		{C3D4E5F6-A7B8-4C5D-8E7F-9A0B1C2D3E4F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C3D4E5F6-A7B8-4C5D-8E7F-9A0B1C2D3E4F}.Release|x64.ActiveCfg = Release|Any CPU
 		{C3D4E5F6-A7B8-4C5D-8E7F-9A0B1C2D3E4F}.Release|x64.Build.0 = Release|Any CPU
+		{E4F5A6B7-C8D9-4E5F-8A7B-9C0D1E2F3A4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E4F5A6B7-C8D9-4E5F-8A7B-9C0D1E2F3A4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E4F5A6B7-C8D9-4E5F-8A7B-9C0D1E2F3A4B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E4F5A6B7-C8D9-4E5F-8A7B-9C0D1E2F3A4B}.Debug|x64.Build.0 = Debug|Any CPU
+		{E4F5A6B7-C8D9-4E5F-8A7B-9C0D1E2F3A4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E4F5A6B7-C8D9-4E5F-8A7B-9C0D1E2F3A4B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E4F5A6B7-C8D9-4E5F-8A7B-9C0D1E2F3A4B}.Release|x64.ActiveCfg = Release|Any CPU
+		{E4F5A6B7-C8D9-4E5F-8A7B-9C0D1E2F3A4B}.Release|x64.Build.0 = Release|Any CPU
 		{D4E5F6A7-B8C9-4D5E-8F7A-9B0C1D2E3F4A}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{D4E5F6A7-B8C9-4D5E-8F7A-9B0C1D2E3F4A}.Debug|x64.ActiveCfg = Debug|x64
 		{D4E5F6A7-B8C9-4D5E-8F7A-9B0C1D2E3F4A}.Debug|x64.Build.0 = Debug|x64
