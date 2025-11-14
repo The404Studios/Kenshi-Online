@@ -1,0 +1,128 @@
+5/4/2025 9:45:39 PM: Detected 12 mods
+5/4/2025 9:45:39 PM: Loaded 0 active mods from config
+5/4/2025 9:45:39 PM: Indexed 15475 game files for serving
+5/4/2025 9:45:39 PM: WebUI initializing on port 8080
+5/4/2025 9:45:39 PM: Initializing WebUI API endpoints
+5/4/2025 9:45:39 PM: WebUI initialized 26 API endpoints
+5/4/2025 9:45:39 PM: WebUI extracted/created successfully
+5/4/2025 9:45:39 PM: WebUI connected to server instance
+5/4/2025 9:45:39 PM: WebUI started successfully
+5/4/2025 9:45:39 PM: Enhanced server started on port 5555.
+5/4/2025 9:45:41 PM: WebUI request: GET /
+5/4/2025 9:45:42 PM: WebUI request: GET /styles.css
+5/4/2025 9:45:42 PM: WebUI request: GET /scripts/main.js
+5/4/2025 9:45:42 PM: WebUI request: GET /favicon.ico
+5/4/2025 9:45:42 PM: WebUI 404: /favicon.ico
+5/4/2025 9:45:51 PM: WebUI request: POST /api/register
+5/4/2025 9:46:50 PM: WebUI initializing on port 8080
+5/4/2025 9:46:50 PM: Initializing WebUI API endpoints
+5/4/2025 9:46:50 PM: WebUI initialized 26 API endpoints
+5/4/2025 9:46:50 PM: WebUI extracted/created successfully
+5/4/2025 9:46:50 PM: WebUI connected to client instance
+5/4/2025 9:46:50 PM: Failed to start WebUI: Failed to listen on prefix 'http://localhost:8080/' because it conflicts with an existing registration on the machine.
+5/4/2025 9:47:05 PM: Client connected.
+5/4/2025 9:47:05 PM: New encryption keys generated and saved to config.
+5/4/2025 9:47:05 PM: Encryption error: Specified key is not a valid size for this algorithm.
+5/4/2025 9:47:11 PM: WebUI request: POST /api/register
+5/4/2025 9:47:14 PM: WebUI request: GET /
+5/4/2025 9:47:14 PM: WebUI request: GET /styles.css
+5/4/2025 9:47:14 PM: WebUI request: GET /scripts/main.js
+5/4/2025 9:47:18 PM: WebUI request: POST /api/register
+5/4/2025 9:47:58 PM: Client disconnected: Unable to read data from the transport connection: An existing connection was forcibly closed by the remote host..
+5/4/2025 9:47:58 PM: Client connection closed. 0 clients remaining.
+5/4/2025 9:53:35 PM: Detected 12 mods
+5/4/2025 9:53:35 PM: Loaded 0 active mods from config
+5/4/2025 9:53:35 PM: Indexed 15475 game files for serving
+5/4/2025 9:53:35 PM: WebUI initializing on port 8080
+5/4/2025 9:53:35 PM: Initializing WebUI API endpoints
+5/4/2025 9:53:35 PM: WebUI initialized 26 API endpoints
+5/4/2025 9:53:35 PM: WebUI extracted/created successfully
+5/4/2025 9:53:35 PM: WebUI connected to server instance
+5/4/2025 9:53:35 PM: WebUI started successfully
+5/4/2025 9:53:35 PM: Enhanced server started on port 5555.
+5/4/2025 9:53:37 PM: WebUI request: GET /
+5/4/2025 9:53:37 PM: WebUI request: GET /styles.css
+5/4/2025 9:53:37 PM: WebUI request: GET /scripts/main.js
+5/4/2025 9:53:37 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:53:45 PM: WebUI request: GET /
+5/4/2025 9:53:45 PM: WebUI request: GET /styles.css
+5/4/2025 9:53:45 PM: WebUI request: GET /scripts/main.js
+5/4/2025 9:53:45 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:53:55 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:54:05 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:54:05 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:54:15 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:54:25 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:54:26 PM: WebUI initializing on port 8080
+5/4/2025 9:54:26 PM: Initializing WebUI API endpoints
+5/4/2025 9:54:26 PM: WebUI initialized 26 API endpoints
+5/4/2025 9:54:26 PM: WebUI extracted/created successfully
+5/4/2025 9:54:26 PM: WebUI connected to client instance
+5/4/2025 9:54:26 PM: Failed to start WebUI: Failed to listen on prefix 'http://localhost:8080/' because it conflicts with an existing registration on the machine.
+5/4/2025 9:54:35 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:54:40 PM: Client connected.
+5/4/2025 9:54:40 PM: Registration failed for the404studios: Invalid email address
+5/4/2025 9:54:45 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:54:51 PM: Client connected.
+5/4/2025 9:54:51 PM: Registration failed for ewf: Password must be at least 8 characters
+5/4/2025 9:54:55 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:54:57 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:55:01 PM: WebUI request: POST /api/register
+5/4/2025 9:55:01 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:55:04 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:55:06 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:55:10 PM: Client disconnected: Unable to read data from the transport connection: An existing connection was forcibly closed by the remote host..
+5/4/2025 9:55:10 PM: Client connection closed. 1 clients remaining.
+5/4/2025 9:56:18 PM: Detected 12 mods
+5/4/2025 9:56:18 PM: Loaded 0 active mods from config
+5/4/2025 9:56:18 PM: Indexed 15475 game files for serving
+5/4/2025 9:56:18 PM: WebUI initializing on port 8080
+5/4/2025 9:56:18 PM: Initializing WebUI API endpoints
+5/4/2025 9:56:18 PM: WebUI initialized 26 API endpoints
+5/4/2025 9:56:18 PM: WebUI extracted/created successfully
+5/4/2025 9:56:18 PM: WebUI connected to server instance
+5/4/2025 9:56:18 PM: WebUI started successfully
+5/4/2025 9:56:18 PM: Enhanced server started on port 5555.
+5/4/2025 9:56:20 PM: WebUI request: GET /
+5/4/2025 9:56:20 PM: WebUI request: GET /styles.css
+5/4/2025 9:56:20 PM: WebUI request: GET /scripts/main.js
+5/4/2025 9:56:20 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:56:23 PM: WebUI request: GET /
+5/4/2025 9:56:23 PM: WebUI request: GET /styles.css
+5/4/2025 9:56:23 PM: WebUI request: GET /scripts/main.js
+5/4/2025 9:56:23 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:56:33 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:56:43 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:56:53 PM: WebUI initializing on port 8080
+5/4/2025 9:56:53 PM: Initializing WebUI API endpoints
+5/4/2025 9:56:53 PM: WebUI initialized 26 API endpoints
+5/4/2025 9:56:53 PM: WebUI extracted/created successfully
+5/4/2025 9:56:53 PM: WebUI connected to client instance
+5/4/2025 9:56:53 PM: Failed to start WebUI: Failed to listen on prefix 'http://localhost:8080/' because it conflicts with an existing registration on the machine.
+5/4/2025 9:56:53 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:03 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:05 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:08 PM: Client connected.
+5/4/2025 9:57:08 PM: Encryption error: Specified key is not a valid size for this algorithm.
+5/4/2025 9:57:14 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:20 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:23 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:26 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:34 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:36 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:44 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:46 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:54 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:57:56 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:58:04 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:58:06 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:58:14 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:58:16 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:58:24 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:58:34 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:58:44 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:58:54 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:59:04 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 9:59:14 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 10:00:05 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.
+5/4/2025 10:01:05 PM: Error sending JSON response: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.

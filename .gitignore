@@ -50,30 +50,3 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-
-# Visual Studio / C# Build Artifacts
-bin/
-obj/
-.vs/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-
-# CMake Build Artifacts
-build/
-cmake-build-*/
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-*.cmake
-!CMakeLists.txt
-
-# .NET Build Artifacts
-*.pdb
-*.dll
-*.exe
-project.lock.json
-project.fragment.lock.json
-artifacts/
