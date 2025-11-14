@@ -1,12 +1,28 @@
-# 🎮 Kenshi Online - Complete Multiplayer Mod
+# 🎮 Re_Kenshi Multiplayer Mod
 
-![Kenshi Online Banner](https://via.placeholder.com/1200x300?text=Kenshi+Online+Multiplayer+Experience)
+**Play Kenshi with your friends in real-time!**
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/discord/962745762938572870?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/wEChtguNv6))
 [![GitHub Stars](https://img.shields.io/github/stars/The404Studios/Kenshi-Online?style=social)](https://github.com/The404Studios/Kenshi-Online)
 [![.NET 8.0](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
+
+## ⚡ Quick Start (5 Minutes)
+
+**Want to play with a friend RIGHT NOW?**
+
+1. **Double-click:** `Setup_First_Time.bat` (one-time build, ~3 minutes)
+2. **Host or join:**
+   - 🏠 **Host a server?** → Run `Host_Server.bat`
+   - 🤝 **Join a friend?** → Run `Join_Friend.bat`
+   - 💻 **Test locally?** → Run `Play_Localhost.bat`
+3. **Start Kenshi** and inject the plugin with a DLL injector
+4. **Play together!** 🎉
+
+**📖 See [QUICK_START.md](QUICK_START.md) for step-by-step instructions!**
+
+---
 
 ## 🌟 Overview
 
