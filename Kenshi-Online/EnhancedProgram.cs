@@ -13,49 +13,72 @@ using KenshiMultiplayer.Game;
 namespace KenshiMultiplayer
 {
     /// <summary>
-    /// Enhanced startup program with full game integration
+    /// Enhanced startup program with game launcher and auto-injection
     /// </summary>
     class EnhancedProgram
     {
+        private static GameLauncher gameLauncher;
         private static KenshiGameBridge gameBridge;
         private static GameStateManager gameStateManager;
         private static EnhancedServer server;
         private static EnhancedClient client;
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             DisplayHeader();
 
-            Console.WriteLine("===========================================");
-            Console.WriteLine("    KENSHI ONLINE - Multiplayer Edition    ");
-            Console.WriteLine("===========================================");
-            Console.WriteLine();
-            Console.WriteLine("Select Mode:");
-            Console.WriteLine("1. Start Server (Host a game)");
-            Console.WriteLine("2. Start Client (Join a game)");
-            Console.WriteLine("3. Start Server + Client (Solo/Testing)");
-            Console.WriteLine("4. Exit");
-            Console.Write("\nEnter choice: ");
-
-            string input = Console.ReadLine()?.Trim();
-
-            switch (input)
+            // Handle command line arguments
+            if (args.Length > 0)
             {
-                case "1":
-                    StartServer();
-                    break;
-                case "2":
-                    StartClient();
-                    break;
-                case "3":
-                    StartServerAndClient();
-                    break;
-                case "4":
-                    Environment.Exit(0);
-                    break;
-                default:
-                    Console.WriteLine("Invalid option.");
-                    break;
+                HandleCommandLineArgs(args);
+                return;
+            }
+
+            while (true)
+            {
+                Console.WriteLine("\n===========================================");
+                Console.WriteLine("    KENSHI ONLINE - Multiplayer Edition    ");
+                Console.WriteLine("===========================================");
+                Console.WriteLine();
+                Console.WriteLine("Select Mode:");
+                Console.WriteLine("1. Launch Kenshi + Connect (Recommended)");
+                Console.WriteLine("2. Start Server (Host a game)");
+                Console.WriteLine("3. Start Client (Join a game)");
+                Console.WriteLine("4. Inject into Running Kenshi");
+                Console.WriteLine("5. Start Server + Client (Solo/Testing)");
+                Console.WriteLine("6. Build Mod DLL");
+                Console.WriteLine("7. Exit");
+                Console.Write("\nEnter choice: ");
+
+                string input = Console.ReadLine()?.Trim();
+
+                switch (input)
+                {
+                    case "1":
+                        await LaunchAndConnect();
+                        break;
+                    case "2":
+                        await StartServer();
+                        break;
+                    case "3":
+                        await StartClient();
+                        break;
+                    case "4":
+                        InjectIntoRunning();
+                        break;
+                    case "5":
+                        await StartServerAndClient();
+                        break;
+                    case "6":
+                        BuildModDll();
+                        break;
+                    case "7":
+                        Environment.Exit(0);
+                        break;
+                    default:
+                        Console.WriteLine("Invalid option.");
+                        break;
+                }
             }
         }
 
@@ -80,48 +103,84 @@ namespace KenshiMultiplayer
 ║            ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚═╝╚═╝  ╚═══╝╚══════╝  ║
 ║                                                               ║
 ║              Play Kenshi with your friends!                   ║
+║           Press INSERT in-game to open the overlay            ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
 ");
             Console.ResetColor();
         }
 
-        static void StartServer()
+        static void HandleCommandLineArgs(string[] args)
+        {
+            string command = args[0].ToLower();
+
+            switch (command)
+            {
+                case "--launch":
+                case "-l":
+                    LaunchAndConnect().GetAwaiter().GetResult();
+                    break;
+                case "--server":
+                case "-s":
+                    StartServer().GetAwaiter().GetResult();
+                    break;
+                case "--client":
+                case "-c":
+                    StartClient().GetAwaiter().GetResult();
+                    break;
+                case "--inject":
+                case "-i":
+                    InjectIntoRunning();
+                    break;
+                case "--build":
+                case "-b":
+                    BuildModDll();
+                    break;
+                case "--help":
+                case "-h":
+                    PrintHelp();
+                    break;
+                default:
+                    Console.WriteLine($"Unknown command: {command}");
+                    PrintHelp();
+                    break;
+            }
+        }
+
+        static void PrintHelp()
+        {
+            Console.WriteLine("Kenshi Online - Command Line Usage:");
+            Console.WriteLine("  --launch, -l    Launch Kenshi with mod injection");
+            Console.WriteLine("  --server, -s    Start as server");
+            Console.WriteLine("  --client, -c    Start as client");
+            Console.WriteLine("  --inject, -i    Inject into running Kenshi");
+            Console.WriteLine("  --build, -b     Build the mod DLL");
+            Console.WriteLine("  --help, -h      Show this help");
+        }
+
+        static async Task LaunchAndConnect()
         {
             Console.Clear();
             DisplayHeader();
-            Console.WriteLine("\n[SERVER MODE]");
-            Console.WriteLine("=============\n");
+            Console.WriteLine("\n[LAUNCH AND CONNECT MODE]");
+            Console.WriteLine("=========================\n");
 
-            // Step 1: Find Kenshi installation
-            Console.WriteLine("STEP 1: Detecting Kenshi...");
-            string kenshiPath = FindKenshiInstallationPath();
+            // Step 1: Find Kenshi
+            Console.WriteLine("STEP 1: Locating Kenshi...");
+            string kenshiExe = GameLauncher.FindKenshiExecutable();
 
-            if (string.IsNullOrEmpty(kenshiPath))
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("ERROR: Cannot start server without Kenshi!");
-                Console.WriteLine("Please make sure Kenshi is installed and the game is running.");
-                Console.ResetColor();
-                Console.ReadKey();
-                return;
-            }
-
-            // Step 2: Check if Kenshi is running
-            Console.WriteLine("\nSTEP 2: Checking if Kenshi is running...");
-            if (!IsKenshiRunning())
+            if (string.IsNullOrEmpty(kenshiExe))
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("WARNING: Kenshi process not detected!");
-                Console.WriteLine("Please start Kenshi and load a save game first.");
-                Console.WriteLine("Press any key after Kenshi is running...");
+                Console.WriteLine("Could not auto-detect Kenshi installation.");
                 Console.ResetColor();
-                Console.ReadKey();
+                Console.Write("Enter path to Kenshi executable: ");
+                kenshiExe = Console.ReadLine()?.Trim();
 
-                if (!IsKenshiRunning())
+                if (string.IsNullOrEmpty(kenshiExe) || !File.Exists(kenshiExe))
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("ERROR: Still can't find Kenshi process!");
+                    Console.WriteLine("ERROR: Invalid Kenshi path!");
                     Console.ResetColor();
                     Console.ReadKey();
                     return;
@@ -129,47 +188,244 @@ namespace KenshiMultiplayer
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("✓ Kenshi is running!");
+            Console.WriteLine($"Found Kenshi: {kenshiExe}");
             Console.ResetColor();
 
-            // Step 3: Initialize Game Bridge
-            Console.WriteLine("\nSTEP 3: Connecting to Kenshi game engine...");
-            gameBridge = new KenshiGameBridge();
+            // Step 2: Find mod DLL
+            Console.WriteLine("\nSTEP 2: Locating mod DLL...");
+            string modDll = GameLauncher.GetDefaultModDllPath();
 
-            if (!gameBridge.ConnectToKenshi())
+            if (!File.Exists(modDll))
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("Mod DLL not found. Would you like to build it? (y/n): ");
+                Console.ResetColor();
+
+                if (Console.ReadLine()?.Trim().ToLower() == "y")
+                {
+                    if (!BuildModDllInternal())
+                    {
+                        Console.ReadKey();
+                        return;
+                    }
+                    modDll = GameLauncher.GetDefaultModDllPath();
+                }
+
+                if (!File.Exists(modDll))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("ERROR: Mod DLL not found!");
+                    Console.ResetColor();
+                    Console.ReadKey();
+                    return;
+                }
+            }
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Found mod DLL: {modDll}");
+            Console.ResetColor();
+
+            // Step 3: Launch Kenshi
+            Console.WriteLine("\nSTEP 3: Launching Kenshi with mod injection...");
+
+            gameLauncher = new GameLauncher();
+            gameLauncher.OnLogMessage += msg => Console.WriteLine(msg);
+            gameLauncher.OnStateChanged += state =>
+            {
+                switch (state)
+                {
+                    case GameLauncher.LaunchState.CreatingProcess:
+                        Console.WriteLine("Creating Kenshi process...");
+                        break;
+                    case GameLauncher.LaunchState.InjectingMod:
+                        Console.WriteLine("Injecting multiplayer mod...");
+                        break;
+                    case GameLauncher.LaunchState.ResumingProcess:
+                        Console.WriteLine("Starting game...");
+                        break;
+                    case GameLauncher.LaunchState.WaitingForGame:
+                        Console.WriteLine("Waiting for game window...");
+                        break;
+                    case GameLauncher.LaunchState.Running:
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("\nKenshi launched successfully!");
+                        Console.ResetColor();
+                        break;
+                    case GameLauncher.LaunchState.Error:
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("\nFailed to launch Kenshi!");
+                        Console.ResetColor();
+                        break;
+                }
+            };
+
+            bool success = await gameLauncher.LaunchGameAsync(kenshiExe, modDll);
+
+            if (success)
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("\n========================================");
+                Console.WriteLine("  KENSHI ONLINE IS NOW RUNNING!");
+                Console.WriteLine("========================================");
+                Console.WriteLine("\n  Press INSERT in-game to open the");
+                Console.WriteLine("  multiplayer overlay menu.");
+                Console.WriteLine("\n  From there you can:");
+                Console.WriteLine("  - Connect to a server");
+                Console.WriteLine("  - View online players");
+                Console.WriteLine("  - Chat with other players");
+                Console.WriteLine("========================================");
+                Console.ResetColor();
+
+                Console.WriteLine("\nPress any key to return to main menu...");
+                Console.WriteLine("(Kenshi will keep running)");
+                Console.ReadKey();
+            }
+            else
+            {
+                Console.WriteLine("\nPress any key to return to main menu...");
+                Console.ReadKey();
+            }
+        }
+
+        static void InjectIntoRunning()
+        {
+            Console.Clear();
+            DisplayHeader();
+            Console.WriteLine("\n[INJECT INTO RUNNING KENSHI]");
+            Console.WriteLine("============================\n");
+
+            if (!GameLauncher.IsKenshiRunning())
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("ERROR: Failed to connect to Kenshi!");
-                Console.WriteLine("Try running as Administrator.");
+                Console.WriteLine("ERROR: Kenshi is not running!");
+                Console.WriteLine("Please start Kenshi first, then try again.");
                 Console.ResetColor();
                 Console.ReadKey();
                 return;
             }
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("✓ Connected to Kenshi game engine!");
-            Console.ResetColor();
+            Console.WriteLine("Found running Kenshi process.");
 
-            // Step 4: Initialize Game State Manager
-            Console.WriteLine("\nSTEP 4: Initializing game systems...");
-            var stateSynchronizer = new StateSynchronizer();
-            gameStateManager = new GameStateManager(gameBridge, stateSynchronizer);
+            string modDll = GameLauncher.GetDefaultModDllPath();
 
-            if (!gameStateManager.Start())
+            if (!File.Exists(modDll))
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("Mod DLL not found.");
+                Console.ResetColor();
+                Console.Write("Enter path to mod DLL: ");
+                modDll = Console.ReadLine()?.Trim();
+
+                if (string.IsNullOrEmpty(modDll) || !File.Exists(modDll))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("ERROR: Invalid DLL path!");
+                    Console.ResetColor();
+                    Console.ReadKey();
+                    return;
+                }
+            }
+
+            Console.WriteLine($"Mod DLL: {modDll}");
+            Console.WriteLine("\nInjecting mod...");
+
+            gameLauncher = new GameLauncher();
+            gameLauncher.OnLogMessage += msg => Console.WriteLine(msg);
+
+            bool success = gameLauncher.AttachAndInject(modDll);
+
+            if (success)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("\nMod injected successfully!");
+                Console.WriteLine("Press INSERT in-game to open the overlay.");
+                Console.ResetColor();
+            }
+            else
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("ERROR: Failed to start game state manager!");
+                Console.WriteLine("\nFailed to inject mod!");
+                Console.WriteLine("Make sure you're running as Administrator.");
+                Console.ResetColor();
+            }
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+        }
+
+        static async Task StartServer()
+        {
+            Console.Clear();
+            DisplayHeader();
+            Console.WriteLine("\n[SERVER MODE]");
+            Console.WriteLine("=============\n");
+
+            // Find Kenshi installation
+            Console.WriteLine("STEP 1: Detecting Kenshi...");
+            string kenshiPath = FindKenshiInstallationPath();
+
+            if (string.IsNullOrEmpty(kenshiPath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("ERROR: Cannot start server without Kenshi installation path!");
                 Console.ResetColor();
                 Console.ReadKey();
                 return;
             }
 
+            // Check if Kenshi is running
+            Console.WriteLine("\nSTEP 2: Checking if Kenshi is running...");
+            if (!GameLauncher.IsKenshiRunning())
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("Kenshi is not running.");
+                Console.WriteLine("Would you like to launch Kenshi with the mod? (y/n): ");
+                Console.ResetColor();
+
+                if (Console.ReadLine()?.Trim().ToLower() == "y")
+                {
+                    string kenshiExe = GameLauncher.FindKenshiExecutable();
+                    string modDll = GameLauncher.GetDefaultModDllPath();
+
+                    if (!string.IsNullOrEmpty(kenshiExe) && File.Exists(modDll))
+                    {
+                        gameLauncher = new GameLauncher();
+                        await gameLauncher.LaunchGameAsync(kenshiExe, modDll);
+                    }
+                }
+            }
+
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("✓ Game systems initialized!");
+            Console.WriteLine("Proceeding with server setup...");
             Console.ResetColor();
 
-            // Step 5: Configure Server
-            Console.WriteLine("\nSTEP 5: Server configuration");
+            // Initialize Game Bridge if Kenshi is running
+            if (GameLauncher.IsKenshiRunning())
+            {
+                Console.WriteLine("\nSTEP 3: Connecting to Kenshi game engine...");
+                gameBridge = new KenshiGameBridge();
+
+                if (gameBridge.ConnectToKenshi())
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine("Connected to Kenshi!");
+                    Console.ResetColor();
+
+                    // Initialize Game State Manager
+                    var stateSynchronizer = new StateSynchronizer();
+                    gameStateManager = new GameStateManager(gameBridge, stateSynchronizer);
+                    gameStateManager.Start();
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("Could not connect to Kenshi (running as admin may help)");
+                    Console.ResetColor();
+                }
+            }
+
+            // Server configuration
+            Console.WriteLine("\nSTEP 4: Server configuration");
             Console.Write("Server port [5555]: ");
             string portInput = Console.ReadLine()?.Trim();
             int port = string.IsNullOrEmpty(portInput) ? 5555 : int.Parse(portInput);
@@ -181,25 +437,23 @@ namespace KenshiMultiplayer
             Console.Write("Server password (leave empty for public): ");
             string password = Console.ReadLine()?.Trim();
 
-            // Step 6: Start Server
-            Console.WriteLine("\nSTEP 6: Starting multiplayer server...");
+            // Start Server
+            Console.WriteLine("\nSTEP 5: Starting multiplayer server...");
             try
             {
                 server = new EnhancedServer(kenshiPath);
-                server.SetGameStateManager(gameStateManager);
+                if (gameStateManager != null)
+                    server.SetGameStateManager(gameStateManager);
                 server.Start(port);
 
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\n✓ SERVER ONLINE!");
-                Console.WriteLine($"✓ Listening on port: {port}");
-                Console.WriteLine($"✓ Max players: {maxPlayers}");
-                Console.WriteLine($"✓ Active players: 0/{maxPlayers}");
+                Console.WriteLine($"\nSERVER ONLINE!");
+                Console.WriteLine($"Port: {port}");
+                Console.WriteLine($"Max players: {maxPlayers}");
                 Console.ResetColor();
 
                 DisplayServerCommands();
-
-                // Server command loop
-                RunServerCommandLoop();
+                await RunServerCommandLoop();
             }
             catch (Exception ex)
             {
@@ -210,58 +464,42 @@ namespace KenshiMultiplayer
             }
         }
 
-        static void StartClient()
+        static async Task StartClient()
         {
             Console.Clear();
             DisplayHeader();
             Console.WriteLine("\n[CLIENT MODE]");
             Console.WriteLine("=============\n");
 
-            // Step 1: Check if Kenshi is running
+            // Check if Kenshi is running
             Console.WriteLine("STEP 1: Checking if Kenshi is running...");
-            if (!IsKenshiRunning())
+            if (!GameLauncher.IsKenshiRunning())
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("WARNING: Kenshi process not detected!");
-                Console.WriteLine("For best experience, start Kenshi first.");
+                Console.WriteLine("Kenshi is not running.");
+                Console.WriteLine("For the best experience, use 'Launch Kenshi + Connect' option instead.");
                 Console.WriteLine("\nContinue anyway? (y/n): ");
-                string continueInput = Console.ReadLine()?.Trim().ToLower();
-
-                if (continueInput != "y" && continueInput != "yes")
-                {
-                    return;
-                }
                 Console.ResetColor();
+
+                if (Console.ReadLine()?.Trim().ToLower() != "y")
+                    return;
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("✓ Kenshi is running!");
+                Console.WriteLine("Kenshi is running!");
                 Console.ResetColor();
-            }
 
-            // Step 2: Initialize Game Bridge (if Kenshi is running)
-            if (IsKenshiRunning())
-            {
-                Console.WriteLine("\nSTEP 2: Connecting to Kenshi game engine...");
+                // Initialize Game Bridge
                 gameBridge = new KenshiGameBridge();
-
                 if (gameBridge.ConnectToKenshi())
                 {
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("✓ Connected to Kenshi game engine!");
-                    Console.ResetColor();
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("⚠ Could not connect to Kenshi (running as admin may help)");
-                    Console.ResetColor();
+                    Console.WriteLine("Connected to Kenshi game engine.");
                 }
             }
 
-            // Step 3: Server connection settings
-            Console.WriteLine("\nSTEP 3: Server connection");
+            // Server connection settings
+            Console.WriteLine("\nSTEP 2: Server connection");
             Console.Write("Server address [localhost]: ");
             string serverAddress = Console.ReadLine()?.Trim();
             if (string.IsNullOrEmpty(serverAddress))
@@ -271,14 +509,14 @@ namespace KenshiMultiplayer
             string portInput = Console.ReadLine()?.Trim();
             int port = string.IsNullOrEmpty(portInput) ? 5555 : int.Parse(portInput);
 
-            // Step 4: Initialize client
-            Console.WriteLine("\nSTEP 4: Initializing client...");
+            // Initialize client
+            Console.WriteLine("\nSTEP 3: Initializing client...");
             string cachePath = "./cache";
             Directory.CreateDirectory(cachePath);
             client = new EnhancedClient(cachePath);
 
-            // Step 5: Login
-            Console.WriteLine("\nSTEP 5: Account");
+            // Login
+            Console.WriteLine("\nSTEP 4: Account");
             Console.WriteLine("1. Login");
             Console.WriteLine("2. Register");
             Console.Write("Choice: ");
@@ -303,7 +541,7 @@ namespace KenshiMultiplayer
                     loginSuccess = client.Register(serverAddress, port, username, password, "");
                     if (loginSuccess)
                     {
-                        Thread.Sleep(500);
+                        await Task.Delay(500);
                         loginSuccess = client.Login(serverAddress, port, username, password);
                     }
                 }
@@ -318,12 +556,12 @@ namespace KenshiMultiplayer
                 }
 
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"\n✓ CONNECTED TO SERVER!");
-                Console.WriteLine($"✓ Logged in as: {username}");
+                Console.WriteLine($"\nCONNECTED TO SERVER!");
+                Console.WriteLine($"Logged in as: {username}");
                 Console.ResetColor();
 
-                // Step 6: Spawn selection
-                RunClientSpawnMenu(username);
+                // Run client menu
+                await RunClientMenu(username);
             }
             catch (Exception ex)
             {
@@ -334,15 +572,71 @@ namespace KenshiMultiplayer
             }
         }
 
-        static void RunClientSpawnMenu(string playerId)
+        static void BuildModDll()
+        {
+            Console.Clear();
+            DisplayHeader();
+            Console.WriteLine("\n[BUILD MOD DLL]");
+            Console.WriteLine("===============\n");
+
+            BuildModDllInternal();
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+        }
+
+        static bool BuildModDllInternal()
+        {
+            string modSourcePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "KenshiOnlineMod");
+            if (!Directory.Exists(modSourcePath))
+            {
+                modSourcePath = Path.Combine(Directory.GetCurrentDirectory(), "KenshiOnlineMod");
+            }
+
+            if (!Directory.Exists(modSourcePath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("ERROR: Could not find KenshiOnlineMod source directory!");
+                Console.ResetColor();
+                return false;
+            }
+
+            string buildPath = Path.Combine(modSourcePath, "build");
+            Console.WriteLine($"Source: {modSourcePath}");
+            Console.WriteLine($"Build: {buildPath}");
+
+            var injector = new ModInjector();
+            injector.OnLogMessage += msg => Console.WriteLine(msg);
+
+            bool success = injector.BuildMod(modSourcePath, buildPath);
+
+            if (success)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("\nMod DLL built successfully!");
+                Console.WriteLine($"Output: {Path.Combine(buildPath, "bin", "KenshiOnlineMod.dll")}");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\nFailed to build mod DLL!");
+                Console.WriteLine("Make sure CMake and a C++ compiler are installed.");
+                Console.ResetColor();
+            }
+
+            return success;
+        }
+
+        static async Task RunClientMenu(string username)
         {
             while (true)
             {
                 Console.Clear();
-                Console.WriteLine("\n=== SPAWN MENU ===");
-                Console.WriteLine("1. Spawn Solo");
-                Console.WriteLine("2. Spawn with Friends (Group Spawn)");
-                Console.WriteLine("3. Select Spawn Location");
+                Console.WriteLine($"\n=== KENSHI ONLINE - {username} ===");
+                Console.WriteLine("1. View Status");
+                Console.WriteLine("2. View Players");
+                Console.WriteLine("3. Send Chat");
                 Console.WriteLine("4. Disconnect");
                 Console.Write("\nChoice: ");
 
@@ -351,221 +645,43 @@ namespace KenshiMultiplayer
                 switch (choice)
                 {
                     case "1":
-                        SpawnPlayerSolo(playerId);
+                        Console.WriteLine("\nClient connected. Use in-game overlay for full functionality.");
+                        Console.WriteLine("Press INSERT in-game to open overlay.");
                         break;
                     case "2":
-                        SpawnWithFriends(playerId);
+                        if (gameStateManager != null)
+                        {
+                            var players = gameStateManager.GetAllPlayers();
+                            Console.WriteLine($"\nActive Players ({players.Count}):");
+                            foreach (var player in players)
+                            {
+                                Console.WriteLine($"- {player.DisplayName}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("\nUse in-game overlay to view players.");
+                        }
                         break;
                     case "3":
-                        SelectSpawnLocation(playerId);
+                        Console.Write("Message: ");
+                        string message = Console.ReadLine();
+                        if (!string.IsNullOrEmpty(message))
+                        {
+                            client.SendChatMessage(message);
+                            Console.WriteLine("Message sent!");
+                        }
                         break;
                     case "4":
                         return;
                 }
-            }
-        }
 
-        static async void SpawnPlayerSolo(string playerId)
-        {
-            Console.WriteLine("\nSpawning player...");
-
-            var playerData = new PlayerData
-            {
-                PlayerId = playerId,
-                DisplayName = playerId,
-                Health = 100,
-                MaxHealth = 100,
-                Position = new Position(),
-                CurrentState = PlayerState.Idle
-            };
-
-            if (gameStateManager != null)
-            {
-                bool success = await gameStateManager.AddPlayer(playerId, playerData, "Hub");
-
-                if (success)
-                {
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("✓ Successfully spawned at The Hub!");
-                    Console.ResetColor();
-                    RunInGameMenu(playerId);
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("ERROR: Failed to spawn!");
-                    Console.ResetColor();
-                }
-            }
-            else
-            {
-                // Send spawn request to server
-                client.SendSpawnRequest("Hub");
-                Console.WriteLine("Spawn request sent to server...");
-                Thread.Sleep(2000);
-                RunInGameMenu(playerId);
-            }
-        }
-
-        static void SpawnWithFriends(string playerId)
-        {
-            Console.WriteLine("\n=== GROUP SPAWN ===");
-            Console.WriteLine("Enter friend usernames (comma separated):");
-            Console.Write("> ");
-            string friendsInput = Console.ReadLine()?.Trim();
-
-            var playerIds = new List<string> { playerId };
-            if (!string.IsNullOrEmpty(friendsInput))
-            {
-                playerIds.AddRange(friendsInput.Split(',').Select(s => s.Trim()));
-            }
-
-            Console.WriteLine($"\nCreating group spawn for {playerIds.Count} players...");
-
-            if (gameStateManager != null)
-            {
-                string groupId = gameStateManager.RequestGroupSpawn(playerIds, "Hub");
-                Console.WriteLine($"Group ID: {groupId}");
-                Console.WriteLine("Waiting for all players to ready up...");
-
-                // Signal ready
-                gameStateManager.PlayerReadyForGroupSpawn(groupId, playerId);
-
-                Console.WriteLine("Press any key when all players are ready...");
+                Console.WriteLine("\nPress any key to continue...");
                 Console.ReadKey();
             }
-            else
-            {
-                // Send group spawn request to server
-                client.SendGroupSpawnRequest(playerIds, "Hub");
-                Console.WriteLine("Group spawn request sent to server...");
-                Thread.Sleep(2000);
-            }
-
-            RunInGameMenu(playerId);
         }
 
-        static void SelectSpawnLocation(string playerId)
-        {
-            Console.WriteLine("\n=== SPAWN LOCATIONS ===");
-
-            var locations = new List<string>
-            {
-                "Hub", "Squin", "Sho-Battai", "Heng", "Stack",
-                "Admag", "BadTeeth", "Bark", "Stoat", "WorldsEnd",
-                "FlatsLagoon", "Shark", "MudTown", "Mongrel", "Catun", "Spring"
-            };
-
-            for (int i = 0; i < locations.Count; i++)
-            {
-                Console.WriteLine($"{i + 1}. {locations[i]}");
-            }
-
-            Console.Write("\nSelect location: ");
-            string input = Console.ReadLine()?.Trim();
-
-            if (int.TryParse(input, out int index) && index >= 1 && index <= locations.Count)
-            {
-                string location = locations[index - 1];
-                Console.WriteLine($"Selected: {location}");
-
-                if (gameStateManager != null)
-                {
-                    _ = gameStateManager.SpawnPlayer(playerId, location);
-                }
-                else
-                {
-                    client.SendSpawnRequest(location);
-                }
-
-                Thread.Sleep(2000);
-                RunInGameMenu(playerId);
-            }
-        }
-
-        static void RunInGameMenu(string playerId)
-        {
-            while (true)
-            {
-                Console.Clear();
-                Console.WriteLine($"\n=== IN GAME - {playerId} ===");
-                Console.WriteLine("1. View Player Status");
-                Console.WriteLine("2. View Active Players");
-                Console.WriteLine("3. Send Chat Message");
-                Console.WriteLine("4. Move to Location");
-                Console.WriteLine("5. Follow Player");
-                Console.WriteLine("6. Respawn");
-                Console.WriteLine("7. Disconnect");
-                Console.Write("\nChoice: ");
-
-                string choice = Console.ReadLine()?.Trim();
-
-                switch (choice)
-                {
-                    case "1":
-                        ViewPlayerStatus(playerId);
-                        break;
-                    case "2":
-                        ViewActivePlayers();
-                        break;
-                    case "3":
-                        SendChatMessage();
-                        break;
-                    case "7":
-                        return;
-                }
-
-                if (choice != "7")
-                {
-                    Console.WriteLine("\nPress any key to continue...");
-                    Console.ReadKey();
-                }
-            }
-        }
-
-        static void ViewPlayerStatus(string playerId)
-        {
-            if (gameStateManager != null)
-            {
-                var playerData = gameStateManager.GetPlayerData(playerId);
-                if (playerData != null)
-                {
-                    Console.WriteLine($"\n--- {playerData.DisplayName} ---");
-                    Console.WriteLine($"Health: {playerData.Health}/{playerData.MaxHealth}");
-                    if (playerData.Position != null)
-                    {
-                        Console.WriteLine($"Position: ({playerData.Position.X:F1}, {playerData.Position.Y:F1}, {playerData.Position.Z:F1})");
-                    }
-                    Console.WriteLine($"State: {playerData.CurrentState}");
-                }
-            }
-        }
-
-        static void ViewActivePlayers()
-        {
-            if (gameStateManager != null)
-            {
-                var players = gameStateManager.GetAllPlayers();
-                Console.WriteLine($"\n=== Active Players ({players.Count}) ===");
-                foreach (var player in players)
-                {
-                    Console.WriteLine($"- {player.DisplayName} (HP: {player.Health}/{player.MaxHealth})");
-                }
-            }
-        }
-
-        static void SendChatMessage()
-        {
-            Console.Write("\nMessage: ");
-            string message = Console.ReadLine();
-            if (!string.IsNullOrEmpty(message) && client != null)
-            {
-                client.SendChatMessage(message);
-                Console.WriteLine("Message sent!");
-            }
-        }
-
-        static void RunServerCommandLoop()
+        static async Task RunServerCommandLoop()
         {
             while (true)
             {
@@ -583,23 +699,21 @@ namespace KenshiMultiplayer
                     case "/help":
                         DisplayServerCommands();
                         break;
-
                     case "/status":
                         DisplayServerStatus();
                         break;
-
                     case "/players":
                         DisplayActivePlayers();
                         break;
-
                     case "/shutdown":
                     case "/stop":
                         Console.WriteLine("Shutting down server...");
                         gameStateManager?.Stop();
                         server?.Stop();
-                        Environment.Exit(0);
+                        return;
+                    case "/clear":
+                        Console.Clear();
                         break;
-
                     default:
                         Console.WriteLine("Unknown command. Type /help for available commands.");
                         break;
@@ -613,6 +727,7 @@ namespace KenshiMultiplayer
             Console.WriteLine("/help       - Show this help");
             Console.WriteLine("/status     - Show server status");
             Console.WriteLine("/players    - List active players");
+            Console.WriteLine("/clear      - Clear console");
             Console.WriteLine("/shutdown   - Stop the server");
         }
 
@@ -639,23 +754,24 @@ namespace KenshiMultiplayer
                     {
                         Console.WriteLine($"  Position: ({player.Position.X:F1}, {player.Position.Y:F1}, {player.Position.Z:F1})");
                     }
-                    Console.WriteLine();
                 }
+            }
+            else
+            {
+                Console.WriteLine("Game state manager not initialized.");
             }
         }
 
-        static void StartServerAndClient()
+        static async Task StartServerAndClient()
         {
             Console.WriteLine("Starting server and client...");
-            // Start server in background thread
-            var serverThread = new Thread(() => StartServer());
-            serverThread.IsBackground = true;
-            serverThread.Start();
 
-            Thread.Sleep(2000);
+            // Start server in background
+            var serverTask = Task.Run(() => StartServer());
+            await Task.Delay(2000);
 
             // Start client
-            StartClient();
+            await StartClient();
         }
 
         #region Helpers
@@ -667,13 +783,13 @@ namespace KenshiMultiplayer
             if (kenshiPath != null)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"✓ Found Kenshi at: {kenshiPath}");
+                Console.WriteLine($"Found Kenshi at: {kenshiPath}");
                 Console.ResetColor();
                 return kenshiPath;
             }
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("⚠ Could not auto-detect Kenshi installation.");
+            Console.WriteLine("Could not auto-detect Kenshi installation.");
             Console.ResetColor();
 
             Console.Write("Enter Kenshi path: ");
@@ -685,16 +801,6 @@ namespace KenshiMultiplayer
             }
 
             return null;
-        }
-
-        static bool IsKenshiRunning()
-        {
-            var processes = System.Diagnostics.Process.GetProcessesByName("kenshi_x64");
-            if (processes.Length == 0)
-            {
-                processes = System.Diagnostics.Process.GetProcessesByName("kenshi");
-            }
-            return processes.Length > 0;
         }
 
         static string ReadPassword()
