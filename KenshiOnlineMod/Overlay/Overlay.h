@@ -1,6 +1,6 @@
 /*
  * Overlay.h - Main Overlay Manager for Kenshi Online
- * Manages ImGui context and coordinates rendering
+ * Manages ImGui context, network callbacks, and coordinates rendering
  */
 
 #pragma once
@@ -20,12 +20,14 @@ namespace KenshiOnline
     // Player info for display
     struct PlayerInfo
     {
+        std::string id;
         std::string name;
         float health;
         float maxHealth;
         float x, y, z;
         bool isOnline;
         int factionId;
+        std::string status;
     };
 
     // Chat message
@@ -62,7 +64,7 @@ namespace KenshiOnline
 
         // Connection status
         ConnectionStatus GetConnectionStatus() const { return m_ConnectionStatus; }
-        void SetConnectionStatus(ConnectionStatus status) { m_ConnectionStatus = status; }
+        void SetConnectionStatus(ConnectionStatus status);
         void SetServerAddress(const std::string& address) { m_ServerAddress = address; }
         std::string GetServerAddress() const { return m_ServerAddress; }
 
@@ -80,7 +82,7 @@ namespace KenshiOnline
         std::vector<ChatMessage> GetChatMessages() const;
         void ClearChat();
 
-        // Callbacks
+        // Callbacks for network events (called from mod)
         using ConnectCallback = std::function<void(const std::string& address, int port, const std::string& username, const std::string& password)>;
         using ChatCallback = std::function<void(const std::string& message)>;
         using DisconnectCallback = std::function<void()>;
@@ -89,6 +91,7 @@ namespace KenshiOnline
         void SetChatCallback(ChatCallback cb) { m_ChatCallback = cb; }
         void SetDisconnectCallback(DisconnectCallback cb) { m_DisconnectCallback = cb; }
 
+        // Called by UI to trigger network actions
         void OnConnect(const std::string& address, int port, const std::string& username, const std::string& password);
         void OnSendChat(const std::string& message);
         void OnDisconnect();
@@ -102,6 +105,10 @@ namespace KenshiOnline
         // Error display
         void ShowError(const std::string& error);
         void ShowNotification(const std::string& message);
+        void ShowSuccess(const std::string& message);
+
+        // Get UI for advanced access
+        OverlayUI* GetUI() const { return m_UI.get(); }
 
     private:
         Overlay();
@@ -114,7 +121,7 @@ namespace KenshiOnline
 
         std::unique_ptr<OverlayUI> m_UI;
         bool m_Initialized = false;
-        bool m_Visible = false;
+        bool m_Visible = true;  // Start visible for login screen
 
         // State
         ConnectionStatus m_ConnectionStatus = ConnectionStatus::Disconnected;
@@ -137,11 +144,5 @@ namespace KenshiOnline
         ConnectCallback m_ConnectCallback;
         ChatCallback m_ChatCallback;
         DisconnectCallback m_DisconnectCallback;
-
-        // Notifications
-        std::string m_CurrentError;
-        std::string m_CurrentNotification;
-        float m_ErrorTimer = 0.0f;
-        float m_NotificationTimer = 0.0f;
     };
 }

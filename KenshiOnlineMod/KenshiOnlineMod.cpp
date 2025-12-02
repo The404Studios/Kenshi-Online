@@ -13,8 +13,10 @@
 #include <atomic>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <sstream>
 
 #include "Overlay/Overlay.h"
+#include "Overlay/OverlayUI.h"
 #include "Hooks/D3D11Hook.h"
 #include "Hooks/InputHook.h"
 
@@ -31,23 +33,34 @@ namespace KenshiOnline
     void SendGameState();
     void ReceiveCommands();
     void ProcessCommand(const std::string& command);
+    void SetupUICallbacks();
 
     // Global state
     HMODULE g_ModuleHandle = nullptr;
     SOCKET g_Socket = INVALID_SOCKET;
     std::atomic<bool> g_Running{ false };
     std::atomic<bool> g_Connected{ false };
+    std::atomic<bool> g_Authenticated{ false };
     std::mutex g_SocketMutex;
     std::thread g_NetworkThread;
 
     // Kenshi base address
     uintptr_t g_KenshiBase = 0;
 
-    // Configuration
-    std::string g_ServerAddress = "127.0.0.1";
-    int g_ServerPort = 5555;
+    // User/Session info
     std::string g_Username = "";
     std::string g_Password = "";
+    std::string g_SessionToken = "";
+    std::string g_UserId = "";
+
+    // Server info
+    std::string g_ServerAddress = "127.0.0.1";
+    int g_ServerPort = 5555;
+
+    // Current lobby
+    std::string g_CurrentLobbyId = "";
+    bool g_IsInLobby = false;
+    bool g_IsHost = false;
 
     #pragma region Memory Addresses
 
@@ -191,9 +204,31 @@ namespace KenshiOnline
         return characters;
     }
 
+    std::vector<std::string> SplitString(const std::string& str, char delimiter)
+    {
+        std::vector<std::string> tokens;
+        std::stringstream ss(str);
+        std::string token;
+        while (std::getline(ss, token, delimiter))
+        {
+            tokens.push_back(token);
+        }
+        return tokens;
+    }
+
     #pragma endregion
 
     #pragma region Network
+
+    bool SendToServer(const std::string& message)
+    {
+        if (!g_Connected || g_Socket == INVALID_SOCKET)
+            return false;
+
+        std::lock_guard<std::mutex> lock(g_SocketMutex);
+        std::string msg = message + "\n";
+        return send(g_Socket, msg.c_str(), (int)msg.length(), 0) > 0;
+    }
 
     bool ConnectToServer(const char* address, int port)
     {
@@ -250,10 +285,6 @@ namespace KenshiOnline
         int flag = 1;
         setsockopt(g_Socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
-        // Send handshake
-        std::string handshake = "KENSHI_ONLINE|HELLO|" + g_Username + "\n";
-        send(g_Socket, handshake.c_str(), (int)handshake.length(), 0);
-
         g_Connected = true;
         g_ServerAddress = address;
         g_ServerPort = port;
@@ -267,6 +298,8 @@ namespace KenshiOnline
         std::lock_guard<std::mutex> lock(g_SocketMutex);
 
         g_Connected = false;
+        g_Authenticated = false;
+        g_IsInLobby = false;
 
         if (g_Socket != INVALID_SOCKET)
         {
@@ -280,9 +313,8 @@ namespace KenshiOnline
 
     void SendGameState()
     {
-        if (!g_Connected || g_Socket == INVALID_SOCKET) return;
-
-        std::lock_guard<std::mutex> lock(g_SocketMutex);
+        if (!g_Connected || !g_Authenticated || g_Socket == INVALID_SOCKET)
+            return;
 
         try
         {
@@ -295,7 +327,7 @@ namespace KenshiOnline
 
                 char buffer[512];
                 snprintf(buffer, sizeof(buffer),
-                    "STATE|%d|%.2f|%.2f|%.2f|%.2f|%.2f|%d|%d|%d\n",
+                    "STATE|%d|%.2f|%.2f|%.2f|%.2f|%.2f|%d|%d|%d",
                     character->characterID,
                     character->position.x,
                     character->position.y,
@@ -307,7 +339,7 @@ namespace KenshiOnline
                     character->isInCombat ? 1 : 0
                 );
 
-                send(g_Socket, buffer, (int)strlen(buffer), 0);
+                SendToServer(buffer);
 
                 // Update overlay
                 PlayerInfo info;
@@ -316,6 +348,7 @@ namespace KenshiOnline
                 else
                     info.name = "Character " + std::to_string(character->characterID);
 
+                info.id = std::to_string(character->characterID);
                 info.health = character->health;
                 info.maxHealth = character->maxHealth;
                 info.x = character->position.x;
@@ -338,7 +371,8 @@ namespace KenshiOnline
 
     void ReceiveCommands()
     {
-        if (!g_Connected || g_Socket == INVALID_SOCKET) return;
+        if (!g_Connected || g_Socket == INVALID_SOCKET)
+            return;
 
         // Check if data available
         fd_set readSet;
@@ -358,8 +392,15 @@ namespace KenshiOnline
             {
                 std::cout << "[Network] Server disconnected\n";
                 g_Connected = false;
+                g_Authenticated = false;
                 Overlay::Get().SetConnectionStatus(ConnectionStatus::Disconnected);
                 Overlay::Get().AddSystemMessage("Disconnected from server");
+
+                if (auto* ui = Overlay::Get().GetUI())
+                {
+                    ui->SetLoggedIn(false);
+                    ui->SetScreen(UIScreen::Login);
+                }
             }
             return;
         }
@@ -383,69 +424,263 @@ namespace KenshiOnline
 
     void ProcessCommand(const std::string& command)
     {
-        // Parse command format: COMMAND|param1|param2|...
-        size_t delimPos = command.find('|');
-        std::string cmd = (delimPos != std::string::npos) ? command.substr(0, delimPos) : command;
-        std::string params = (delimPos != std::string::npos) ? command.substr(delimPos + 1) : "";
+        auto parts = SplitString(command, '|');
+        if (parts.empty()) return;
+
+        std::string cmd = parts[0];
 
         if (cmd == "PING")
         {
-            // Respond to ping
-            std::lock_guard<std::mutex> lock(g_SocketMutex);
-            std::string pong = "PONG|" + params + "\n";
-            send(g_Socket, pong.c_str(), (int)pong.length(), 0);
+            SendToServer("PONG|" + (parts.size() > 1 ? parts[1] : "0"));
+        }
+        else if (cmd == "LOGIN_OK")
+        {
+            // Login successful: LOGIN_OK|userId|sessionToken|username
+            g_Authenticated = true;
+            if (parts.size() >= 4)
+            {
+                g_UserId = parts[1];
+                g_SessionToken = parts[2];
+                g_Username = parts[3];
+            }
+
+            Overlay::Get().SetConnectionStatus(ConnectionStatus::Connected);
+
+            if (auto* ui = Overlay::Get().GetUI())
+            {
+                // Set user profile
+                UserProfile profile;
+                profile.id = g_UserId;
+                profile.username = g_Username;
+                profile.level = 1;
+                profile.gamesPlayed = 0;
+                profile.totalPlayTime = 0;
+                ui->SetUserProfile(profile);
+
+                ui->SetLoggedIn(true, g_Username);
+            }
+
+            std::cout << "[Auth] Login successful! User: " << g_Username << "\n";
+        }
+        else if (cmd == "LOGIN_FAIL")
+        {
+            // Login failed: LOGIN_FAIL|reason
+            std::string reason = parts.size() > 1 ? parts[1] : "Invalid credentials";
+
+            if (auto* ui = Overlay::Get().GetUI())
+            {
+                ui->SetLoginError(reason);
+            }
+
+            std::cout << "[Auth] Login failed: " << reason << "\n";
+        }
+        else if (cmd == "REGISTER_OK")
+        {
+            // Registration successful
+            if (auto* ui = Overlay::Get().GetUI())
+            {
+                ui->ShowSuccess("Account created! Please sign in.");
+                ui->SetScreen(UIScreen::Login);
+            }
+        }
+        else if (cmd == "REGISTER_FAIL")
+        {
+            std::string reason = parts.size() > 1 ? parts[1] : "Registration failed";
+            if (auto* ui = Overlay::Get().GetUI())
+            {
+                ui->ShowError(reason);
+                ui->SetConnecting(false);
+            }
+        }
+        else if (cmd == "SERVER_LIST")
+        {
+            // Server list: SERVER_LIST|count then SERVER|id|name|address|port|players|maxPlayers|ping|official|password|mode|region|version
+            // Handle in subsequent SERVER messages
+        }
+        else if (cmd == "SERVER")
+        {
+            // Parse server info
+            if (parts.size() >= 12)
+            {
+                ServerInfo server;
+                server.id = parts[1];
+                server.name = parts[2];
+                server.address = parts[3];
+                server.port = std::stoi(parts[4]);
+                server.playerCount = std::stoi(parts[5]);
+                server.maxPlayers = std::stoi(parts[6]);
+                server.ping = std::stoi(parts[7]);
+                server.isOfficial = parts[8] == "1";
+                server.hasPassword = parts[9] == "1";
+                server.gameMode = parts[10];
+                server.region = parts[11];
+                server.version = parts.size() > 12 ? parts[12] : "1.0";
+
+                // Add to UI (you'd accumulate these and call SetServerList)
+            }
+        }
+        else if (cmd == "SERVERS_END")
+        {
+            // Server list complete - would trigger UI update
+        }
+        else if (cmd == "FRIENDS_LIST")
+        {
+            // Friends list start
+        }
+        else if (cmd == "FRIEND")
+        {
+            // Parse friend info: FRIEND|id|username|status|server|lobby|pending|incoming|lastOnline
+            if (parts.size() >= 9)
+            {
+                FriendInfo friendInfo;
+                friendInfo.id = parts[1];
+                friendInfo.username = parts[2];
+                friendInfo.status = static_cast<FriendStatus>(std::stoi(parts[3]));
+                friendInfo.currentServer = parts[4];
+                friendInfo.currentLobby = parts[5];
+                friendInfo.isPendingRequest = parts[6] == "1";
+                friendInfo.isIncomingRequest = parts[7] == "1";
+                friendInfo.lastOnline = std::stoull(parts[8]);
+
+                // Add to accumulated list
+            }
+        }
+        else if (cmd == "FRIENDS_END")
+        {
+            // Friends list complete
+        }
+        else if (cmd == "LOBBY_CREATED")
+        {
+            // Lobby created: LOBBY_CREATED|lobbyId|name
+            if (parts.size() >= 3)
+            {
+                g_CurrentLobbyId = parts[1];
+                g_IsInLobby = true;
+                g_IsHost = true;
+
+                LobbyInfo lobby;
+                lobby.id = parts[1];
+                lobby.name = parts[2];
+                lobby.hostName = g_Username;
+                lobby.playerCount = 1;
+                lobby.maxPlayers = 4;
+                lobby.isPrivate = false;
+                lobby.state = LobbyState::Waiting;
+                lobby.gameMode = "Coop";
+
+                LobbyPlayer localPlayer;
+                localPlayer.id = g_UserId;
+                localPlayer.username = g_Username;
+                localPlayer.isReady = false;
+                localPlayer.isHost = true;
+                localPlayer.characterLevel = 1;
+                lobby.players.push_back(localPlayer);
+
+                if (auto* ui = Overlay::Get().GetUI())
+                {
+                    ui->SetCurrentLobby(lobby);
+                    ui->ShowSuccess("Lobby created!");
+                }
+            }
+        }
+        else if (cmd == "LOBBY_JOINED")
+        {
+            // Joined a lobby: LOBBY_JOINED|lobbyId|name|hostName|playerCount|maxPlayers|gameMode
+            if (parts.size() >= 7)
+            {
+                g_CurrentLobbyId = parts[1];
+                g_IsInLobby = true;
+                g_IsHost = false;
+
+                LobbyInfo lobby;
+                lobby.id = parts[1];
+                lobby.name = parts[2];
+                lobby.hostName = parts[3];
+                lobby.playerCount = std::stoi(parts[4]);
+                lobby.maxPlayers = std::stoi(parts[5]);
+                lobby.gameMode = parts[6];
+                lobby.state = LobbyState::Waiting;
+
+                if (auto* ui = Overlay::Get().GetUI())
+                {
+                    ui->SetCurrentLobby(lobby);
+                    ui->ShowSuccess("Joined lobby!");
+                }
+            }
+        }
+        else if (cmd == "LOBBY_PLAYER")
+        {
+            // Player in lobby: LOBBY_PLAYER|id|username|isReady|isHost|level|character
+            // Would add to current lobby's player list
+        }
+        else if (cmd == "LOBBY_LEFT")
+        {
+            g_CurrentLobbyId = "";
+            g_IsInLobby = false;
+            g_IsHost = false;
+
+            if (auto* ui = Overlay::Get().GetUI())
+            {
+                ui->ClearCurrentLobby();
+                ui->SetScreen(UIScreen::MainMenu);
+            }
+        }
+        else if (cmd == "GAME_START")
+        {
+            // Game starting!
+            if (auto* ui = Overlay::Get().GetUI())
+            {
+                ui->ShowSuccess("Game starting!");
+                ui->SetScreen(UIScreen::InGame);
+            }
         }
         else if (cmd == "CHAT")
         {
-            // Chat message: CHAT|sender|message
-            size_t sep = params.find('|');
-            if (sep != std::string::npos)
+            // Chat message: CHAT|sender|message|type
+            if (parts.size() >= 3)
             {
                 ChatMessage msg;
-                msg.sender = params.substr(0, sep);
-                msg.message = params.substr(sep + 1);
+                msg.sender = parts[1];
+                msg.message = parts[2];
                 msg.timestamp = time(nullptr);
-                msg.type = 0;  // Global
+                msg.type = parts.size() > 3 ? std::stoi(parts[3]) : 0;
 
                 Overlay::Get().AddChatMessage(msg);
             }
         }
         else if (cmd == "PLAYER_JOIN")
         {
-            Overlay::Get().AddSystemMessage(params + " joined the server");
+            if (parts.size() > 1)
+            {
+                Overlay::Get().AddSystemMessage(parts[1] + " joined the server");
+            }
         }
         else if (cmd == "PLAYER_LEAVE")
         {
-            Overlay::Get().AddSystemMessage(params + " left the server");
-            Overlay::Get().RemovePlayer(params);
-        }
-        else if (cmd == "PLAYERS")
-        {
-            // Player count update
-            try
+            if (parts.size() > 1)
             {
-                int count = std::stoi(params);
-                // Update is handled elsewhere
+                Overlay::Get().AddSystemMessage(parts[1] + " left the server");
+                Overlay::Get().RemovePlayer(parts[1]);
             }
-            catch (...) {}
         }
         else if (cmd == "LATENCY")
         {
-            // Ping/latency update
-            try
+            if (parts.size() > 1)
             {
-                int ping = std::stoi(params);
+                int ping = std::stoi(parts[1]);
                 Overlay::Get().SetPing(ping);
             }
-            catch (...) {}
         }
         else if (cmd == "MOVE")
         {
             // Movement command: MOVE|charID|x|y|z
-            int charID;
-            float x, y, z;
-            if (sscanf(params.c_str(), "%d|%f|%f|%f", &charID, &x, &y, &z) == 4)
+            if (parts.size() >= 5)
             {
+                int charID = std::stoi(parts[1]);
+                float x = std::stof(parts[2]);
+                float y = std::stof(parts[3]);
+                float z = std::stof(parts[4]);
+
                 auto characters = GetPlayerCharacters();
                 for (auto* character : characters)
                 {
@@ -467,7 +702,10 @@ namespace KenshiOnline
         {
             if (g_Connected)
             {
-                SendGameState();
+                if (g_Authenticated)
+                {
+                    SendGameState();
+                }
                 ReceiveCommands();
             }
 
@@ -479,41 +717,173 @@ namespace KenshiOnline
 
     #pragma endregion
 
-    #pragma region Overlay Callbacks
+    #pragma region UI Callbacks
 
-    void OnConnectRequested(const std::string& address, int port, const std::string& username, const std::string& password)
+    void OnLoginRequested(const std::string& username, const std::string& password)
     {
-        std::cout << "[Overlay] Connect requested to " << address << ":" << port << "\n";
+        std::cout << "[UI] Login requested for: " << username << "\n";
 
         g_Username = username;
         g_Password = password;
 
-        Overlay::Get().SetConnectionStatus(ConnectionStatus::Connecting);
+        // Connect to auth server if not connected
+        if (!g_Connected)
+        {
+            Overlay::Get().SetConnectionStatus(ConnectionStatus::Connecting);
 
-        // Connect in background thread to not block UI
-        std::thread([address, port]() {
-            if (ConnectToServer(address.c_str(), port))
-            {
-                Overlay::Get().SetConnectionStatus(ConnectionStatus::Connected);
-                Overlay::Get().SetServerAddress(address);
-                Overlay::Get().AddSystemMessage("Connected to server!");
-            }
-            else
-            {
-                Overlay::Get().SetConnectionStatus(ConnectionStatus::Error);
-                Overlay::Get().ShowError("Failed to connect to server");
-            }
-        }).detach();
+            std::thread([username, password]() {
+                if (ConnectToServer(g_ServerAddress.c_str(), g_ServerPort))
+                {
+                    // Send login request
+                    SendToServer("LOGIN|" + username + "|" + password);
+                }
+                else
+                {
+                    Overlay::Get().SetConnectionStatus(ConnectionStatus::Error);
+                    if (auto* ui = Overlay::Get().GetUI())
+                    {
+                        ui->SetLoginError("Could not connect to server");
+                    }
+                }
+            }).detach();
+        }
+        else
+        {
+            // Already connected, just send login
+            SendToServer("LOGIN|" + username + "|" + password);
+        }
+    }
+
+    void OnRegisterRequested(const std::string& username, const std::string& password, const std::string& email)
+    {
+        std::cout << "[UI] Register requested for: " << username << "\n";
+
+        if (!g_Connected)
+        {
+            std::thread([username, password, email]() {
+                if (ConnectToServer(g_ServerAddress.c_str(), g_ServerPort))
+                {
+                    SendToServer("REGISTER|" + username + "|" + password + "|" + email);
+                }
+                else
+                {
+                    if (auto* ui = Overlay::Get().GetUI())
+                    {
+                        ui->ShowError("Could not connect to server");
+                        ui->SetConnecting(false);
+                    }
+                }
+            }).detach();
+        }
+        else
+        {
+            SendToServer("REGISTER|" + username + "|" + password + "|" + email);
+        }
+    }
+
+    void OnRefreshServersRequested()
+    {
+        std::cout << "[UI] Refresh servers requested\n";
+        SendToServer("GET_SERVERS");
+    }
+
+    void OnJoinServerRequested(const ServerInfo& server, const std::string& password)
+    {
+        std::cout << "[UI] Join server requested: " << server.name << "\n";
+
+        std::string cmd = "JOIN_SERVER|" + server.id;
+        if (!password.empty())
+        {
+            cmd += "|" + password;
+        }
+        SendToServer(cmd);
+    }
+
+    void OnCreateLobbyRequested(const std::string& name, int maxPlayers, bool isPrivate, const std::string& password)
+    {
+        std::cout << "[UI] Create lobby requested: " << name << "\n";
+
+        std::string cmd = "CREATE_LOBBY|" + name + "|" + std::to_string(maxPlayers) + "|" +
+                          (isPrivate ? "1" : "0");
+        if (!password.empty())
+        {
+            cmd += "|" + password;
+        }
+        SendToServer(cmd);
+    }
+
+    void OnJoinLobbyRequested(const std::string& lobbyId, const std::string& password)
+    {
+        std::cout << "[UI] Join lobby requested: " << lobbyId << "\n";
+
+        std::string cmd = "JOIN_LOBBY|" + lobbyId;
+        if (!password.empty())
+        {
+            cmd += "|" + password;
+        }
+        SendToServer(cmd);
+    }
+
+    void OnLeaveLobbyRequested()
+    {
+        std::cout << "[UI] Leave lobby requested\n";
+        SendToServer("LEAVE_LOBBY|" + g_CurrentLobbyId);
+    }
+
+    void OnReadyUpRequested(bool ready)
+    {
+        std::cout << "[UI] Ready up: " << (ready ? "true" : "false") << "\n";
+        SendToServer("READY|" + std::string(ready ? "1" : "0"));
+    }
+
+    void OnStartGameRequested()
+    {
+        std::cout << "[UI] Start game requested\n";
+        if (g_IsHost)
+        {
+            SendToServer("START_GAME|" + g_CurrentLobbyId);
+        }
+    }
+
+    void OnAddFriendRequested(const std::string& username)
+    {
+        std::cout << "[UI] Add friend requested: " << username << "\n";
+        SendToServer("ADD_FRIEND|" + username);
+    }
+
+    void OnRemoveFriendRequested(const std::string& friendId)
+    {
+        std::cout << "[UI] Remove friend requested: " << friendId << "\n";
+        SendToServer("REMOVE_FRIEND|" + friendId);
+    }
+
+    void OnInviteFriendRequested(const std::string& friendId)
+    {
+        std::cout << "[UI] Invite friend requested: " << friendId << "\n";
+        SendToServer("INVITE_FRIEND|" + friendId + "|" + g_CurrentLobbyId);
+    }
+
+    void OnAcceptFriendRequested(const std::string& friendId)
+    {
+        std::cout << "[UI] Accept friend requested: " << friendId << "\n";
+        SendToServer("ACCEPT_FRIEND|" + friendId);
+    }
+
+    void OnLogoutRequested()
+    {
+        std::cout << "[UI] Logout requested\n";
+        SendToServer("LOGOUT");
+        g_Authenticated = false;
+        g_SessionToken = "";
+        g_UserId = "";
     }
 
     void OnChatRequested(const std::string& message)
     {
-        if (!g_Connected || g_Socket == INVALID_SOCKET) return;
+        if (!g_Connected || !g_Authenticated)
+            return;
 
-        std::lock_guard<std::mutex> lock(g_SocketMutex);
-
-        std::string chatCmd = "CHAT|" + g_Username + "|" + message + "\n";
-        send(g_Socket, chatCmd.c_str(), (int)chatCmd.length(), 0);
+        SendToServer("CHAT|" + g_Username + "|" + message + "|0");
 
         // Add to local chat
         ChatMessage msg;
@@ -530,6 +900,42 @@ namespace KenshiOnline
         DisconnectFromServer();
         Overlay::Get().SetConnectionStatus(ConnectionStatus::Disconnected);
         Overlay::Get().AddSystemMessage("Disconnected from server");
+    }
+
+    void SetupUICallbacks()
+    {
+        auto* ui = Overlay::Get().GetUI();
+        if (!ui)
+            return;
+
+        // Authentication callbacks
+        ui->SetLoginCallback(OnLoginRequested);
+        ui->SetRegisterCallback(OnRegisterRequested);
+        ui->SetLogoutCallback(OnLogoutRequested);
+
+        // Server browser callbacks
+        ui->SetRefreshServersCallback(OnRefreshServersRequested);
+        ui->SetJoinServerCallback(OnJoinServerRequested);
+
+        // Lobby callbacks
+        ui->SetCreateLobbyCallback(OnCreateLobbyRequested);
+        ui->SetJoinLobbyCallback(OnJoinLobbyRequested);
+        ui->SetLeaveLobbyCallback(OnLeaveLobbyRequested);
+        ui->SetReadyUpCallback(OnReadyUpRequested);
+        ui->SetStartGameCallback(OnStartGameRequested);
+
+        // Friends callbacks
+        ui->SetAddFriendCallback(OnAddFriendRequested);
+        ui->SetRemoveFriendCallback(OnRemoveFriendRequested);
+        ui->SetInviteFriendCallback(OnInviteFriendRequested);
+        ui->SetAcceptFriendCallback(OnAcceptFriendRequested);
+
+        // Basic overlay callbacks
+        Overlay::Get().SetConnectCallback([](const std::string& address, int port, const std::string& username, const std::string& password) {
+            OnLoginRequested(username, password);
+        });
+        Overlay::Get().SetChatCallback(OnChatRequested);
+        Overlay::Get().SetDisconnectCallback(OnDisconnectRequested);
     }
 
     #pragma endregion
@@ -568,11 +974,6 @@ namespace KenshiOnline
         // Initialize overlay
         std::cout << "[Init] Initializing overlay system...\n";
 
-        // Set up overlay callbacks
-        Overlay::Get().SetConnectCallback(OnConnectRequested);
-        Overlay::Get().SetChatCallback(OnChatRequested);
-        Overlay::Get().SetDisconnectCallback(OnDisconnectRequested);
-
         // Initialize overlay (will wait for D3D11)
         if (!Overlay::Get().Initialize())
         {
@@ -582,6 +983,9 @@ namespace KenshiOnline
         else
         {
             std::cout << "[Init] Overlay initialized successfully!\n";
+
+            // Set up UI callbacks after overlay is initialized
+            SetupUICallbacks();
         }
 
         // Start network thread
@@ -595,7 +999,7 @@ namespace KenshiOnline
 
         // Add initial system message
         Overlay::Get().AddSystemMessage("Kenshi Online Mod loaded!");
-        Overlay::Get().AddSystemMessage("Press INSERT to open the overlay");
+        Overlay::Get().AddSystemMessage("Sign in to start playing");
     }
 
     void ShutdownMod()
