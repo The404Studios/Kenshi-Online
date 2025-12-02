@@ -19,6 +19,8 @@
 #include "Overlay/OverlayUI.h"
 #include "Hooks/D3D11Hook.h"
 #include "Hooks/InputHook.h"
+#include "Memory/KenshiGameBridge.h"
+#include "Memory/PatternScanner.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -31,9 +33,14 @@ namespace KenshiOnline
     bool ConnectToServer(const char* address, int port);
     void DisconnectFromServer();
     void SendGameState();
+    void SendGameStateV2();  // New GameBridge-based state sync
     void ReceiveCommands();
     void ProcessCommand(const std::string& command);
     void SetupUICallbacks();
+    void SetupGameBridgeCallbacks();
+
+    // GameBridge initialized flag
+    std::atomic<bool> g_GameBridgeReady{ false };
 
     // Global state
     HMODULE g_ModuleHandle = nullptr;
@@ -369,6 +376,148 @@ namespace KenshiOnline
         }
     }
 
+    // New GameBridge-based state synchronization
+    void SendGameStateV2()
+    {
+        if (!g_Connected || !g_Authenticated || g_Socket == INVALID_SOCKET)
+            return;
+
+        if (!g_GameBridgeReady)
+            return;
+
+        try
+        {
+            auto& bridge = Kenshi::GameBridge::Get();
+
+            // Get all player characters using the GameBridge
+            auto playerStates = bridge.GetAllPlayerCharacters();
+            std::vector<PlayerInfo> playerList;
+
+            for (const auto& state : playerStates)
+            {
+                // Send detailed state to server
+                char buffer[1024];
+                snprintf(buffer, sizeof(buffer),
+                    "STATE2|%u|%s|%.2f|%.2f|%.2f|%.4f|%.4f|%.4f|%.4f|%.2f|%.2f|%.2f|%.2f|%.2f|%d|%d|%d|%d|%d|%llu",
+                    state.characterId,
+                    state.name,
+                    state.position.x, state.position.y, state.position.z,
+                    state.rotation.x, state.rotation.y, state.rotation.z, state.rotation.w,
+                    state.health, state.maxHealth, state.bloodLevel, state.hunger, state.thirst,
+                    static_cast<int>(state.state),
+                    state.factionId,
+                    state.isInCombat ? 1 : 0,
+                    state.isUnconscious ? 1 : 0,
+                    state.isDead ? 1 : 0,
+                    state.syncTick
+                );
+
+                SendToServer(buffer);
+
+                // Update overlay
+                PlayerInfo info;
+                info.name = state.name;
+                info.id = std::to_string(state.characterId);
+                info.health = state.health;
+                info.maxHealth = state.maxHealth;
+                info.x = state.position.x;
+                info.y = state.position.y;
+                info.z = state.position.z;
+                info.isOnline = true;
+                info.factionId = state.factionId;
+
+                playerList.push_back(info);
+            }
+
+            // Send world state periodically (every 60 ticks / ~3 seconds)
+            static uint64_t lastWorldStateTick = 0;
+            uint64_t currentTick = bridge.GetCurrentTick();
+
+            if (currentTick - lastWorldStateTick >= 60)
+            {
+                Kenshi::WorldState worldState;
+                if (bridge.GetWorldState(worldState))
+                {
+                    char worldBuffer[512];
+                    snprintf(worldBuffer, sizeof(worldBuffer),
+                        "WORLD|%.2f|%d|%d|%.2f|%d|%.2f|%.2f|%d|%llu",
+                        worldState.gameTime,
+                        worldState.gameDay,
+                        worldState.gameYear,
+                        worldState.timeScale,
+                        static_cast<int>(worldState.weather),
+                        worldState.weatherIntensity,
+                        worldState.temperature,
+                        worldState.playerMoney,
+                        worldState.syncTick
+                    );
+                    SendToServer(worldBuffer);
+                }
+                lastWorldStateTick = currentTick;
+            }
+
+            // Update overlay player list
+            Overlay::Get().UpdatePlayerList(playerList);
+
+            // Increment sync tick
+            bridge.IncrementTick();
+        }
+        catch (...)
+        {
+            // Ignore errors
+        }
+    }
+
+    // Set up callbacks for game events
+    void SetupGameBridgeCallbacks()
+    {
+        if (!g_GameBridgeReady)
+            return;
+
+        auto& bridge = Kenshi::GameBridge::Get();
+
+        // Combat event callback - send to server
+        bridge.SetCombatCallback([](const Kenshi::CombatEventSync& event) {
+            if (!g_Connected || !g_Authenticated)
+                return;
+
+            char buffer[256];
+            snprintf(buffer, sizeof(buffer),
+                "COMBAT|%u|%u|%d|%d|%d|%.2f|%d|%d|%d|%d|%.2f",
+                event.attackerId,
+                event.defenderId,
+                static_cast<int>(event.attackType),
+                static_cast<int>(event.damageType),
+                static_cast<int>(event.targetLimb),
+                event.damage,
+                event.wasBlocked ? 1 : 0,
+                event.wasDodged ? 1 : 0,
+                event.isCritical ? 1 : 0,
+                event.causedKnockdown ? 1 : 0,
+                event.timestamp
+            );
+            SendToServer(buffer);
+        });
+
+        // Inventory change callback
+        bridge.SetInventoryCallback([](const Kenshi::InventoryEvent& event) {
+            if (!g_Connected || !g_Authenticated)
+                return;
+
+            char buffer[128];
+            snprintf(buffer, sizeof(buffer),
+                "INVENTORY|%u|%u|%u|%d|%d|%.2f",
+                event.characterId,
+                event.itemId,
+                event.itemTemplateId,
+                event.quantityChange,
+                event.slotIndex,
+                event.timestamp
+            );
+            SendToServer(buffer);
+        });
+    }
+
     void ReceiveCommands()
     {
         if (!g_Connected || g_Socket == INVALID_SOCKET)
@@ -676,20 +825,133 @@ namespace KenshiOnline
             // Movement command: MOVE|charID|x|y|z
             if (parts.size() >= 5)
             {
-                int charID = std::stoi(parts[1]);
+                uint32_t charID = static_cast<uint32_t>(std::stoul(parts[1]));
                 float x = std::stof(parts[2]);
                 float y = std::stof(parts[3]);
                 float z = std::stof(parts[4]);
 
-                auto characters = GetPlayerCharacters();
-                for (auto* character : characters)
+                if (g_GameBridgeReady)
                 {
-                    if (character->characterID == charID)
+                    Kenshi::Vector3 pos{ x, y, z };
+                    Kenshi::GameBridge::Get().SetCharacterPosition(charID, pos);
+                }
+                else
+                {
+                    // Legacy fallback
+                    auto characters = GetPlayerCharacters();
+                    for (auto* character : characters)
                     {
-                        Write<Vector3>((uintptr_t)&character->position, { x, y, z });
-                        break;
+                        if (character->characterID == static_cast<int>(charID))
+                        {
+                            Write<Vector3>((uintptr_t)&character->position, { x, y, z });
+                            break;
+                        }
                     }
                 }
+            }
+        }
+        else if (cmd == "STATE_UPDATE")
+        {
+            // Full state update from server: STATE_UPDATE|charID|x|y|z|qx|qy|qz|qw|health|blood|hunger|state|inCombat
+            if (parts.size() >= 14 && g_GameBridgeReady)
+            {
+                Kenshi::PlayerState state;
+                state.characterId = static_cast<uint32_t>(std::stoul(parts[1]));
+                state.position.x = std::stof(parts[2]);
+                state.position.y = std::stof(parts[3]);
+                state.position.z = std::stof(parts[4]);
+                state.rotation.x = std::stof(parts[5]);
+                state.rotation.y = std::stof(parts[6]);
+                state.rotation.z = std::stof(parts[7]);
+                state.rotation.w = std::stof(parts[8]);
+                state.health = std::stof(parts[9]);
+                state.bloodLevel = std::stof(parts[10]);
+                state.hunger = std::stof(parts[11]);
+                state.state = static_cast<Kenshi::AIState>(std::stoi(parts[12]));
+                state.isInCombat = parts[13] == "1" ? 1 : 0;
+
+                Kenshi::GameBridge::Get().SetPlayerState(state);
+            }
+        }
+        else if (cmd == "COMBAT_EVENT")
+        {
+            // Combat event from server: COMBAT_EVENT|attackerId|defenderId|attackType|damageType|limb|damage|blocked|dodged|crit|knockdown
+            if (parts.size() >= 11 && g_GameBridgeReady)
+            {
+                Kenshi::CombatEventSync event;
+                event.attackerId = static_cast<uint32_t>(std::stoul(parts[1]));
+                event.defenderId = static_cast<uint32_t>(std::stoul(parts[2]));
+                event.attackType = static_cast<Kenshi::AttackType>(std::stoi(parts[3]));
+                event.damageType = static_cast<Kenshi::DamageType>(std::stoi(parts[4]));
+                event.targetLimb = static_cast<Kenshi::LimbType>(std::stoi(parts[5]));
+                event.damage = std::stof(parts[6]);
+                event.wasBlocked = parts[7] == "1" ? 1 : 0;
+                event.wasDodged = parts[8] == "1" ? 1 : 0;
+                event.isCritical = parts[9] == "1" ? 1 : 0;
+                event.causedKnockdown = parts[10] == "1" ? 1 : 0;
+
+                Kenshi::GameBridge::Get().ApplyCombatEvent(event);
+            }
+        }
+        else if (cmd == "SET_TIME")
+        {
+            // Server time sync: SET_TIME|gameTime
+            if (parts.size() >= 2 && g_GameBridgeReady)
+            {
+                float gameTime = std::stof(parts[1]);
+                Kenshi::GameBridge::Get().SetGameTime(gameTime);
+            }
+        }
+        else if (cmd == "SET_WEATHER")
+        {
+            // Weather sync: SET_WEATHER|weatherType|intensity
+            if (parts.size() >= 3 && g_GameBridgeReady)
+            {
+                auto weather = static_cast<Kenshi::WeatherType>(std::stoi(parts[1]));
+                float intensity = std::stof(parts[2]);
+                Kenshi::GameBridge::Get().SetWeather(weather, intensity);
+            }
+        }
+        else if (cmd == "SQUAD_ORDER")
+        {
+            // Squad order from server: SQUAD_ORDER|squadId|order|targetX|targetY|targetZ
+            if (parts.size() >= 6 && g_GameBridgeReady)
+            {
+                uint32_t squadId = static_cast<uint32_t>(std::stoul(parts[1]));
+                auto order = static_cast<Kenshi::SquadOrder>(std::stoi(parts[2]));
+                Kenshi::Vector3 target{
+                    std::stof(parts[3]),
+                    std::stof(parts[4]),
+                    std::stof(parts[5])
+                };
+
+                Kenshi::GameBridge::Get().IssueSquadOrder(squadId, order, target);
+            }
+        }
+        else if (cmd == "DAMAGE")
+        {
+            // Apply damage from server: DAMAGE|charId|limbType|damage|damageType
+            if (parts.size() >= 5 && g_GameBridgeReady)
+            {
+                uint32_t charId = static_cast<uint32_t>(std::stoul(parts[1]));
+                auto limb = static_cast<Kenshi::LimbType>(std::stoi(parts[2]));
+                float damage = std::stof(parts[3]);
+                auto damageType = static_cast<Kenshi::DamageType>(std::stoi(parts[4]));
+
+                Kenshi::GameBridge::Get().ApplyDamage(charId, limb, damage, damageType);
+            }
+        }
+        else if (cmd == "ANIMATION")
+        {
+            // Play animation: ANIMATION|charId|animType|time|speed
+            if (parts.size() >= 5 && g_GameBridgeReady)
+            {
+                uint32_t charId = static_cast<uint32_t>(std::stoul(parts[1]));
+                auto anim = static_cast<Kenshi::AnimationType>(std::stoi(parts[2]));
+                float time = std::stof(parts[3]);
+                float speed = std::stof(parts[4]);
+
+                Kenshi::GameBridge::Get().SyncAnimation(charId, anim, time, speed);
             }
         }
     }
@@ -704,7 +966,15 @@ namespace KenshiOnline
             {
                 if (g_Authenticated)
                 {
-                    SendGameState();
+                    // Use GameBridge for state sync if available
+                    if (g_GameBridgeReady)
+                    {
+                        SendGameStateV2();
+                    }
+                    else
+                    {
+                        SendGameState();  // Fallback to legacy method
+                    }
                 }
                 ReceiveCommands();
             }
@@ -971,6 +1241,26 @@ namespace KenshiOnline
         std::cout << "[Init] Waiting for game to initialize...\n";
         Sleep(3000);
 
+        // Initialize GameBridge for memory access
+        std::cout << "[Init] Initializing GameBridge...\n";
+        if (Kenshi::GameBridge::Get().Initialize())
+        {
+            g_GameBridgeReady = true;
+            std::cout << "[Init] GameBridge initialized successfully!\n";
+
+            // Set up game event callbacks
+            SetupGameBridgeCallbacks();
+
+            // Dump found addresses for debugging
+            Kenshi::PatternScanner::Get().DumpAddresses("kenshi_addresses.txt");
+        }
+        else
+        {
+            std::cout << "[WARNING] GameBridge initialization failed: "
+                      << Kenshi::GameBridge::Get().GetLastError() << "\n";
+            std::cout << "[WARNING] Falling back to legacy memory access\n";
+        }
+
         // Initialize overlay
         std::cout << "[Init] Initializing overlay system...\n";
 
@@ -1015,6 +1305,14 @@ namespace KenshiOnline
         if (g_NetworkThread.joinable())
         {
             g_NetworkThread.join();
+        }
+
+        // Shutdown GameBridge
+        if (g_GameBridgeReady)
+        {
+            std::cout << "[Shutdown] Shutting down GameBridge...\n";
+            Kenshi::GameBridge::Get().Shutdown();
+            g_GameBridgeReady = false;
         }
 
         // Shutdown overlay
