@@ -41,6 +41,19 @@ set(IMGUI_SOURCES
     ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
 )
 
+# Memory system source files
+set(MEMORY_SOURCES
+    Memory/PatternScanner.cpp
+    Memory/KenshiGameBridge.cpp
+)
+
+# Memory system headers
+set(MEMORY_HEADERS
+    Memory/KenshiMemoryStructures.h
+    Memory/PatternScanner.h
+    Memory/KenshiGameBridge.h
+)
+
 # Create the DLL
 add_library(KenshiOnlineMod SHARED
     KenshiOnlineMod.cpp
@@ -48,6 +61,8 @@ add_library(KenshiOnlineMod SHARED
     Overlay/OverlayUI.cpp
     Hooks/D3D11Hook.cpp
     Hooks/InputHook.cpp
+    ${MEMORY_SOURCES}
+    ${MEMORY_HEADERS}
     ${IMGUI_SOURCES}
     ${MINHOOK_SOURCES}
 )
@@ -66,6 +81,7 @@ target_link_libraries(KenshiOnlineMod PRIVATE
     d3d11
     dxgi
     d3dcompiler
+    psapi  # For GetModuleInformation in PatternScanner
 )
 
 # Set output directory
