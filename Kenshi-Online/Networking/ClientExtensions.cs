@@ -7,7 +7,7 @@ using KenshiMultiplayer.Networking;
 namespace KenshiMultiplayer.Networking
 {
     /// <summary>
-    /// Extensions to EnhancedClient for spawn functionality
+    /// Extensions to EnhancedClient for spawn functionality and game commands
     /// </summary>
     public static class ClientExtensions
     {
@@ -16,13 +16,19 @@ namespace KenshiMultiplayer.Networking
         /// </summary>
         public static void SendSpawnRequest(this EnhancedClient client, string locationName)
         {
+            if (!client.IsConnected)
+            {
+                Console.WriteLine("ERROR: Not connected to server");
+                return;
+            }
+
             try
             {
                 var message = new GameMessage
                 {
                     Type = MessageType.SpawnRequest,
-                    PlayerId = client.GetPlayerId(),
-                    SessionId = client.GetSessionId(),
+                    PlayerId = client.PlayerId,
+                    SessionId = client.SessionId,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Data = new Dictionary<string, object>
                     {
@@ -43,13 +49,19 @@ namespace KenshiMultiplayer.Networking
         /// </summary>
         public static void SendGroupSpawnRequest(this EnhancedClient client, List<string> playerIds, string locationName)
         {
+            if (!client.IsConnected)
+            {
+                Console.WriteLine("ERROR: Not connected to server");
+                return;
+            }
+
             try
             {
                 var message = new GameMessage
                 {
                     Type = MessageType.GroupSpawnRequest,
-                    PlayerId = client.GetPlayerId(),
-                    SessionId = client.GetSessionId(),
+                    PlayerId = client.PlayerId,
+                    SessionId = client.SessionId,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Data = new Dictionary<string, object>
                     {
@@ -71,13 +83,19 @@ namespace KenshiMultiplayer.Networking
         /// </summary>
         public static void SendGroupSpawnReady(this EnhancedClient client, string groupId)
         {
+            if (!client.IsConnected)
+            {
+                Console.WriteLine("ERROR: Not connected to server");
+                return;
+            }
+
             try
             {
                 var message = new GameMessage
                 {
                     Type = MessageType.GroupSpawnReady,
-                    PlayerId = client.GetPlayerId(),
-                    SessionId = client.GetSessionId(),
+                    PlayerId = client.PlayerId,
+                    SessionId = client.SessionId,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Data = new Dictionary<string, object>
                     {
@@ -98,13 +116,19 @@ namespace KenshiMultiplayer.Networking
         /// </summary>
         public static void SendMoveCommand(this EnhancedClient client, float x, float y, float z)
         {
+            if (!client.IsConnected)
+            {
+                Console.WriteLine("ERROR: Not connected to server");
+                return;
+            }
+
             try
             {
                 var message = new GameMessage
                 {
                     Type = MessageType.MoveCommand,
-                    PlayerId = client.GetPlayerId(),
-                    SessionId = client.GetSessionId(),
+                    PlayerId = client.PlayerId,
+                    SessionId = client.SessionId,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Data = new Dictionary<string, object>
                     {
@@ -127,13 +151,19 @@ namespace KenshiMultiplayer.Networking
         /// </summary>
         public static void SendAttackCommand(this EnhancedClient client, string targetId)
         {
+            if (!client.IsConnected)
+            {
+                Console.WriteLine("ERROR: Not connected to server");
+                return;
+            }
+
             try
             {
                 var message = new GameMessage
                 {
                     Type = MessageType.AttackCommand,
-                    PlayerId = client.GetPlayerId(),
-                    SessionId = client.GetSessionId(),
+                    PlayerId = client.PlayerId,
+                    SessionId = client.SessionId,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Data = new Dictionary<string, object>
                     {
@@ -154,17 +184,24 @@ namespace KenshiMultiplayer.Networking
         /// </summary>
         public static void SendChatMessage(this EnhancedClient client, string chatMessage)
         {
+            if (!client.IsConnected)
+            {
+                Console.WriteLine("ERROR: Not connected to server");
+                return;
+            }
+
             try
             {
                 var message = new GameMessage
                 {
                     Type = MessageType.ChatMessage,
-                    PlayerId = client.GetPlayerId(),
-                    SessionId = client.GetSessionId(),
+                    PlayerId = client.PlayerId,
+                    SessionId = client.SessionId,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     Data = new Dictionary<string, object>
                     {
-                        { "message", chatMessage }
+                        { "message", chatMessage },
+                        { "sender", client.CurrentUsername }
                     }
                 };
 
@@ -177,31 +214,69 @@ namespace KenshiMultiplayer.Networking
         }
 
         /// <summary>
-        /// Helper to get player ID from client
+        /// Send follow command
         /// </summary>
-        private static string GetPlayerId(this EnhancedClient client)
+        public static void SendFollowCommand(this EnhancedClient client, string targetPlayerId)
         {
-            // Use reflection to access private field if needed
-            var field = client.GetType().GetField("playerId", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            return field?.GetValue(client)?.ToString() ?? "unknown";
+            if (!client.IsConnected)
+            {
+                Console.WriteLine("ERROR: Not connected to server");
+                return;
+            }
+
+            try
+            {
+                var message = new GameMessage
+                {
+                    Type = MessageType.FollowCommand,
+                    PlayerId = client.PlayerId,
+                    SessionId = client.SessionId,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    Data = new Dictionary<string, object>
+                    {
+                        { "targetId", targetPlayerId }
+                    }
+                };
+
+                client.SendMessage(message);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR sending follow command: {ex.Message}");
+            }
         }
 
         /// <summary>
-        /// Helper to get session ID from client
+        /// Send pickup item command
         /// </summary>
-        private static string GetSessionId(this EnhancedClient client)
+        public static void SendPickupCommand(this EnhancedClient client, string itemId)
         {
-            var field = client.GetType().GetField("sessionId", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            return field?.GetValue(client)?.ToString() ?? "";
-        }
+            if (!client.IsConnected)
+            {
+                Console.WriteLine("ERROR: Not connected to server");
+                return;
+            }
 
-        /// <summary>
-        /// Helper to send message
-        /// </summary>
-        private static void SendMessage(this EnhancedClient client, GameMessage message)
-        {
-            var method = client.GetType().GetMethod("SendMessage", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            method?.Invoke(client, new object[] { message });
+            try
+            {
+                var message = new GameMessage
+                {
+                    Type = MessageType.PickupCommand,
+                    PlayerId = client.PlayerId,
+                    SessionId = client.SessionId,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    Data = new Dictionary<string, object>
+                    {
+                        { "itemId", itemId }
+                    }
+                };
+
+                client.SendMessage(message);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR sending pickup command: {ex.Message}");
+            }
         }
     }
 }

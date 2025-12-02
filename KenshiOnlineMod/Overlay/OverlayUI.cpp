@@ -422,11 +422,131 @@ namespace KenshiOnline
     void OverlayUI::RenderNotifications()
     {
         ImGuiIO& io = ImGui::GetIO();
+        float deltaTime = io.DeltaTime;
 
-        // Error notification
-        // TODO: Implement timed notifications
+        // Update notification timers and remove expired ones
+        for (auto it = m_Notifications.begin(); it != m_Notifications.end();)
+        {
+            it->timeRemaining -= deltaTime;
+            if (it->timeRemaining <= 0)
+            {
+                it = m_Notifications.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
 
-        // Notification popup would go here
+        // Render notifications in bottom-right corner
+        if (m_Notifications.empty())
+            return;
+
+        float yOffset = 60.0f;  // Start above status bar
+        float padding = 10.0f;
+        float notificationWidth = 300.0f;
+
+        for (size_t i = 0; i < m_Notifications.size(); ++i)
+        {
+            const auto& notif = m_Notifications[i];
+
+            // Calculate alpha based on time remaining
+            float alpha = 1.0f;
+            if (notif.timeRemaining < NOTIFICATION_FADE_TIME)
+            {
+                alpha = notif.timeRemaining / NOTIFICATION_FADE_TIME;
+            }
+            else if (notif.duration - notif.timeRemaining < NOTIFICATION_FADE_TIME)
+            {
+                alpha = (notif.duration - notif.timeRemaining) / NOTIFICATION_FADE_TIME;
+            }
+
+            // Position notification
+            ImVec2 pos(io.DisplaySize.x - notificationWidth - padding,
+                       io.DisplaySize.y - yOffset - (i * 50.0f));
+
+            ImGui::SetNextWindowPos(pos);
+            ImGui::SetNextWindowSize(ImVec2(notificationWidth, 0));
+            ImGui::SetNextWindowBgAlpha(0.9f * alpha);
+
+            ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
+                                      ImGuiWindowFlags_NoInputs |
+                                      ImGuiWindowFlags_NoSavedSettings |
+                                      ImGuiWindowFlags_NoFocusOnAppearing |
+                                      ImGuiWindowFlags_NoNav |
+                                      ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                      ImGuiWindowFlags_AlwaysAutoResize;
+
+            char windowId[32];
+            snprintf(windowId, sizeof(windowId), "##Notification%zu", i);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 5.0f);
+
+            // Color the window border based on notification type
+            ImVec4 borderColor = GetNotificationColor(notif.type);
+            ImGui::PushStyleColor(ImGuiCol_Border, borderColor);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
+
+            if (ImGui::Begin(windowId, nullptr, flags))
+            {
+                // Icon based on type
+                const char* icon = "";
+                switch (notif.type)
+                {
+                case NotificationType::Success: icon = "[OK]"; break;
+                case NotificationType::Warning: icon = "[!]"; break;
+                case NotificationType::Error: icon = "[X]"; break;
+                default: icon = "[i]"; break;
+                }
+
+                ImGui::TextColored(borderColor, "%s", icon);
+                ImGui::SameLine();
+                ImGui::TextWrapped("%s", notif.message.c_str());
+            }
+            ImGui::End();
+
+            ImGui::PopStyleVar(3);
+            ImGui::PopStyleColor();
+        }
+    }
+
+    void OverlayUI::ShowNotification(const std::string& message, NotificationType type, float duration)
+    {
+        Notification notif;
+        notif.message = message;
+        notif.type = type;
+        notif.duration = duration;
+        notif.timeRemaining = duration;
+
+        m_Notifications.push_front(notif);
+
+        // Limit number of notifications
+        while (m_Notifications.size() > MAX_NOTIFICATIONS)
+        {
+            m_Notifications.pop_back();
+        }
+    }
+
+    void OverlayUI::ShowError(const std::string& message, float duration)
+    {
+        ShowNotification(message, NotificationType::Error, duration);
+    }
+
+    void OverlayUI::ShowSuccess(const std::string& message, float duration)
+    {
+        ShowNotification(message, NotificationType::Success, duration);
+    }
+
+    ImVec4 OverlayUI::GetNotificationColor(NotificationType type)
+    {
+        switch (type)
+        {
+        case NotificationType::Success: return ImVec4(0.2f, 0.8f, 0.2f, 1.0f);
+        case NotificationType::Warning: return ImVec4(0.9f, 0.7f, 0.1f, 1.0f);
+        case NotificationType::Error: return ImVec4(0.9f, 0.2f, 0.2f, 1.0f);
+        default: return ImVec4(0.3f, 0.6f, 0.9f, 1.0f);
+        }
     }
 
     void OverlayUI::RenderHealthBar(float health, float maxHealth, float width)
