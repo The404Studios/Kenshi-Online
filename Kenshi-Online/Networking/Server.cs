@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -133,6 +134,37 @@ namespace KenshiMultiplayer.Networking
                                     {
                                         Logger.Log($"Invalid message from {authenticatedUser}: {message.Type}");
                                     }
+                                    break;
+                                // Spawn requests
+                                case MessageType.SpawnRequest:
+                                    this.HandleSpawnRequest(message);
+                                    break;
+                                case MessageType.GroupSpawnRequest:
+                                    this.HandleGroupSpawnRequest(message);
+                                    break;
+                                case MessageType.GroupSpawnReady:
+                                    this.HandleGroupSpawnReady(message);
+                                    break;
+                                // Game commands
+                                case MessageType.MoveCommand:
+                                    HandleMoveCommand(message, client);
+                                    break;
+                                case MessageType.AttackCommand:
+                                    HandleAttackCommand(message, client);
+                                    break;
+                                case MessageType.FollowCommand:
+                                    HandleFollowCommand(message, client);
+                                    break;
+                                case MessageType.PickupCommand:
+                                    HandlePickupCommand(message, client);
+                                    break;
+                                // Squad commands
+                                case MessageType.SquadCreate:
+                                case MessageType.SquadDisband:
+                                case MessageType.SquadJoin:
+                                case MessageType.SquadLeave:
+                                case MessageType.SquadCommand:
+                                    HandleSquadCommand(message, client);
                                     break;
                                 default:
                                     Logger.Log($"Unhandled message type: {message.Type}");
@@ -613,5 +645,217 @@ namespace KenshiMultiplayer.Networking
             return false;
         }
 
+        #region Game Command Handlers
+
+        private void HandleMoveCommand(GameMessage message, TcpClient senderClient)
+        {
+            try
+            {
+                string playerId = message.PlayerId;
+                float x = message.Data.ContainsKey("x") ? Convert.ToSingle(message.Data["x"]) : 0;
+                float y = message.Data.ContainsKey("y") ? Convert.ToSingle(message.Data["y"]) : 0;
+                float z = message.Data.ContainsKey("z") ? Convert.ToSingle(message.Data["z"]) : 0;
+
+                Logger.Log($"Move command from {playerId}: ({x}, {y}, {z})");
+
+                // Get game state manager and execute move
+                var gsm = this.GetGameStateManager();
+                if (gsm != null)
+                {
+                    gsm.MovePlayer(playerId, new Data.Position { X = x, Y = y, Z = z });
+                }
+
+                // Broadcast position update to other clients
+                var positionUpdate = new GameMessage
+                {
+                    Type = MessageType.Position,
+                    PlayerId = playerId,
+                    Data = new Dictionary<string, object>
+                    {
+                        { "x", x },
+                        { "y", y },
+                        { "z", z }
+                    }
+                };
+                BroadcastMessage(positionUpdate.ToJson(), senderClient);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"ERROR handling move command: {ex.Message}");
+            }
+        }
+
+        private void HandleAttackCommand(GameMessage message, TcpClient senderClient)
+        {
+            try
+            {
+                string playerId = message.PlayerId;
+                string targetId = message.Data.ContainsKey("targetId") ? message.Data["targetId"].ToString() : "";
+
+                Logger.Log($"Attack command from {playerId} targeting {targetId}");
+
+                // Get game state manager and execute attack
+                var gsm = this.GetGameStateManager();
+                if (gsm != null && !string.IsNullOrEmpty(targetId))
+                {
+                    gsm.AttackTarget(playerId, targetId);
+                }
+
+                // Broadcast combat action to other clients
+                var combatUpdate = new GameMessage
+                {
+                    Type = MessageType.Combat,
+                    PlayerId = playerId,
+                    Data = new Dictionary<string, object>
+                    {
+                        { "targetId", targetId },
+                        { "action", "attack" }
+                    }
+                };
+                BroadcastMessage(combatUpdate.ToJson(), senderClient);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"ERROR handling attack command: {ex.Message}");
+            }
+        }
+
+        private void HandleFollowCommand(GameMessage message, TcpClient senderClient)
+        {
+            try
+            {
+                string playerId = message.PlayerId;
+                string targetId = message.Data.ContainsKey("targetId") ? message.Data["targetId"].ToString() : "";
+
+                Logger.Log($"Follow command from {playerId} targeting {targetId}");
+
+                // Get game state manager and execute follow
+                var gsm = this.GetGameStateManager();
+                if (gsm != null && !string.IsNullOrEmpty(targetId))
+                {
+                    gsm.FollowPlayer(playerId, targetId);
+                }
+
+                // Notify clients
+                var followUpdate = new GameMessage
+                {
+                    Type = MessageType.FollowCommand,
+                    PlayerId = playerId,
+                    Data = new Dictionary<string, object>
+                    {
+                        { "targetId", targetId }
+                    }
+                };
+                BroadcastMessage(followUpdate.ToJson(), senderClient);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"ERROR handling follow command: {ex.Message}");
+            }
+        }
+
+        private void HandlePickupCommand(GameMessage message, TcpClient senderClient)
+        {
+            try
+            {
+                string playerId = message.PlayerId;
+                string itemId = message.Data.ContainsKey("itemId") ? message.Data["itemId"].ToString() : "";
+
+                Logger.Log($"Pickup command from {playerId} for item {itemId}");
+
+                // Get game state manager and execute pickup
+                var gsm = this.GetGameStateManager();
+                if (gsm != null && !string.IsNullOrEmpty(itemId))
+                {
+                    gsm.PickupItem(playerId, itemId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"ERROR handling pickup command: {ex.Message}");
+            }
+        }
+
+        private void HandleSquadCommand(GameMessage message, TcpClient senderClient)
+        {
+            try
+            {
+                string playerId = message.PlayerId;
+                string action = message.Type;
+
+                Logger.Log($"Squad command '{action}' from {playerId}");
+
+                var gsm = this.GetGameStateManager();
+                if (gsm == null)
+                    return;
+
+                switch (action)
+                {
+                    case MessageType.SquadCreate:
+                        var playerIds = message.Data.ContainsKey("playerIds")
+                            ? JsonSerializer.Deserialize<List<string>>(message.Data["playerIds"].ToString())
+                            : new List<string> { playerId };
+                        string squadId = gsm.CreateSquad(playerIds);
+
+                        // Send squad created notification
+                        var createResponse = new GameMessage
+                        {
+                            Type = MessageType.SquadCreate,
+                            PlayerId = playerId,
+                            Data = new Dictionary<string, object>
+                            {
+                                { "squadId", squadId },
+                                { "playerIds", playerIds }
+                            }
+                        };
+                        BroadcastToAll(createResponse);
+                        break;
+
+                    case MessageType.SquadDisband:
+                    case MessageType.SquadJoin:
+                    case MessageType.SquadLeave:
+                    case MessageType.SquadCommand:
+                        // Broadcast the command to relevant clients
+                        BroadcastMessage(message.ToJson(), senderClient);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"ERROR handling squad command: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Broadcast Methods
+
+        /// <summary>
+        /// Broadcast a message to all connected clients
+        /// </summary>
+        public void BroadcastToAll(GameMessage message)
+        {
+            string jsonMessage = message.ToJson();
+            string encryptedMessage = EncryptionHelper.Encrypt(jsonMessage);
+            byte[] messageBuffer = Encoding.ASCII.GetBytes(encryptedMessage);
+
+            foreach (var client in connectedClients.ToList())
+            {
+                if (client.Connected)
+                {
+                    try
+                    {
+                        NetworkStream stream = client.GetStream();
+                        stream.Write(messageBuffer, 0, messageBuffer.Length);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log($"Error broadcasting to client: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        #endregion
     }
 }

@@ -279,14 +279,8 @@ namespace KenshiMultiplayer.Networking
         {
             try
             {
-                // Use reflection to access private broadcast method
-                var method = server.GetType().GetMethod("BroadcastToAll",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                if (method != null)
-                {
-                    method.Invoke(server, new object[] { message });
-                }
+                // Use public BroadcastToAll method
+                server.BroadcastToAll(message);
             }
             catch (Exception ex)
             {
