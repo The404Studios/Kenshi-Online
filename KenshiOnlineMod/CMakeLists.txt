@@ -16,10 +16,19 @@ FetchContent_MakeAvailable(imgui)
 # Fetch MinHook for function hooking
 FetchContent_Declare(
     minhook
-    GIT_REPOSITORY https://github.com/TsudaKageworith/minhook.git
-    GIT_TAG master
+    GIT_REPOSITORY https://github.com/TsudaKageyu/minhook.git
+    GIT_TAG v1.3.3
 )
 FetchContent_MakeAvailable(minhook)
+
+# MinHook source files (build as part of our project)
+set(MINHOOK_SOURCES
+    ${minhook_SOURCE_DIR}/src/buffer.c
+    ${minhook_SOURCE_DIR}/src/hook.c
+    ${minhook_SOURCE_DIR}/src/trampoline.c
+    ${minhook_SOURCE_DIR}/src/hde/hde32.c
+    ${minhook_SOURCE_DIR}/src/hde/hde64.c
+)
 
 # ImGui source files
 set(IMGUI_SOURCES
@@ -40,6 +49,7 @@ add_library(KenshiOnlineMod SHARED
     Hooks/D3D11Hook.cpp
     Hooks/InputHook.cpp
     ${IMGUI_SOURCES}
+    ${MINHOOK_SOURCES}
 )
 
 # Include directories
@@ -56,7 +66,6 @@ target_link_libraries(KenshiOnlineMod PRIVATE
     d3d11
     dxgi
     d3dcompiler
-    minhook
 )
 
 # Set output directory
