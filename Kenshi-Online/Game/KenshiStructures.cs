@@ -1144,12 +1144,104 @@ namespace KenshiMultiplayer.Game
 
     /// <summary>
     /// Known memory addresses for Kenshi game structures
-    /// IMPORTANT: These are fallback values. Use pattern scanning for reliability!
+    /// IMPORTANT: These are fallback values. Use RuntimeOffsets for dynamic online-fetched offsets!
+    /// Call KenshiMemory.InitializeOnlineOffsets() at startup to fetch from online source.
     /// </summary>
     public static class KenshiMemory
     {
         // Base address (ASLR - calculate at runtime)
         public static long BaseAddress = 0x140000000;
+
+        // Dynamic offset storage (populated from online source)
+        private static GameOffsetsData? _onlineOffsets;
+        private static FunctionOffsetsData? _onlineFunctions;
+        private static bool _onlineInitialized;
+
+        /// <summary>
+        /// Initialize offsets from online source. Call this before accessing memory.
+        /// </summary>
+        public static async System.Threading.Tasks.Task<bool> InitializeOnlineOffsetsAsync()
+        {
+            if (_onlineInitialized) return true;
+
+            var provider = OnlineOffsetProvider.Instance;
+            var success = await provider.InitializeAsync();
+
+            if (success)
+            {
+                _onlineOffsets = provider.GetCurrentOffsets();
+                _onlineFunctions = FunctionOffsetsData.CreateHardcodedDefaults();
+                Console.WriteLine("[KenshiMemory] Online offsets loaded successfully");
+            }
+
+            _onlineInitialized = true;
+            return success;
+        }
+
+        /// <summary>
+        /// Synchronous initialization
+        /// </summary>
+        public static bool InitializeOnlineOffsets()
+        {
+            return InitializeOnlineOffsetsAsync().GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Check if online offsets are loaded
+        /// </summary>
+        public static bool HasOnlineOffsets => _onlineOffsets != null;
+
+        /// <summary>
+        /// Get dynamic offset value (online or fallback to hardcoded)
+        /// </summary>
+        public static long GetOffset(string category, string name)
+        {
+            if (_onlineOffsets == null) return 0;
+
+            return (category, name) switch
+            {
+                ("Game", "WorldInstance") => _onlineOffsets.WorldInstance,
+                ("Game", "GameState") => _onlineOffsets.GameState,
+                ("Game", "GameTime") => _onlineOffsets.GameTime,
+                ("Game", "GameDay") => _onlineOffsets.GameDay,
+                ("Characters", "PlayerSquadList") => _onlineOffsets.PlayerSquadList,
+                ("Characters", "PlayerSquadCount") => _onlineOffsets.PlayerSquadCount,
+                ("Characters", "AllCharactersList") => _onlineOffsets.AllCharactersList,
+                ("Characters", "AllCharactersCount") => _onlineOffsets.AllCharactersCount,
+                ("Characters", "SelectedCharacter") => _onlineOffsets.SelectedCharacter,
+                ("Factions", "FactionList") => _onlineOffsets.FactionList,
+                ("Factions", "FactionCount") => _onlineOffsets.FactionCount,
+                ("Factions", "PlayerFaction") => _onlineOffsets.PlayerFaction,
+                ("World", "BuildingList") => _onlineOffsets.BuildingList,
+                ("World", "BuildingCount") => _onlineOffsets.BuildingCount,
+                ("World", "WeatherSystem") => _onlineOffsets.WeatherSystem,
+                ("Engine", "PhysicsWorld") => _onlineOffsets.PhysicsWorld,
+                ("Engine", "Camera") => _onlineOffsets.Camera,
+                ("Input", "InputHandler") => _onlineOffsets.InputHandler,
+                _ => 0
+            };
+        }
+
+        /// <summary>
+        /// Get absolute address using online or hardcoded offset
+        /// </summary>
+        public static long GetAbsoluteAddress(string category, string name)
+        {
+            var offset = GetOffset(category, name);
+            if (offset == 0)
+            {
+                // Fall back to hardcoded
+                offset = (category, name) switch
+                {
+                    ("Game", "WorldInstance") => Game.WorldInstance,
+                    ("Game", "GameState") => Game.GameState,
+                    ("Characters", "PlayerSquadList") => Characters.PlayerSquadList,
+                    ("Characters", "AllCharactersList") => Characters.AllCharactersList,
+                    _ => 0
+                };
+            }
+            return BaseAddress + offset;
+        }
 
         // Core game pointers
         public static class Game
