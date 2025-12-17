@@ -9,7 +9,6 @@
   <ItemGroup>
     <PackageReference Include="Fasm.NET" Version="1.70.3.2" />
     <PackageReference Include="MemorySharp" Version="1.2.0" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.14.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
     <PackageReference Include="System.Text.Json" Version="9.0.8" />
