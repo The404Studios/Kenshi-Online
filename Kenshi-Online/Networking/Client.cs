@@ -30,13 +30,20 @@ namespace KenshiMultiplayer.Networking
         private bool isWebInterfaceEnabled = false;
         private WebUIController webUI;
 
+        // Player identification
+        private string playerId;
+        private string sessionId;
+
         // Client configuration
         public string ServerAddress { get; private set; }
         public int ServerPort { get; private set; }
         public string CurrentUsername { get; private set; }
         public string AuthToken => authToken;
+        public string PlayerId => playerId;
+        public string SessionId => sessionId;
         public bool IsLoggedIn => !string.IsNullOrEmpty(authToken);
         public bool IsWebInterfaceEnabled => isWebInterfaceEnabled;
+        public bool IsConnected => client?.Connected ?? false;
 
         public event EventHandler<GameMessage> MessageReceived;
 
@@ -86,6 +93,14 @@ namespace KenshiMultiplayer.Networking
                     response.Data.ContainsKey("token"))
                 {
                     authToken = response.Data["token"].ToString();
+                    playerId = username;  // Use username as player ID
+                    sessionId = authToken; // Use auth token as session ID
+
+                    // Extract player ID from response if available
+                    if (response.Data.ContainsKey("playerId"))
+                    {
+                        playerId = response.Data["playerId"].ToString();
+                    }
 
                     // Start listener thread
                     Thread readThread = new Thread(ListenForServerMessages);
@@ -466,9 +481,24 @@ namespace KenshiMultiplayer.Networking
             return GameMessage.FromJson(jsonMessage);
         }
 
-        // Changed from 'private' to 'internal' to allow access from other classes in the same assembly
+        /// <summary>
+        /// Send a game message to the server
+        /// </summary>
+        public void SendMessage(GameMessage message)
+        {
+            SendMessageToServer(message);
+        }
+
+        /// <summary>
+        /// Send a game message to the server (internal implementation)
+        /// </summary>
         internal void SendMessageToServer(GameMessage message)
         {
+            if (stream == null || !client.Connected)
+            {
+                throw new InvalidOperationException("Not connected to server");
+            }
+
             string jsonMessage = message.ToJson();
             string encryptedMessage = EncryptionHelper.Encrypt(jsonMessage);
             byte[] messageBuffer = Encoding.ASCII.GetBytes(encryptedMessage);

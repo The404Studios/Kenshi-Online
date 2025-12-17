@@ -17,6 +17,14 @@ namespace KenshiMultiplayer.Data
         [JsonIgnore] // Don't serialize this in player data file
         public Position CurrentPosition { get; set; } = new Position();
 
+        // Alias for compatibility with new code
+        [JsonIgnore]
+        public Position Position
+        {
+            get => CurrentPosition;
+            set => CurrentPosition = value;
+        }
+
         // For persistence only - we'll serialize these values
         public float PositionX { get; set; }
         public float PositionY { get; set; }
@@ -24,8 +32,8 @@ namespace KenshiMultiplayer.Data
         public float RotationZ { get; set; }
 
         // Character stats
-        public int Health { get; set; } = 100;
-        public int MaxHealth { get; set; } = 100;
+        public float Health { get; set; } = 100f;
+        public float MaxHealth { get; set; } = 100f;
         public int Hunger { get; set; } = 100;
         public int MaxHunger { get; set; } = 100;
         public int Thirst { get; set; } = 100;

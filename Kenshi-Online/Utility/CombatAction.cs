@@ -17,6 +17,8 @@ namespace KenshiMultiplayer.Utility
         public string AttackType { get; set; }    // Slash, Blunt, Cut, Pierce, etc.
         public string TargetLimb { get; set; }    // Head, Chest, LeftArm, etc.
         public float Power { get; set; } = 1.0f;  // Attack power multiplier (0.0-2.0)
+        public float Damage { get; set; }         // Base damage value
+        public float Range { get; set; } = 2.0f;  // Attack range in meters
         public bool IsCritical { get; set; }      // Whether this is a critical hit
         public long Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -110,27 +112,111 @@ namespace KenshiMultiplayer.Utility
                 Math.Pow(z2 - z1, 2));
         }
 
+        // Weapon database - maps weapon types to their stats
+        private static readonly Dictionary<string, WeaponStats> WeaponDatabase = new Dictionary<string, WeaponStats>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Unarmed
+            { "unarmed", new WeaponStats { Reach = 1.5f, BaseDamage = 10f, AttackSpeed = 1.2f, WeaponType = "Blunt" } },
+            { "martial_arts", new WeaponStats { Reach = 1.5f, BaseDamage = 15f, AttackSpeed = 1.5f, WeaponType = "Blunt" } },
+
+            // Daggers & Short blades
+            { "dagger", new WeaponStats { Reach = 1.8f, BaseDamage = 20f, AttackSpeed = 1.4f, WeaponType = "Cut" } },
+            { "knife", new WeaponStats { Reach = 1.6f, BaseDamage = 15f, AttackSpeed = 1.5f, WeaponType = "Cut" } },
+            { "wakizashi", new WeaponStats { Reach = 2.0f, BaseDamage = 25f, AttackSpeed = 1.3f, WeaponType = "Cut" } },
+            { "ninja_blade", new WeaponStats { Reach = 2.2f, BaseDamage = 30f, AttackSpeed = 1.2f, WeaponType = "Cut" } },
+
+            // Standard Swords
+            { "katana", new WeaponStats { Reach = 2.5f, BaseDamage = 40f, AttackSpeed = 1.0f, WeaponType = "Cut" } },
+            { "sword", new WeaponStats { Reach = 2.4f, BaseDamage = 35f, AttackSpeed = 1.0f, WeaponType = "Cut" } },
+            { "sabre", new WeaponStats { Reach = 2.6f, BaseDamage = 38f, AttackSpeed = 0.95f, WeaponType = "Cut" } },
+            { "desert_sabre", new WeaponStats { Reach = 2.7f, BaseDamage = 42f, AttackSpeed = 0.9f, WeaponType = "Cut" } },
+            { "foreign_sabre", new WeaponStats { Reach = 2.8f, BaseDamage = 45f, AttackSpeed = 0.85f, WeaponType = "Cut" } },
+            { "longsword", new WeaponStats { Reach = 2.8f, BaseDamage = 40f, AttackSpeed = 0.9f, WeaponType = "Cut" } },
+
+            // Heavy Weapons
+            { "nodachi", new WeaponStats { Reach = 3.2f, BaseDamage = 55f, AttackSpeed = 0.7f, WeaponType = "Cut" } },
+            { "falling_sun", new WeaponStats { Reach = 3.5f, BaseDamage = 65f, AttackSpeed = 0.6f, WeaponType = "Cut" } },
+            { "fragment_axe", new WeaponStats { Reach = 3.0f, BaseDamage = 60f, AttackSpeed = 0.65f, WeaponType = "Cut" } },
+            { "plank", new WeaponStats { Reach = 2.8f, BaseDamage = 45f, AttackSpeed = 0.75f, WeaponType = "Blunt" } },
+
+            // Polearms
+            { "polearm", new WeaponStats { Reach = 4.0f, BaseDamage = 50f, AttackSpeed = 0.8f, WeaponType = "Cut" } },
+            { "naginata", new WeaponStats { Reach = 3.8f, BaseDamage = 48f, AttackSpeed = 0.85f, WeaponType = "Cut" } },
+            { "staff", new WeaponStats { Reach = 3.5f, BaseDamage = 25f, AttackSpeed = 1.1f, WeaponType = "Blunt" } },
+            { "halberd", new WeaponStats { Reach = 4.2f, BaseDamage = 55f, AttackSpeed = 0.7f, WeaponType = "Cut" } },
+
+            // Hackers (Anti-armor)
+            { "hacker", new WeaponStats { Reach = 2.5f, BaseDamage = 35f, AttackSpeed = 0.9f, WeaponType = "Cut", ArmorPenetration = 0.5f } },
+            { "heavy_jitte", new WeaponStats { Reach = 2.3f, BaseDamage = 30f, AttackSpeed = 1.0f, WeaponType = "Blunt", ArmorPenetration = 0.4f } },
+
+            // Blunt Weapons
+            { "club", new WeaponStats { Reach = 2.0f, BaseDamage = 30f, AttackSpeed = 1.0f, WeaponType = "Blunt" } },
+            { "iron_club", new WeaponStats { Reach = 2.2f, BaseDamage = 40f, AttackSpeed = 0.85f, WeaponType = "Blunt" } },
+            { "jitte", new WeaponStats { Reach = 2.0f, BaseDamage = 25f, AttackSpeed = 1.1f, WeaponType = "Blunt" } },
+            { "mace", new WeaponStats { Reach = 2.2f, BaseDamage = 38f, AttackSpeed = 0.9f, WeaponType = "Blunt" } },
+
+            // Crossbows (ranged)
+            { "crossbow", new WeaponStats { Reach = 50.0f, BaseDamage = 60f, AttackSpeed = 0.3f, WeaponType = "Pierce", IsRanged = true } },
+            { "oldworld_bow_mkii", new WeaponStats { Reach = 60.0f, BaseDamage = 80f, AttackSpeed = 0.25f, WeaponType = "Pierce", IsRanged = true } },
+            { "toothpick", new WeaponStats { Reach = 40.0f, BaseDamage = 45f, AttackSpeed = 0.5f, WeaponType = "Pierce", IsRanged = true } },
+        };
+
         // Get the reach of a weapon based on its ID
-        // In a real implementation, this would query a weapon database
         private float GetWeaponReach(string weaponId)
         {
-            // TODO: Implement proper weapon reach database
-            // Default values for now
             if (string.IsNullOrEmpty(weaponId))
                 return 1.5f; // Unarmed reach
 
-            if (weaponId.Contains("dagger") || weaponId.Contains("knife"))
-                return 1.8f;
+            // Check exact match first
+            if (WeaponDatabase.TryGetValue(weaponId, out WeaponStats exactMatch))
+                return exactMatch.Reach;
 
-            if (weaponId.Contains("sword") || weaponId.Contains("sabre"))
-                return 2.5f;
-
-            if (weaponId.Contains("nodachi") || weaponId.Contains("polearm"))
-                return 3.5f;
+            // Check partial matches (weapon ID contains type name)
+            string lowerWeaponId = weaponId.ToLower();
+            foreach (var kvp in WeaponDatabase)
+            {
+                if (lowerWeaponId.Contains(kvp.Key.ToLower()))
+                    return kvp.Value.Reach;
+            }
 
             // Default weapon reach
             return 2.0f;
         }
+
+        // Get full weapon stats
+        public static WeaponStats GetWeaponStats(string weaponId)
+        {
+            if (string.IsNullOrEmpty(weaponId))
+                return WeaponDatabase["unarmed"];
+
+            // Check exact match first
+            if (WeaponDatabase.TryGetValue(weaponId, out WeaponStats exactMatch))
+                return exactMatch;
+
+            // Check partial matches
+            string lowerWeaponId = weaponId.ToLower();
+            foreach (var kvp in WeaponDatabase)
+            {
+                if (lowerWeaponId.Contains(kvp.Key.ToLower()))
+                    return kvp.Value;
+            }
+
+            // Return default sword stats
+            return new WeaponStats { Reach = 2.0f, BaseDamage = 30f, AttackSpeed = 1.0f, WeaponType = "Cut" };
+        }
+    }
+
+    // Weapon stats class
+    public class WeaponStats
+    {
+        public float Reach { get; set; } = 2.0f;
+        public float BaseDamage { get; set; } = 30f;
+        public float AttackSpeed { get; set; } = 1.0f;
+        public string WeaponType { get; set; } = "Cut"; // Cut, Blunt, Pierce
+        public float ArmorPenetration { get; set; } = 0f;
+        public bool IsRanged { get; set; } = false;
+        public float BleedMultiplier { get; set; } = 1.0f;
+        public float StunChance { get; set; } = 0f;
     }
 
     // Status effect class for combat
@@ -164,11 +250,43 @@ namespace KenshiMultiplayer.Utility
     // Combat result class - returned after combat resolution
     public class CombatResult
     {
+        // Core properties
+        public string AttackerId { get; set; }
+        public string TargetId { get; set; }
+        public long Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        // Hit/Miss properties
         public bool Hit { get; set; }
+        public bool Miss { get; set; }
+        public bool Success { get; set; }
+        public string Reason { get; set; }
+
+        // Damage properties
         public int Damage { get; set; }
         public string DamageType { get; set; }
+        public float BleedDamage { get; set; }
+        public LimbDamageResult LimbDamage { get; set; }
+
+        // Location properties
         public string AffectedLimb { get; set; }
+        public string HitLocation { get; set; }
+
+        // Block properties
+        public bool Blocked { get; set; }
+        public float BlockDamage { get; set; }
+        public bool BlockBroken { get; set; }
+
+        // Critical/Special properties
         public bool IsCritical { get; set; }
+        public bool Critical { get; set; }
+        public bool Dismemberment { get; set; }
+        public string SeveredLimb { get; set; }
+
+        // Knockback properties
+        public bool Knockback { get; set; }
+        public float KnockbackForce { get; set; }
+
+        // Effects and messages
         public List<StatusEffect> AppliedEffects { get; set; } = new List<StatusEffect>();
         public string ResultMessage { get; set; }
 

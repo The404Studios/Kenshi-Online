@@ -119,13 +119,23 @@ namespace KenshiMultiplayer.Utility
         {
             if (!isRunning)
                 return;
-            
+
             isRunning = false;
             cancellationTokenSource?.Cancel();
             processingTask?.Wait(5000);
-            
+
             Logger.Log("ActionProcessor stopped");
         }
+
+        /// <summary>
+        /// Alias for Start() for compatibility
+        /// </summary>
+        public void StartProcessing() => Start();
+
+        /// <summary>
+        /// Alias for Stop() for compatibility
+        /// </summary>
+        public void StopProcessing() => Stop();
 
         /// <summary>
         /// Queue an action for processing

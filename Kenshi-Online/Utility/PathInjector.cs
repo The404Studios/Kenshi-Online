@@ -224,8 +224,8 @@ namespace KenshiMultiplayer.Utility
 
                 Logger.Log($"Intercepted pathfinding: {start} -> {end}");
 
-                // Get cached path
-                var cachedPath = pathCache.GetPath(start, end);
+                // Get cached path (synchronous - no generation)
+                var cachedPath = pathCache.GetPathSync(start, end);
 
                 if (cachedPath != null && cachedPath.Waypoints.Count > 0)
                 {
@@ -512,12 +512,10 @@ namespace KenshiMultiplayer.Utility
         /// </summary>
         public CachedPath GetSynchronizedPath(Vector3 start, Vector3 end, string requesterId)
         {
-            var path = pathCache.GetPath(start, end);
+            var path = pathCache.GetPathSync(start, end);
 
             if (path != null)
             {
-                // Log usage for optimization
-                path.IncrementUsage();
                 Logger.Log($"Provided cached path for {requesterId}: {path.PathId}");
             }
 

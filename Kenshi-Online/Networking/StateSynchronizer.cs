@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Text.Json;
 using System.IO;
@@ -351,7 +352,7 @@ namespace KenshiMultiplayer.Networking
                     return false; // Old input
                 
                 // Check for speed hacks
-                if (input.Velocity.Magnitude() > 15.0f) // Max speed in Kenshi
+                if (input.Velocity.Length() > 15.0f) // Max speed in Kenshi
                     return false;
                 
                 // Check for teleportation
