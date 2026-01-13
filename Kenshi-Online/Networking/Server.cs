@@ -6,9 +6,11 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using KenshiMultiplayer.Utility;
 using KenshiMultiplayer.Managers;
 using KenshiMultiplayer.Data;
+using KenshiMultiplayer.Networking.Authority;
 
 namespace KenshiMultiplayer.Networking
 {
@@ -20,9 +22,51 @@ namespace KenshiMultiplayer.Networking
         private GameFileManager fileManager;
         private Dictionary<string, string> activeUserSessions = new Dictionary<string, string>(); // Maps authToken to username
 
+        // Authority system integration
+        private ServerContext serverContext;
+        private readonly Dictionary<string, TcpClient> playerClients = new Dictionary<string, TcpClient>();
+        private readonly Dictionary<TcpClient, string> clientPlayers = new Dictionary<TcpClient, string>();
+
         public EnhancedServer(string kenshiRootPath)
         {
             fileManager = new GameFileManager(kenshiRootPath);
+
+            // Initialize server context with authority system
+            string savePath = System.IO.Path.Combine(kenshiRootPath, "multiplayer_data");
+            serverContext = new ServerContext(savePath);
+
+            // Subscribe to authority events
+            serverContext.OnActionRejected += OnActionRejected;
+            serverContext.OnPlayerSaveUpdated += OnPlayerSaveUpdated;
+        }
+
+        /// <summary>
+        /// Handle authority rejection - notify client
+        /// </summary>
+        private void OnActionRejected(string playerId, AuthorityValidationResult result)
+        {
+            if (playerClients.TryGetValue(playerId, out var client))
+            {
+                var errorMessage = new GameMessage
+                {
+                    Type = MessageType.Error,
+                    PlayerId = playerId,
+                    Data = new Dictionary<string, object>
+                    {
+                        { "code", "ACTION_REJECTED" },
+                        { "reason", result.RejectionReason }
+                    }
+                };
+                SendMessageToClient(client, errorMessage.ToJson());
+            }
+        }
+
+        /// <summary>
+        /// Handle save updates - can notify client if needed
+        /// </summary>
+        private void OnPlayerSaveUpdated(string playerId, string version)
+        {
+            Logger.Log($"Player {playerId} save updated to {version}");
         }
 
         public void Start(int port = 5555)
@@ -190,6 +234,14 @@ namespace KenshiMultiplayer.Networking
                     activeUserSessions.Remove(authToken);
                 }
 
+                // Unregister from authority system
+                if (clientPlayers.TryGetValue(client, out string playerId))
+                {
+                    _ = serverContext.UnregisterPlayer(playerId);
+                    playerClients.Remove(playerId);
+                    clientPlayers.Remove(client);
+                }
+
                 connectedClients.Remove(client);
                 client.Close();
                 Logger.Log($"Client connection closed. {connectedClients.Count} clients remaining.");
@@ -211,6 +263,14 @@ namespace KenshiMultiplayer.Networking
                 // Store active session
                 activeUserSessions[token] = username;
 
+                // Register player with authority system
+                string playerId = username; // Use username as playerId for simplicity
+                _ = serverContext.RegisterPlayer(playerId, username);
+
+                // Track client-player mapping
+                playerClients[playerId] = client;
+                clientPlayers[client] = playerId;
+
                 var response = new GameMessage
                 {
                     Type = MessageType.Authentication,
@@ -218,12 +278,13 @@ namespace KenshiMultiplayer.Networking
                     {
                         { "success", true },
                         { "token", token },
-                        { "username", username }
+                        { "username", username },
+                        { "playerId", playerId }
                     }
                 };
 
                 SendMessageToClient(client, response.ToJson());
-                Logger.Log($"User {username} authenticated successfully");
+                Logger.Log($"User {username} authenticated and registered with authority system");
             }
             else
             {
@@ -656,7 +717,48 @@ namespace KenshiMultiplayer.Networking
                 float y = message.Data.ContainsKey("y") ? Convert.ToSingle(message.Data["y"]) : 0;
                 float z = message.Data.ContainsKey("z") ? Convert.ToSingle(message.Data["z"]) : 0;
 
-                Logger.Log($"Move command from {playerId}: ({x}, {y}, {z})");
+                // Get previous position for validation
+                var player = serverContext.GetPlayer(playerId);
+                float prevX = player?.LastX ?? x;
+                float prevY = player?.LastY ?? y;
+                float prevZ = player?.LastZ ?? z;
+                long prevTime = player?.LastUpdateTime ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                float timeDelta = (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - prevTime) / 1000f;
+
+                // Validate position update through authority system
+                var validationResult = serverContext.ValidatePositionUpdate(
+                    playerId, x, y, z, prevX, prevY, prevZ, timeDelta);
+
+                if (!validationResult.IsValid)
+                {
+                    Logger.Log($"Position rejected for {playerId}: {validationResult.RejectionReason}");
+                    // Send correction to client
+                    var correction = new GameMessage
+                    {
+                        Type = MessageType.Position,
+                        PlayerId = playerId,
+                        Data = new Dictionary<string, object>
+                        {
+                            { "x", prevX },
+                            { "y", prevY },
+                            { "z", prevZ },
+                            { "correction", true }
+                        }
+                    };
+                    SendMessageToClient(senderClient, correction.ToJson());
+                    return;
+                }
+
+                // Update player's last known position
+                if (player != null)
+                {
+                    player.LastX = x;
+                    player.LastY = y;
+                    player.LastZ = z;
+                    player.LastUpdateTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                }
+
+                Logger.Log($"Move command from {playerId}: ({x}, {y}, {z}) - validated");
 
                 // Get game state manager and execute move
                 var gsm = this.GetGameStateManager();
@@ -691,8 +793,19 @@ namespace KenshiMultiplayer.Networking
             {
                 string playerId = message.PlayerId;
                 string targetId = message.Data.ContainsKey("targetId") ? message.Data["targetId"].ToString() : "";
+                string weaponId = message.Data.ContainsKey("weaponId") ? message.Data["weaponId"].ToString() : null;
 
                 Logger.Log($"Attack command from {playerId} targeting {targetId}");
+
+                // Validate combat action through authority system
+                var validationResult = serverContext.ValidateCombatAction(
+                    playerId, targetId, "attack", weaponId);
+
+                if (!validationResult.IsValid)
+                {
+                    Logger.Log($"Combat rejected for {playerId}: {validationResult.RejectionReason}");
+                    return;
+                }
 
                 // Get game state manager and execute attack
                 var gsm = this.GetGameStateManager();
@@ -701,7 +814,7 @@ namespace KenshiMultiplayer.Networking
                     gsm.AttackTarget(playerId, targetId);
                 }
 
-                // Broadcast combat action to other clients
+                // Broadcast combat action to other clients (server-validated)
                 var combatUpdate = new GameMessage
                 {
                     Type = MessageType.Combat,
@@ -709,7 +822,8 @@ namespace KenshiMultiplayer.Networking
                     Data = new Dictionary<string, object>
                     {
                         { "targetId", targetId },
-                        { "action", "attack" }
+                        { "action", "attack" },
+                        { "validated", true }
                     }
                 };
                 BroadcastMessage(combatUpdate.ToJson(), senderClient);
@@ -760,15 +874,44 @@ namespace KenshiMultiplayer.Networking
             {
                 string playerId = message.PlayerId;
                 string itemId = message.Data.ContainsKey("itemId") ? message.Data["itemId"].ToString() : "";
+                int quantity = message.Data.ContainsKey("quantity") ? Convert.ToInt32(message.Data["quantity"]) : 1;
 
                 Logger.Log($"Pickup command from {playerId} for item {itemId}");
 
+                if (string.IsNullOrEmpty(itemId))
+                    return;
+
+                // Validate inventory change through authority system
+                var validationTask = serverContext.ValidateInventoryChange(playerId, itemId, quantity, "pickup");
+                validationTask.Wait();
+                var validationResult = validationTask.Result;
+
+                if (!validationResult.IsValid)
+                {
+                    Logger.Log($"Pickup rejected for {playerId}: {validationResult.RejectionReason}");
+                    return;
+                }
+
                 // Get game state manager and execute pickup
                 var gsm = this.GetGameStateManager();
-                if (gsm != null && !string.IsNullOrEmpty(itemId))
+                if (gsm != null)
                 {
                     gsm.PickupItem(playerId, itemId);
                 }
+
+                // Broadcast inventory update
+                var inventoryUpdate = new GameMessage
+                {
+                    Type = MessageType.Inventory,
+                    PlayerId = playerId,
+                    Data = new Dictionary<string, object>
+                    {
+                        { "itemId", itemId },
+                        { "change", quantity },
+                        { "action", "pickup" }
+                    }
+                };
+                BroadcastMessage(inventoryUpdate.ToJson(), senderClient);
             }
             catch (Exception ex)
             {
