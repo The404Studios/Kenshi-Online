@@ -429,11 +429,15 @@ namespace KenshiMultiplayer
             Console.WriteLine("\nSTEP 4: Server configuration");
             Console.Write("Server port [5555]: ");
             string portInput = Console.ReadLine()?.Trim();
-            int port = string.IsNullOrEmpty(portInput) ? 5555 : int.Parse(portInput);
+            int port = 5555;
+            if (!string.IsNullOrEmpty(portInput) && !int.TryParse(portInput, out port))
+                port = 5555;
 
             Console.Write("Max players [16]: ");
             string maxPlayersInput = Console.ReadLine()?.Trim();
-            int maxPlayers = string.IsNullOrEmpty(maxPlayersInput) ? 16 : int.Parse(maxPlayersInput);
+            int maxPlayers = 16;
+            if (!string.IsNullOrEmpty(maxPlayersInput) && !int.TryParse(maxPlayersInput, out maxPlayers))
+                maxPlayers = 16;
 
             Console.Write("Server password (leave empty for public): ");
             string password = Console.ReadLine()?.Trim();
@@ -525,8 +529,10 @@ namespace KenshiMultiplayer
                 serverAddress = "localhost";
 
             Console.Write("Server port [5555]: ");
-            string portInput = Console.ReadLine()?.Trim();
-            int port = string.IsNullOrEmpty(portInput) ? 5555 : int.Parse(portInput);
+            string clientPortInput = Console.ReadLine()?.Trim();
+            int port = 5555;
+            if (!string.IsNullOrEmpty(clientPortInput) && !int.TryParse(clientPortInput, out port))
+                port = 5555;
 
             // Initialize client
             Console.WriteLine("\nSTEP 3: Initializing client...");
