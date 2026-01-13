@@ -2,24 +2,38 @@ using System;
 using System.Collections.Generic;
 using KenshiMultiplayer.Game;
 using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Networking.Authority;
 using KenshiMultiplayer.Utility;
 using KenshiMultiplayer.Data;
 
 namespace KenshiMultiplayer.Networking
 {
     /// <summary>
-    /// Extensions to EnhancedServer for game state management
+    /// Extensions to EnhancedServer for game state management.
+    /// Integrates GameStateManager with server-owned saves via WorldSaveLoader.
     /// </summary>
     public static class ServerExtensions
     {
         private static GameStateManager gameStateManager;
 
         /// <summary>
-        /// Set the game state manager for this server
+        /// Set the game state manager for this server with save system integration.
         /// </summary>
-        public static void SetGameStateManager(this EnhancedServer server, GameStateManager manager)
+        /// <param name="server">The server instance</param>
+        /// <param name="manager">The game state manager</param>
+        /// <param name="serverContext">Optional server context for save system integration</param>
+        /// <param name="worldId">World ID for save files</param>
+        public static void SetGameStateManager(this EnhancedServer server, GameStateManager manager,
+            ServerContext serverContext = null, string worldId = "default")
         {
             gameStateManager = manager;
+
+            // Initialize save system if server context provided
+            if (serverContext != null && gameStateManager != null)
+            {
+                gameStateManager.InitializeWithSaveSystem(serverContext, worldId);
+                Console.WriteLine($"[ServerExtensions] Save system initialized for world: {worldId}");
+            }
 
             // Subscribe to game state events
             if (gameStateManager != null)

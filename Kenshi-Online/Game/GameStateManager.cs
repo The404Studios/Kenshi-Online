@@ -5,12 +5,21 @@ using System.Threading;
 using System.Threading.Tasks;
 using KenshiMultiplayer.Data;
 using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Networking.Authority;
 using KenshiMultiplayer.Utility;
 
 namespace KenshiMultiplayer.Game
 {
     /// <summary>
-    /// Central manager for game state synchronization between server and clients
+    /// Central manager for game state synchronization between server and clients.
+    ///
+    /// Architecture:
+    /// - WorldSaveLoader: Handles persistence (server-owned saves)
+    /// - KenshiGameBridge: Handles memory injection (game state)
+    /// - GameStateManager: Coordinates between saves, game, and network
+    ///
+    /// Flow: Network Request -> ServerContext validates -> GameStateManager executes ->
+    ///       KenshiGameBridge applies to game -> WorldSaveLoader persists to save
     /// </summary>
     public class GameStateManager : IDisposable
     {
@@ -18,9 +27,12 @@ namespace KenshiMultiplayer.Game
         private readonly PlayerController playerController;
         private readonly SpawnManager spawnManager;
         private readonly StateSynchronizer stateSynchronizer;
+        private WorldSaveLoader worldSaveLoader;
+        private ServerContext serverContext;
         private const string LOG_PREFIX = "[GameStateManager] ";
 
         private Timer updateTimer;
+        private Timer autoSaveTimer;
         private bool isRunning;
         private readonly object lockObject = new object();
 
@@ -32,9 +44,12 @@ namespace KenshiMultiplayer.Game
         private const int UPDATE_RATE_MS = 50; // 20 Hz
         private const int POSITION_UPDATE_THRESHOLD_MS = 100; // Send position updates every 100ms
         private const float POSITION_CHANGE_THRESHOLD = 0.5f; // 0.5 meters
+        private const int AUTO_SAVE_INTERVAL_MS = 60000; // Auto-save every minute
 
         public bool IsRunning => isRunning;
         public int ActivePlayerCount => activePlayers.Count;
+        public WorldSaveLoader WorldSave => worldSaveLoader;
+        public ServerContext ServerContext => serverContext;
 
         public GameStateManager(KenshiGameBridge gameBridge, StateSynchronizer stateSynchronizer = null)
         {
@@ -48,6 +63,33 @@ namespace KenshiMultiplayer.Game
             RegisterEventHandlers();
 
             Logger.Log(LOG_PREFIX + "GameStateManager initialized");
+        }
+
+        /// <summary>
+        /// Initialize with world save system for full persistence support
+        /// </summary>
+        public void InitializeWithSaveSystem(ServerContext serverContext, string worldId = "default")
+        {
+            this.serverContext = serverContext ?? throw new ArgumentNullException(nameof(serverContext));
+            this.worldSaveLoader = new WorldSaveLoader(serverContext, gameBridge, worldId);
+
+            // Subscribe to save events
+            worldSaveLoader.OnWorldLoaded += (worldSave) =>
+            {
+                Logger.Log(LOG_PREFIX + $"World loaded: {worldSave.WorldId} (v{worldSave.SaveVersion})");
+            };
+
+            worldSaveLoader.OnLoadError += (error) =>
+            {
+                Logger.Log(LOG_PREFIX + $"World load error: {error}");
+            };
+
+            worldSaveLoader.OnSaveComplete += () =>
+            {
+                Logger.Log(LOG_PREFIX + "World save completed");
+            };
+
+            Logger.Log(LOG_PREFIX + "Save system initialized");
         }
 
         #region Initialization
@@ -73,8 +115,21 @@ namespace KenshiMultiplayer.Game
                     Logger.Log(LOG_PREFIX + "Connecting to Kenshi...");
                     if (!gameBridge.ConnectToKenshi())
                     {
-                        Logger.Log(LOG_PREFIX + "ERROR: Failed to connect to Kenshi. Make sure the game is running!");
-                        return false;
+                        Logger.Log(LOG_PREFIX + "WARNING: Failed to connect to Kenshi. Running in headless mode.");
+                        // Continue anyway - can still run server without game connection
+                    }
+                }
+
+                // Load world save if save system is initialized
+                if (worldSaveLoader != null)
+                {
+                    Logger.Log(LOG_PREFIX + "Loading world save...");
+                    var loadTask = worldSaveLoader.LoadWorldAsync();
+                    loadTask.Wait();
+
+                    if (!loadTask.Result)
+                    {
+                        Logger.Log(LOG_PREFIX + "WARNING: World save load failed, using defaults");
                     }
                 }
 
@@ -83,6 +138,12 @@ namespace KenshiMultiplayer.Game
                 // Start update loop
                 updateTimer = new Timer(UpdateGameState, null, 0, UPDATE_RATE_MS);
 
+                // Start auto-save timer if save system is initialized
+                if (worldSaveLoader != null)
+                {
+                    autoSaveTimer = new Timer(AutoSaveCallback, null, AUTO_SAVE_INTERVAL_MS, AUTO_SAVE_INTERVAL_MS);
+                }
+
                 Logger.Log(LOG_PREFIX + "GameStateManager started successfully!");
                 return true;
             }
@@ -90,6 +151,24 @@ namespace KenshiMultiplayer.Game
             {
                 Logger.Log(LOG_PREFIX + $"ERROR starting GameStateManager: {ex.Message}");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Auto-save callback
+        /// </summary>
+        private async void AutoSaveCallback(object state)
+        {
+            if (!isRunning || worldSaveLoader == null)
+                return;
+
+            try
+            {
+                await worldSaveLoader.SaveWorldStateAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"Auto-save error: {ex.Message}");
             }
         }
 
@@ -108,6 +187,15 @@ namespace KenshiMultiplayer.Game
                 isRunning = false;
                 updateTimer?.Dispose();
                 updateTimer = null;
+                autoSaveTimer?.Dispose();
+                autoSaveTimer = null;
+
+                // Save world state before stopping
+                if (worldSaveLoader != null)
+                {
+                    Logger.Log(LOG_PREFIX + "Saving world state...");
+                    worldSaveLoader.SaveWorldStateAsync().Wait();
+                }
 
                 // Despawn all players
                 foreach (var playerId in activePlayers.Keys.ToList())
@@ -143,16 +231,54 @@ namespace KenshiMultiplayer.Game
         #region Player Management
 
         /// <summary>
-        /// Add a player to the game
+        /// Add a player to the game.
+        /// If save system is initialized, loads player from server-owned save.
         /// </summary>
         public async Task<bool> AddPlayer(string playerId, PlayerData playerData, string spawnLocation = "Default")
         {
-            lock (lockObject)
+            try
             {
-                try
-                {
-                    Logger.Log(LOG_PREFIX + $"Adding player {playerId} ({playerData.DisplayName})");
+                Logger.Log(LOG_PREFIX + $"Adding player {playerId} ({playerData.DisplayName})");
 
+                // Use save system if available
+                if (worldSaveLoader != null)
+                {
+                    var spawnResult = await worldSaveLoader.LoadPlayerAsync(playerId, playerData.DisplayName);
+
+                    if (spawnResult.Success)
+                    {
+                        // Update playerData with loaded save data
+                        if (spawnResult.SaveData != null)
+                        {
+                            playerData.Health = spawnResult.SaveData.Health;
+                            playerData.MaxHealth = spawnResult.SaveData.MaxHealth;
+
+                            if (spawnResult.SpawnPosition != null)
+                            {
+                                playerData.Position = spawnResult.SpawnPosition;
+                            }
+                        }
+
+                        lock (lockObject)
+                        {
+                            activePlayers[playerId] = playerData;
+                            lastUpdateTimes[playerId] = DateTime.UtcNow;
+                        }
+
+                        Logger.Log(LOG_PREFIX + $"Player {playerId} loaded from save and spawned");
+                        BroadcastPlayerJoined(playerId, playerData);
+                        return true;
+                    }
+                    else
+                    {
+                        Logger.Log(LOG_PREFIX + $"Failed to load player from save: {spawnResult.ErrorMessage}");
+                        // Fall through to legacy spawn
+                    }
+                }
+
+                // Legacy path - no save system
+                lock (lockObject)
+                {
                     if (activePlayers.ContainsKey(playerId))
                     {
                         Logger.Log(LOG_PREFIX + $"Player {playerId} already active, updating...");
@@ -162,61 +288,68 @@ namespace KenshiMultiplayer.Game
 
                     activePlayers[playerId] = playerData;
                     lastUpdateTimes[playerId] = DateTime.UtcNow;
-
-                    return true;
                 }
-                catch (Exception ex)
+
+                // Spawn outside lock
+                bool spawned = await spawnManager.SpawnPlayer(playerId, playerData, spawnLocation);
+
+                if (spawned)
                 {
-                    Logger.Log(LOG_PREFIX + $"ERROR adding player: {ex.Message}");
-                    return false;
+                    Logger.Log(LOG_PREFIX + $"Player {playerId} added and spawned successfully");
+                    BroadcastPlayerJoined(playerId, playerData);
                 }
+
+                return spawned;
             }
-
-            // Spawn outside lock
-            bool spawned = await spawnManager.SpawnPlayer(playerId, playerData, spawnLocation);
-
-            if (spawned)
+            catch (Exception ex)
             {
-                Logger.Log(LOG_PREFIX + $"Player {playerId} added and spawned successfully");
-                BroadcastPlayerJoined(playerId, playerData);
+                Logger.Log(LOG_PREFIX + $"ERROR adding player: {ex.Message}");
+                return false;
             }
-
-            return spawned;
         }
 
         /// <summary>
-        /// Remove a player from the game
+        /// Remove a player from the game.
+        /// If save system is initialized, saves player state before removing.
         /// </summary>
         public bool RemovePlayer(string playerId)
         {
-            lock (lockObject)
+            try
             {
-                try
+                if (!activePlayers.ContainsKey(playerId))
                 {
-                    if (!activePlayers.ContainsKey(playerId))
-                    {
-                        Logger.Log(LOG_PREFIX + $"Player {playerId} not found");
-                        return false;
-                    }
-
-                    Logger.Log(LOG_PREFIX + $"Removing player {playerId}");
-
-                    activePlayers.Remove(playerId);
-                    lastUpdateTimes.Remove(playerId);
-
-                    // Despawn
-                    spawnManager.DespawnPlayer(playerId);
-
-                    Logger.Log(LOG_PREFIX + $"Player {playerId} removed successfully");
-                    BroadcastPlayerLeft(playerId);
-
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log(LOG_PREFIX + $"ERROR removing player: {ex.Message}");
+                    Logger.Log(LOG_PREFIX + $"Player {playerId} not found");
                     return false;
                 }
+
+                Logger.Log(LOG_PREFIX + $"Removing player {playerId}");
+
+                // Use save system if available - save and unload player
+                if (worldSaveLoader != null)
+                {
+                    worldSaveLoader.UnloadPlayerAsync(playerId).Wait();
+                }
+                else
+                {
+                    // Legacy path - just despawn
+                    spawnManager.DespawnPlayer(playerId);
+                }
+
+                lock (lockObject)
+                {
+                    activePlayers.Remove(playerId);
+                    lastUpdateTimes.Remove(playerId);
+                }
+
+                Logger.Log(LOG_PREFIX + $"Player {playerId} removed and saved");
+                BroadcastPlayerLeft(playerId);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"ERROR removing player: {ex.Message}");
+                return false;
             }
         }
 
@@ -503,8 +636,58 @@ namespace KenshiMultiplayer.Game
         public void Dispose()
         {
             Stop();
+            worldSaveLoader?.Dispose();
             gameBridge?.Dispose();
             Logger.Log(LOG_PREFIX + "GameStateManager disposed");
+        }
+
+        #endregion
+
+        #region Save System Integration
+
+        /// <summary>
+        /// Force save all player and world state
+        /// </summary>
+        public async Task ForceSaveAsync()
+        {
+            if (worldSaveLoader != null)
+            {
+                await worldSaveLoader.SaveWorldStateAsync();
+            }
+        }
+
+        /// <summary>
+        /// Sync player position to game (from network)
+        /// </summary>
+        public bool SyncPlayerPositionToGame(string playerId, Position position)
+        {
+            if (worldSaveLoader != null)
+            {
+                return worldSaveLoader.SyncPlayerPositionToGame(playerId, position);
+            }
+
+            return gameBridge.UpdatePlayerPosition(playerId, position);
+        }
+
+        /// <summary>
+        /// Get player position from game memory
+        /// </summary>
+        public Position GetPlayerPositionFromGame(string playerId)
+        {
+            if (worldSaveLoader != null)
+            {
+                return worldSaveLoader.GetPlayerPositionFromGame(playerId);
+            }
+
+            return gameBridge.GetPlayerPosition(playerId);
+        }
+
+        /// <summary>
+        /// Record a world event for persistence
+        /// </summary>
+        public void RecordWorldEvent(string eventType, Dictionary<string, object> data)
+        {
+            worldSaveLoader?.RecordWorldEvent(eventType, data);
         }
 
         #endregion
