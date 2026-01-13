@@ -123,7 +123,19 @@ namespace KenshiMultiplayer.Networking
                 listenerThread.Start();
 
                 Logger.Log("WebUI started successfully");
-                Console.WriteLine($"WebUI is running at http://localhost:{listener.Prefixes.First().Split(':')[2].TrimEnd('/')}");
+
+                // Safely extract port from listener prefix
+                string port = "8080";
+                if (listener.Prefixes.Count > 0)
+                {
+                    var prefix = listener.Prefixes.First();
+                    var parts = prefix.Split(':');
+                    if (parts.Length >= 3)
+                    {
+                        port = parts[2].TrimEnd('/');
+                    }
+                }
+                Console.WriteLine($"WebUI is running at http://localhost:{port}");
             }
             catch (Exception ex)
             {

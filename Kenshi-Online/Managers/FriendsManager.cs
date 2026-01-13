@@ -41,7 +41,7 @@ namespace KenshiMultiplayer.Managers
         }
     }
 
-    public class FriendsManager
+    public class FriendsManager : IDisposable
     {
         private readonly Dictionary<string, FriendRelation> friends = new Dictionary<string, FriendRelation>();
         private readonly Dictionary<string, List<string>> incomingRequests = new Dictionary<string, List<string>>();
@@ -50,6 +50,7 @@ namespace KenshiMultiplayer.Managers
         private readonly string dataFilePath;
         private readonly EnhancedClient client;
         private readonly EnhancedServer server;
+        private bool disposed;
 
         // Server-side constructor
         public FriendsManager(EnhancedServer serverInstance, string dataDirectory = "data")
@@ -503,6 +504,25 @@ namespace KenshiMultiplayer.Managers
 
                 SaveData();
             }
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
+
+            // Unsubscribe from client events
+            if (client != null)
+            {
+                client.MessageReceived -= OnMessageReceived;
+            }
+
+            // Save data before disposing
+            SaveData();
+
+            Logger.Log("[FriendsManager] Disposed");
         }
     }
 

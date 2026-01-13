@@ -11,7 +11,7 @@ namespace KenshiMultiplayer.Utility
     /// <summary>
     /// Integrates all multiplayer components into a cohesive system
     /// </summary>
-    public class MultiplayerIntegration
+    public class MultiplayerIntegration : IDisposable
     {
         // Core components
         private DeterministicPathManager? pathManager;
@@ -19,7 +19,11 @@ namespace KenshiMultiplayer.Utility
         private EnhancedServer? server;
         private EnhancedClient? client;
         private GameModManager? modManager;
-        
+
+        // Event handler reference for proper cleanup
+        private EventHandler<GameMessage>? clientMessageHandler;
+        private bool disposed;
+
         // Configuration
         private readonly string kenshiPath;
         private readonly bool isServer;
@@ -179,31 +183,38 @@ namespace KenshiMultiplayer.Utility
         /// </summary>
         private void SetupClientMessageHandlers()
         {
-            client.MessageReceived += (sender, message) =>
+            // Use named handler for proper cleanup
+            clientMessageHandler = OnClientMessageReceived;
+            client.MessageReceived += clientMessageHandler;
+        }
+
+        /// <summary>
+        /// Handle messages received from the client
+        /// </summary>
+        private void OnClientMessageReceived(object? sender, GameMessage message)
+        {
+            switch (message.Type)
             {
-                switch (message.Type)
-                {
-                    case MessageType.Position:
-                        HandlePositionUpdate(message);
-                        break;
-                        
-                    case MessageType.Combat:
-                        HandleCombatAction(message);
-                        break;
-                        
-                    case "path_update":
-                        HandlePathUpdate(message);
-                        break;
-                        
-                    case "action_result":
-                        HandleActionResult(message);
-                        break;
-                        
-                    case MessageType.WorldState:
-                        HandleWorldStateUpdate(message);
-                        break;
-                }
-            };
+                case MessageType.Position:
+                    HandlePositionUpdate(message);
+                    break;
+
+                case MessageType.Combat:
+                    HandleCombatAction(message);
+                    break;
+
+                case "path_update":
+                    HandlePathUpdate(message);
+                    break;
+
+                case "action_result":
+                    HandleActionResult(message);
+                    break;
+
+                case MessageType.WorldState:
+                    HandleWorldStateUpdate(message);
+                    break;
+            }
         }
         
         /// <summary>
@@ -373,12 +384,28 @@ namespace KenshiMultiplayer.Utility
         public void Shutdown()
         {
             Logger.Log("Shutting down multiplayer system...");
-            
+
+            // Unsubscribe from client events
+            if (client != null && clientMessageHandler != null)
+            {
+                client.MessageReceived -= clientMessageHandler;
+                clientMessageHandler = null;
+            }
+
             actionProcessor?.StopProcessing();
             pathManager?.Shutdown();
             client?.Disconnect();
-            
+
             Logger.Log("Multiplayer system shutdown complete");
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
+            Shutdown();
         }
     }
     
