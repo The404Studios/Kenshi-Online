@@ -18,7 +18,21 @@ namespace KenshiMultiplayer
             {
                 string mode = args[0].ToLower();
 
-                if (mode == "-server" || mode == "--server" || mode == "server")
+                // QUICK TEST MODE - Simplified testing
+                if (mode == "--test-server" || mode == "-ts")
+                {
+                    int port = args.Length > 1 && int.TryParse(args[1], out int p) ? p : 7777;
+                    QuickTest.RunServer(port);
+                    return;
+                }
+                else if (mode == "--test-client" || mode == "-tc")
+                {
+                    string ip = args.Length > 1 ? args[1] : "localhost";
+                    int port = args.Length > 2 && int.TryParse(args[2], out int p) ? p : 7777;
+                    QuickTest.RunClient(ip, port);
+                    return;
+                }
+                else if (mode == "-server" || mode == "--server" || mode == "server")
                 {
                     // Run as server
                     await EnhancedProgram.Main(new string[] { "--server" });
@@ -43,15 +57,28 @@ namespace KenshiMultiplayer
             {
                 case "1":
                     Console.Clear();
-                    await EnhancedProgram.Main(new string[] { "--server" });
+                    QuickTest.RunServer();
                     break;
 
                 case "2":
                     Console.Clear();
-                    await ClientProgram.Main(args);
+                    Console.Write("Enter server IP (or press Enter for localhost): ");
+                    string ip = Console.ReadLine()?.Trim();
+                    if (string.IsNullOrWhiteSpace(ip)) ip = "localhost";
+                    QuickTest.RunClient(ip);
                     break;
 
                 case "3":
+                    Console.Clear();
+                    await EnhancedProgram.Main(new string[] { "--server" });
+                    break;
+
+                case "4":
+                    Console.Clear();
+                    await ClientProgram.Main(args);
+                    break;
+
+                case "5":
                     DisplayHelp();
                     Console.WriteLine("\nPress any key to exit...");
                     Console.ReadKey();
@@ -81,13 +108,25 @@ namespace KenshiMultiplayer
         private static void DisplayModeSelection()
         {
             Console.WriteLine("Select mode:\n");
-            Console.WriteLine("  1. Start Server (Host a multiplayer session)");
-            Console.WriteLine("  2. Start Client (Join a multiplayer session)");
-            Console.WriteLine("  3. Help");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("  === QUICK TEST (Recommended for testing) ===");
+            Console.ResetColor();
+            Console.WriteLine("  1. Host Game (Quick Test Server)");
+            Console.WriteLine("  2. Join Game (Quick Test Client)");
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("  === FULL VERSION (More features) ===");
+            Console.ResetColor();
+            Console.WriteLine("  3. Full Server (Advanced hosting)");
+            Console.WriteLine("  4. Full Client (Advanced client)");
+            Console.WriteLine();
+            Console.WriteLine("  5. Help");
             Console.WriteLine();
             Console.WriteLine("Command line usage:");
-            Console.WriteLine("  KenshiOnline.exe -server    Start as server");
-            Console.WriteLine("  KenshiOnline.exe -client    Start as client");
+            Console.WriteLine("  KenshiOnline.exe --test-server           Quick test server");
+            Console.WriteLine("  KenshiOnline.exe --test-client [ip]      Quick test client");
+            Console.WriteLine("  KenshiOnline.exe -server                 Full server");
+            Console.WriteLine("  KenshiOnline.exe -client                 Full client");
         }
 
         private static void DisplayHelp()
