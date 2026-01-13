@@ -138,12 +138,8 @@ namespace KenshiMultiplayer
                         await TrainerMenu();
                         break;
                     case "9":
-                        await Disconnect();
-                        return;
                     case "0":
                         await Disconnect();
-                        return;
-                    case "0":
                         return;
                     default:
                         Console.WriteLine("Invalid choice.");

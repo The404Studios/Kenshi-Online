@@ -262,6 +262,79 @@ namespace KenshiMultiplayer.Game
         Guarding = 22
     }
 
+    /// <summary>
+    /// Command types for issuing orders to characters
+    /// </summary>
+    public enum CommandType
+    {
+        None = 0,
+        Move = 1,
+        Attack = 2,
+        Follow = 3,
+        Guard = 4,
+        Patrol = 5,
+        Work = 6,
+        Pickup = 7,
+        Drop = 8,
+        Equip = 9,
+        Unequip = 10,
+        Use = 11,
+        Interact = 12,
+        Stop = 13,
+        Flee = 14,
+        Medic = 15,
+        Loot = 16,
+        Build = 17,
+        Repair = 18,
+        Harvest = 19,
+        Craft = 20
+    }
+
+    /// <summary>
+    /// Character stats container - derived combat and movement stats
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct CharacterStats
+    {
+        // Derived stats (calculated from skills and equipment)
+        public float CombatSpeed;
+        public float AttackSlots;
+        public float DodgeChance;
+        public float BlockChance;
+        public float MoveSpeed;
+        public float Encumbrance;
+        public float EncumbranceMax;
+
+        // Combat stats
+        public float MeleeAttack;
+        public float MeleeDefence;
+        public float RangedAttack;
+        public float Strength;
+        public float Dexterity;
+        public float Toughness;
+
+        // General stats
+        public float Athletics;
+        public float Swimming;
+        public float Stealth;
+        public float Assassination;
+        public float Thievery;
+        public float Lockpicking;
+
+        // Work stats
+        public float Labouring;
+        public float Engineering;
+        public float Robotics;
+        public float Science;
+        public float Farming;
+        public float Cooking;
+        public float Armoursmithing;
+        public float Weaponsmithing;
+        public float Crossbow;
+        public float Turrets;
+        public float Medicine;
+    }
+
     public enum AIPackageType
     {
         None = 0,
@@ -597,6 +670,9 @@ namespace KenshiMultiplayer.Game
         public byte IsLoading;
         public byte IsSaving;
         public byte IsSimulating;
+
+        // Compatibility properties
+        public IntPtr WeatherSystemPtr => Weather;
     }
 
     /// <summary>
@@ -731,6 +807,9 @@ namespace KenshiMultiplayer.Game
         public float PosZ => Position.Z;
         public IntPtr NamePtr => Name;
         public AIState CharacterState => CurrentState;
+        public IntPtr InventoryPtr => Inventory;
+        public IntPtr StatsPtr => Stats;
+        public int InventorySize => 0; // Size determined at runtime from memory
     }
 
     /// <summary>
@@ -824,6 +903,7 @@ namespace KenshiMultiplayer.Game
         // Compatibility properties
         public int FactionID => (int)FactionId;
         public IntPtr NamePtr => Name;
+        public FactionType FactionType => Type;
     }
 
     /// <summary>
@@ -986,6 +1066,9 @@ namespace KenshiMultiplayer.Game
         public IntPtr Workers;
         public int WorkerCount;
         public int MaxWorkers;
+
+        // Compatibility properties
+        public int BuildingID => (int)BuildingId;
     }
 
     /// <summary>

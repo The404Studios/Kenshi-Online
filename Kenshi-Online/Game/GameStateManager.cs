@@ -361,29 +361,6 @@ namespace KenshiMultiplayer.Game
                 {
                     // Legacy path - just despawn
                     spawnManager.DespawnPlayer(playerId);
-                if (!activePlayers.ContainsKey(playerId))
-                {
-                    Logger.Log(LOG_PREFIX + $"Player {playerId} not found");
-                    return false;
-                }
-
-                Logger.Log(LOG_PREFIX + $"Removing player {playerId}");
-
-                // Use save system if available - save and unload player
-                if (worldSaveLoader != null)
-                {
-                    worldSaveLoader.UnloadPlayerAsync(playerId).Wait();
-                }
-                else
-                {
-                    // Legacy path - just despawn
-                    spawnManager.DespawnPlayer(playerId);
-                }
-
-                lock (lockObject)
-                {
-                    activePlayers.Remove(playerId);
-                    lastUpdateTimes.Remove(playerId);
                 }
 
                 Logger.Log(LOG_PREFIX + $"Player {playerId} removed and saved");
