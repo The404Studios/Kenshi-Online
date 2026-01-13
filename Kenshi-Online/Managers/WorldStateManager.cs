@@ -45,8 +45,67 @@ namespace KenshiMultiplayer.Managers
         /// </summary>
         public void ApplyActionResult(ActionResult result)
         {
-            // Stub implementation
-            Console.WriteLine($"Applying action result for player {result.Action?.PlayerId}");
+            if (result == null || !result.Success)
+                return;
+
+            var action = result.Action;
+            if (action == null)
+                return;
+
+            // Apply changes based on action type
+            if (result.Changes != null)
+            {
+                foreach (var change in result.Changes)
+                {
+                    switch (change.Key)
+                    {
+                        case "position":
+                            if (players.TryGetValue(action.PlayerId, out var player) && change.Value is Position pos)
+                            {
+                                player.Position = pos;
+                            }
+                            break;
+                        case "health":
+                            if (players.TryGetValue(action.PlayerId, out var healthPlayer) && change.Value is float health)
+                            {
+                                healthPlayer.Health = health;
+                            }
+                            break;
+                        case "entity":
+                            if (change.Value is EntityState entityState)
+                            {
+                                Entities[entityState.Id] = entityState;
+                            }
+                            break;
+                    }
+                }
+            }
+
+            Logger.Log($"Applied action result for player {action.PlayerId}: {action.Type}");
+        }
+
+        /// <summary>
+        /// Add a player to the world state
+        /// </summary>
+        public void AddPlayer(string playerId, PlayerData data)
+        {
+            players[playerId] = data;
+        }
+
+        /// <summary>
+        /// Remove a player from the world state
+        /// </summary>
+        public void RemovePlayer(string playerId)
+        {
+            players.Remove(playerId);
+        }
+
+        /// <summary>
+        /// Update an entity in the world state
+        /// </summary>
+        public void UpdateEntity(string entityId, EntityState state)
+        {
+            Entities[entityId] = state;
         }
     }
 
