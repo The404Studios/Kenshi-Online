@@ -453,10 +453,9 @@ namespace KenshiMultiplayer
                 // Initialize game state manager with save system integration
                 if (gameStateManager != null)
                 {
-                    // Get the server's internal ServerContext for save system
-                    // The server already creates a ServerContext, we need to use it
-                    // to wire up the save system properly
-                    server.SetGameStateManager(gameStateManager, null, worldName);
+                    // Use the server's ServerContext for save system integration
+                    // This ensures the authority system and save system share state
+                    server.SetGameStateManager(gameStateManager, server.Context, worldName);
 
                     Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.WriteLine($"Save system initialized for world: {worldName}");

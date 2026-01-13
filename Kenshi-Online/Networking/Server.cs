@@ -27,6 +27,11 @@ namespace KenshiMultiplayer.Networking
         private readonly Dictionary<string, TcpClient> playerClients = new Dictionary<string, TcpClient>();
         private readonly Dictionary<TcpClient, string> clientPlayers = new Dictionary<TcpClient, string>();
 
+        /// <summary>
+        /// Get the server's authority context for save system integration
+        /// </summary>
+        public ServerContext Context => serverContext;
+
         public EnhancedServer(string kenshiRootPath)
         {
             fileManager = new GameFileManager(kenshiRootPath);
