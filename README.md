@@ -1,140 +1,194 @@
-# 🎮 Kenshi Online - Complete Multiplayer Mod
-
-![Kenshi Online Banner](https://via.placeholder.com/1200x300?text=Kenshi+Online+Multiplayer+Experience)
+# Kenshi Online
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/discord/962745762938572870?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/W2K7GhmD)
-[![GitHub Stars](https://img.shields.io/github/stars/The404Studios/Kenshi-Online?style=social)](https://github.com/The404Studios/Kenshi-Online)
 [![.NET 8.0](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
-[![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 
-## 🌟 Overview
+**Experimental multiplayer mod for Kenshi.**
 
-**Kenshi Online** transforms the harsh single-player world of Kenshi into a **fully functional multiplayer experience**. This is a complete remake with actual game integration, native mod injection, and comprehensive multiplayer systems.
+## What This Is
 
-**Now with:**
-- ✅ **Native DLL Mod Injection** - Runs directly inside Kenshi
-- ✅ **Real Game State Reading** - Accesses actual game memory structures
-- ✅ **Player Spawning System** - Spawn anywhere in the world
-- ✅ **Group Spawning** - Start with friends at the same location
-- ✅ **Faction System** - Complete faction management with persistence
-- ✅ **NPC Synchronization** - Share the world with all its inhabitants
-- ✅ **16+ Spawn Locations** - Choose your starting point
+Kenshi Online is a proof-of-concept multiplayer mod that enables 2-8 friends to play Kenshi together via memory injection and network synchronization.
 
-![Kenshi Wasteland](https://via.placeholder.com/800x400?text=Kenshi+Harsh+Wasteland+Environment)
+**Current status: Experimental / In Development**
 
-## ✨ Key Features
+This is NOT a finished product. It is an active research project exploring how to add multiplayer to a game that was never designed for it.
 
-### 🎮 True Multiplayer Experience
-- Play with up to 16 friends in a single persistent world
-- Real-time gameplay synchronization across all connected players
-- Shared world state with persistent changes
-- Drop-in/drop-out connectivity for flexible gameplay sessions
+## What Works
 
-### 🔄 Seamless Character Synchronization
-- Real-time tracking of player movements and actions
-- Synchronized inventories, stats, and character development
-- See your friends' battles unfold in real-time
-- Character persistence across server sessions
+- Position synchronization between players
+- Basic combat sync (health, damage)
+- Server-authoritative state (anti-cheat foundation)
+- DLL injection into Kenshi process
+- Session hosting and joining
+- Reconnection handling
+- Server-owned save files
 
-![Kenshi Skeletons](https://via.placeholder.com/800x400?text=Kenshi+Skeleton+Characters+in+Combat)
+## What Does NOT Work (Yet)
 
-### 🎯 Collaborative & Competitive Gameplay
-- Form alliances to conquer the wasteland together
-- Share resources and build joint settlements
-- Compete for territory and resources if you choose
-- Trade, strategize, or betray - forge your own path in the wasteland
-- Synchronized faction relations and reputation systems
+- NPC AI synchronization (NPCs run locally, may diverge)
+- Formation/squad commands
+- In-game chat
+- Full inventory sync
+- Cross-zone multiplayer
+- Modded content
 
-### 🌐 Enhanced Social Features
-- In-game chat system with proximity, party, and global channels
-- Player trading system with secure exchange interface
-- Formation and squad commands for coordinated gameplay
-- Friend finder to locate allies in the vast wasteland
+## Honest Limitations
 
-![Kenshi Desert Base](https://via.placeholder.com/800x400?text=Kenshi+Player+Settlement+in+Desert)
+Kenshi was not designed for multiplayer. This mod works by:
+1. Injecting into the game's memory
+2. Reading and writing game state
+3. Synchronizing state over a network
 
-## 📋 Roadmap
+This is inherently fragile. Things that can break:
+- **Kenshi updates** change memory offsets
+- **Desync** when complex game events occur
+- **NPC divergence** since AI is not synced
+- **Crashes** from memory manipulation
 
-We're actively developing new features to enhance your multiplayer experience:
+## Requirements
 
-- **NPC Interaction Improvements**: Synchronized NPC dialogues and reactions
-- **Player Customization**: Unique player colors and custom banners
-- **Cooperative Quests**: Multiplayer-specific quests and rewards
-- **Faction System**: Create and manage player factions with shared objectives
-- **Server Administration Tools**: Better tools for server hosts
-- **Cross-Base Management**: Control elements of your base while adventuring
+- **Kenshi v1.0.64** (64-bit) - Other versions may not work
+- **Windows 10/11** - The DLL injection only works on Windows
+- **.NET 8.0 Runtime** - Required to run the launcher
+- **Same Kenshi version** on all players
+- **Port 5555** open for hosting (TCP)
 
-## 🚀 Installation Guide
+## Quick Start
 
-### Prerequisites
-- Kenshi (Game Version 1.0.59 or higher) 
-- All players must have the same game version and mod configuration
-- 2GB additional RAM recommended for hosting
+### Building from Source
 
-### Client Installation
-1. **Download** the latest release from the [Releases page](https://github.com/The404Studios/Kenshi-Online/releases)
-2. **Extract** the mod files to your Kenshi game directory
-3. **Launch** Kenshi and open the Mod Manager
-4. **Activate** the Kenshi Online Mod in your mod list
-5. **Restart** the game to apply changes
+```bash
+# Clone the repository
+git clone https://github.com/The404Studios/Kenshi-Online.git
+cd Kenshi-Online
 
-### Joining a Game
-1. Launch Kenshi with the mod activated
-2. Select "Join Multiplayer" from the main menu
-3. Enter the host's IP address or select from the server browser
-4. Create or select your character
-5. Start your shared adventure!
-
-![Kenshi Combat](https://via.placeholder.com/800x400?text=Kenshi+Multiplayer+Combat+Scene)
+# Build everything
+./build/build.sh        # Linux/Mac (builds C# only)
+./build/build.ps1       # Windows (builds C# and C++ DLL)
+```
 
 ### Hosting a Game
-1. Ensure port forwarding is properly configured (Port: 25565)
-2. Launch the server application included in the mod package
-3. Configure server settings through the intuitive admin panel
-4. Share your IP address with friends or register on the public server list
-5. Enjoy hosting your custom Kenshi experience!
 
-## 🔧 Troubleshooting
+1. Launch Kenshi
+2. Run `KenshiOnline.exe`
+3. Select **Host**
+4. Share your IP and port with friends
+5. Wait for friends to connect
 
-**Common Issues:**
-- **Connection Failed**: Verify port forwarding and firewall settings
-- **Desync Issues**: Ensure all players have identical mod configurations
-- **Performance Problems**: Reduce server player limit or adjust synchronization settings
-- **Missing Characters**: Check that your save files are properly synchronized
-- **Crash on Join**: Verify compatible game versions between all players
+### Joining a Game
 
-For more detailed troubleshooting, visit our [Wiki](https://github.com/The404Studios/Kenshi-Online/wiki) or join our [Discord server](https://discord.gg/62aDDmtkgb).
+1. Launch Kenshi
+2. Run `KenshiOnline.exe`
+3. Select **Join**
+4. Enter host's IP address
+5. Connect and play
 
-## 👥 Contributing
+## Architecture
 
-We welcome contributions to improve Kenshi Online! Whether you're fixing bugs, adding features, or improving documentation:
+See [docs/MINIMAL_ARCHITECTURE.md](docs/MINIMAL_ARCHITECTURE.md) for the complete technical design.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Core Principles
 
-Our community thrives on collaboration - join us in making Kenshi Online even better!
+1. **Server is authoritative** - The server owns all gameplay state
+2. **Sync less, validate more** - We only sync what's necessary
+3. **Stability over features** - Working features beat broken ambitious ones
+4. **Explicit contracts** - Every sync operation has defined behavior
 
-## 📝 License
+### What Gets Synced
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+| Data | Sync Rate | Authority |
+|------|-----------|-----------|
+| Position | 20 Hz | Server |
+| Health | On change | Server |
+| Combat | 30 Hz | Server |
+| Inventory | On change | Server |
+| NPCs | 10 Hz (hints only) | Local |
 
-## 📞 Contact & Community
+### What Doesn't Get Synced
 
-- **Discord**: Join our [community server](https://discord.gg/62aDDmtkgb) for support, feedback, and to connect with other players
-- **Email**: [the404studios@gmail.com](mailto:the404studios@gmail.com)
-- **Issues**: Report bugs via [GitHub Issues](https://github.com/The404Studios/Kenshi-Online/issues)
-- **Twitter**: Follow us [@KenshiOnline](https://twitter.com/KenshiOnline) for updates
+- NPC AI decisions
+- Pathfinding
+- Complex game events
+- Modded content
 
-![Kenshi Group](https://via.placeholder.com/800x400?text=Kenshi+Multiplayer+Group+Adventure)
+## Project Structure
+
+```
+Kenshi-Online/
+├── Kenshi-Online/          # C# multiplayer infrastructure
+│   ├── Core/               # Data structures, state management
+│   ├── Networking/         # Client, server, authority system
+│   ├── Game/               # Memory injection, game bridge
+│   └── Utility/            # Helpers, logging, encryption
+├── KenshiOnlineMod/        # C++ DLL for game injection
+├── build/                  # Build scripts
+├── docs/                   # Documentation
+└── offsets/                # Memory offset tables
+```
+
+## Contributing
+
+This project needs help with:
+
+1. **Memory offset discovery** for new Kenshi versions
+2. **Desync debugging** and state reconciliation
+3. **Testing** across different configurations
+4. **Documentation** and user guides
+
+Before contributing, please read [docs/MINIMAL_ARCHITECTURE.md](docs/MINIMAL_ARCHITECTURE.md) to understand the design constraints.
+
+### Development Rules
+
+- **No feature creep** - We ship what works, not what's cool
+- **Server authority** - Clients never own gameplay state
+- **Test on real hardware** - Memory injection is environment-sensitive
+- **Document your changes** - Others need to understand your work
+
+## Known Issues
+
+1. **Desync after long sessions** - Full resync may be needed
+2. **NPC behavior diverges** - NPCs are hints, not synchronized
+3. **Combat timing varies** - Network latency affects hit registration
+4. **Memory offsets break** - Kenshi updates may require new offsets
+
+## FAQ
+
+**Q: Why does my position keep snapping?**
+A: The server is correcting your position. This happens when the client moves faster than allowed (latency) or when there's a desync.
+
+**Q: Why do NPCs act differently on each player's screen?**
+A: NPC AI runs locally. We sync position/health as hints, but each client runs its own AI. This is a fundamental limitation.
+
+**Q: Will this work with mods?**
+A: No. Mod sync is not implemented. All players must use vanilla Kenshi.
+
+**Q: Can I play with more than 8 players?**
+A: The architecture supports more, but it's untested. Expect performance issues.
+
+**Q: The game crashes when I inject the DLL.**
+A: Try running as administrator. Check that your antivirus isn't blocking the DLL. Ensure you're using Kenshi v1.0.64.
+
+## Disclaimer
+
+This is an unofficial mod. It is not affiliated with or endorsed by Lo-Fi Games.
+
+Memory injection mods can cause crashes and save corruption. **Back up your saves before using this mod.**
+
+Use at your own risk.
+
+## License
+
+MIT License - See [LICENSE](LICENSE) for details.
+
+## Contact
+
+- **Discord**: [Join our server](https://discord.gg/W2K7GhmD)
+- **GitHub Issues**: [Report bugs](https://github.com/The404Studios/Kenshi-Online/issues)
+- **Email**: the404studios@gmail.com
 
 ---
 
-<div align="center">
-  <img src="https://via.placeholder.com/80?text=404" alt="The404Studios Logo">
-  <p><i>Developed with ❤️ by The404Studios</i></p>
-  <p><small>Kenshi is a property of Lo-Fi Games. This modification is unofficial and not affiliated with Lo-Fi Games.</small></p>
-</div>
+*Developed by The404Studios*
+
+*Kenshi is a property of Lo-Fi Games. This modification is unofficial and not affiliated with Lo-Fi Games.*
