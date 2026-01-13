@@ -252,7 +252,10 @@ namespace KenshiMultiplayer.Networking
                     context.Response.StatusCode = 500;
                     context.Response.Close();
                 }
-                catch { /* Ignore if response already closed */ }
+                catch (ObjectDisposedException)
+                {
+                    // Response already closed - expected in some error scenarios
+                }
             }
         }
 

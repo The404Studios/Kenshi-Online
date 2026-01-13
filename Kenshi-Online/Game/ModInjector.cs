@@ -381,7 +381,11 @@ namespace KenshiMultiplayer.Game
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Module enumeration can fail for various reasons (access denied, process exited, etc.)
+                System.Diagnostics.Debug.WriteLine($"[ModInjector] Failed to enumerate modules: {ex.Message}");
+            }
 
             return false;
         }

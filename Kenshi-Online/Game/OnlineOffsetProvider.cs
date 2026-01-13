@@ -306,7 +306,14 @@ namespace KenshiMultiplayer.Game
             _cachedOffsets = null;
 
             // Delete cache to force re-fetch
-            try { File.Delete(CACHE_FILE); } catch { }
+            try
+            {
+                File.Delete(CACHE_FILE);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[OnlineOffsetProvider] Failed to delete cache file: {ex.Message}");
+            }
 
             return await InitializeAsync();
         }

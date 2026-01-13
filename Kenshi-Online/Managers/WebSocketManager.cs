@@ -217,7 +217,11 @@ namespace KenshiMultiplayer.Managers
                     client.Value.Abort();
                     client.Value.Dispose();
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    // Log but continue cleanup - don't let one failed close stop others
+                    System.Diagnostics.Debug.WriteLine($"[WebSocketManager] Failed to close client {client.Key}: {ex.Message}");
+                }
             }
 
             clients.Clear();

@@ -73,23 +73,27 @@ namespace KenshiMultiplayer.Game
             this.serverContext = serverContext ?? throw new ArgumentNullException(nameof(serverContext));
             this.worldSaveLoader = new WorldSaveLoader(serverContext, gameBridge, worldId);
 
-            // Subscribe to save events
-            worldSaveLoader.OnWorldLoaded += (worldSave) =>
-            {
-                Logger.Log(LOG_PREFIX + $"World loaded: {worldSave.WorldId} (v{worldSave.SaveVersion})");
-            };
-
-            worldSaveLoader.OnLoadError += (error) =>
-            {
-                Logger.Log(LOG_PREFIX + $"World load error: {error}");
-            };
-
-            worldSaveLoader.OnSaveComplete += () =>
-            {
-                Logger.Log(LOG_PREFIX + "World save completed");
-            };
+            // Subscribe to save events using named methods for proper cleanup
+            worldSaveLoader.OnWorldLoaded += OnWorldLoaded;
+            worldSaveLoader.OnLoadError += OnLoadError;
+            worldSaveLoader.OnSaveComplete += OnSaveComplete;
 
             Logger.Log(LOG_PREFIX + "Save system initialized");
+        }
+
+        private void OnWorldLoaded(WorldSave worldSave)
+        {
+            Logger.Log(LOG_PREFIX + $"World loaded: {worldSave.WorldId} (v{worldSave.SaveVersion})");
+        }
+
+        private void OnLoadError(string error)
+        {
+            Logger.Log(LOG_PREFIX + $"World load error: {error}");
+        }
+
+        private void OnSaveComplete()
+        {
+            Logger.Log(LOG_PREFIX + "World save completed");
         }
 
         #region Initialization
@@ -195,6 +199,9 @@ namespace KenshiMultiplayer.Game
                 autoSaveTimer?.Dispose();
                 autoSaveTimer = null;
 
+                // Unregister event handlers to prevent memory leaks
+                UnregisterEventHandlers();
+
                 // Save world state before stopping
                 if (worldSaveLoader != null)
                 {
@@ -237,6 +244,38 @@ namespace KenshiMultiplayer.Game
             // Player controller events
             playerController.OnPlayerPositionChanged += OnPlayerPositionChanged;
             playerController.OnPlayerDied += OnPlayerDied;
+        }
+
+        private void UnregisterEventHandlers()
+        {
+            // Game bridge events
+            if (gameBridge != null)
+            {
+                gameBridge.OnPlayerPositionChanged -= OnPlayerPositionChanged;
+            }
+
+            // Spawn manager events
+            if (spawnManager != null)
+            {
+                spawnManager.OnPlayerSpawned -= OnPlayerSpawned;
+                spawnManager.OnPlayerDespawned -= OnPlayerDespawned;
+                spawnManager.OnGroupSpawnCompleted -= OnGroupSpawnCompleted;
+            }
+
+            // Player controller events
+            if (playerController != null)
+            {
+                playerController.OnPlayerPositionChanged -= OnPlayerPositionChanged;
+                playerController.OnPlayerDied -= OnPlayerDied;
+            }
+
+            // World save loader events
+            if (worldSaveLoader != null)
+            {
+                worldSaveLoader.OnWorldLoaded -= OnWorldLoaded;
+                worldSaveLoader.OnLoadError -= OnLoadError;
+                worldSaveLoader.OnSaveComplete -= OnSaveComplete;
+            }
         }
 
         #endregion
