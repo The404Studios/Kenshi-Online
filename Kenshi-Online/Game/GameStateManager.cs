@@ -135,12 +135,6 @@ namespace KenshiMultiplayer.Game
                     catch (Exception ex)
                     {
                         Logger.Log(LOG_PREFIX + $"WARNING: World save load exception: {ex.Message}");
-                    var loadTask = worldSaveLoader.LoadWorldAsync();
-                    loadTask.Wait();
-
-                    if (!loadTask.Result)
-                    {
-                        Logger.Log(LOG_PREFIX + "WARNING: World save load failed, using defaults");
                     }
                 }
 
