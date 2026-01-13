@@ -461,6 +461,120 @@ namespace KenshiMultiplayer.Game
             }
         }
 
+        /// <summary>
+        /// Get the local player's position from Kenshi game memory.
+        /// Uses RuntimeOffsets.SelectedCharacter to get the current player and Character offsets for position.
+        /// </summary>
+        public Position GetLocalPlayerPosition()
+        {
+            if (!isConnected)
+                return null;
+
+            try
+            {
+                // Get selected character (local player) using RuntimeOffsets
+                long selectedCharOffset = RuntimeOffsets.SelectedCharacter;
+                int posOffset = RuntimeOffsets.Character.Position;
+                int rotOffset = RuntimeOffsets.Character.Rotation;
+
+                // Read selected character pointer
+                IntPtr baseAddr = kenshiProcess.MainModule.BaseAddress;
+                IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
+
+                if (playerPtr == IntPtr.Zero)
+                {
+                    // Try to use first character in player squad as fallback
+                    long squadListOffset = RuntimeOffsets.PlayerSquadList;
+                    IntPtr squadPtr = ReadPointer(baseAddr + (int)squadListOffset);
+                    if (squadPtr != IntPtr.Zero)
+                    {
+                        playerPtr = ReadPointer(squadPtr); // First character in squad
+                    }
+                }
+
+                if (playerPtr == IntPtr.Zero)
+                {
+                    Logger.Log(LOG_PREFIX + "Local player pointer is null");
+                    return null;
+                }
+
+                // Read position
+                float x = ReadFloat(playerPtr + posOffset);
+                float y = ReadFloat(playerPtr + posOffset + 4);
+                float z = ReadFloat(playerPtr + posOffset + 8);
+
+                float rotX = ReadFloat(playerPtr + rotOffset);
+                float rotY = ReadFloat(playerPtr + rotOffset + 4);
+                float rotZ = ReadFloat(playerPtr + rotOffset + 8);
+
+                return new Position(x, y, z, rotX, rotY, rotZ);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"Error reading local player position: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Set the local player's position in Kenshi game memory.
+        /// WARNING: This can cause desync in multiplayer. Use with caution.
+        /// </summary>
+        public bool SetLocalPlayerPosition(Position position)
+        {
+            if (!isConnected || position == null)
+                return false;
+
+            try
+            {
+                // Get selected character (local player) using RuntimeOffsets
+                long selectedCharOffset = RuntimeOffsets.SelectedCharacter;
+                int posOffset = RuntimeOffsets.Character.Position;
+
+                // Read selected character pointer
+                IntPtr baseAddr = kenshiProcess.MainModule.BaseAddress;
+                IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
+
+                if (playerPtr == IntPtr.Zero)
+                {
+                    // Try to use first character in player squad as fallback
+                    long squadListOffset = RuntimeOffsets.PlayerSquadList;
+                    IntPtr squadPtr = ReadPointer(baseAddr + (int)squadListOffset);
+                    if (squadPtr != IntPtr.Zero)
+                    {
+                        playerPtr = ReadPointer(squadPtr); // First character in squad
+                    }
+                }
+
+                if (playerPtr == IntPtr.Zero)
+                {
+                    Logger.Log(LOG_PREFIX + "Local player pointer is null");
+                    return false;
+                }
+
+                // Write position
+                WriteFloat(playerPtr + posOffset, position.X);
+                WriteFloat(playerPtr + posOffset + 4, position.Y);
+                WriteFloat(playerPtr + posOffset + 8, position.Z);
+
+                Logger.Log(LOG_PREFIX + $"Set local player position to ({position.X:F1}, {position.Y:F1}, {position.Z:F1})");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"Error setting local player position: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Spawn a player character in the game world (alias for SpawnPlayer)
+        /// </summary>
+        public bool SpawnPlayerCharacter(string playerId, PlayerData playerData, Position spawnPosition)
+        {
+            return SpawnPlayer(playerId, playerData, spawnPosition);
+        }
+
         #endregion
 
         #region Game Commands
