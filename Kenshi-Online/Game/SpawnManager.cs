@@ -258,6 +258,12 @@ namespace KenshiMultiplayer.Game
 
                 Logger.Log(LOG_PREFIX + $"Executing group spawn {groupId} for {request.PlayerIds.Count} players");
 
+                if (request.PlayerIds.Count == 0)
+                {
+                    Logger.Log(LOG_PREFIX + $"ERROR: No players in group spawn {groupId}");
+                    return false;
+                }
+
                 var spawnLocation = request.SpawnLocation;
                 var tasks = new List<Task<bool>>();
 
