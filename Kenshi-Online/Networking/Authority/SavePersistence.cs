@@ -368,7 +368,15 @@ namespace KenshiMultiplayer.Networking.Authority
 
         private async void AutoSaveCallback(object state)
         {
-            await SaveAllDirty();
+            try
+            {
+                await SaveAllDirty();
+            }
+            catch (Exception ex)
+            {
+                // Log but don't throw - async void methods must handle all exceptions
+                Console.WriteLine($"[SavePersistence] Auto-save error: {ex.Message}");
+            }
         }
 
         /// <summary>
