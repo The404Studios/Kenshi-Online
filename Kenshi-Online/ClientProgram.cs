@@ -141,6 +141,8 @@ namespace KenshiMultiplayer
                     case "0":
                         await Disconnect();
                         return;
+                    case "0":
+                        return;
                     default:
                         Console.WriteLine("Invalid choice.");
                         break;

@@ -486,6 +486,8 @@ namespace KenshiMultiplayer.Game
                     return null;
                 }
                 IntPtr baseAddr = mainModule.BaseAddress;
+                // Read selected character pointer
+                IntPtr baseAddr = kenshiProcess.MainModule.BaseAddress;
                 IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
 
                 if (playerPtr == IntPtr.Zero)
@@ -547,6 +549,8 @@ namespace KenshiMultiplayer.Game
                     return false;
                 }
                 IntPtr baseAddr = mainModule.BaseAddress;
+                // Read selected character pointer
+                IntPtr baseAddr = kenshiProcess.MainModule.BaseAddress;
                 IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
 
                 if (playerPtr == IntPtr.Zero)
