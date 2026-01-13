@@ -1,11 +1,13 @@
 using System;
-using System.Threading.Tasks;
 
 namespace KenshiMultiplayer
 {
     /// <summary>
     /// Kenshi Online - Multiplayer Mod
     ///
+    /// Two modes:
+    /// 1. Dedicated Server - Standalone server, no Kenshi needed
+    /// 2. Client - Connect to server, runs alongside Kenshi
     /// Three modes:
     /// 1. Dedicated Server - Standalone server, no Kenshi needed
     /// 2. Client - Connect to server, runs alongside Kenshi
@@ -13,7 +15,7 @@ namespace KenshiMultiplayer
     /// </summary>
     public class Program
     {
-        public static async Task Main(string[] args)
+        public static void Main(string[] args)
         {
             Console.Title = "Kenshi Online";
 
@@ -22,6 +24,8 @@ namespace KenshiMultiplayer
             {
                 string mode = args[0].ToLower();
 
+                // DEDICATED SERVER
+                if (mode == "--dedicated" || mode == "-d" || mode == "dedicated" || mode == "server")
                 // DEDICATED SERVER (Recommended)
                 if (mode == "--dedicated" || mode == "-d" || mode == "dedicated")
                 {
@@ -30,6 +34,8 @@ namespace KenshiMultiplayer
                     return;
                 }
 
+                // CLIENT
+                if (mode == "--connect" || mode == "-c" || mode == "connect" || mode == "client")
                 // CLIENT (Connect to dedicated server)
                 if (mode == "--connect" || mode == "-c" || mode == "connect")
                 {
@@ -39,6 +45,7 @@ namespace KenshiMultiplayer
                     return;
                 }
 
+                // HOST MODE
                 // HOST MODE (Host runs Kenshi, others control squads)
                 if (mode == "--host" || mode == "-h" || mode == "host")
                 {
@@ -46,6 +53,28 @@ namespace KenshiMultiplayer
                     HostCoop.RunHost(port);
                     return;
                 }
+
+                // JOIN HOST
+                if (mode == "--join" || mode == "-j" || mode == "join")
+                {
+                    string ip = args.Length > 1 ? args[1] : "localhost";
+                    int port = args.Length > 2 && int.TryParse(args[2], out int p) ? p : 7777;
+                    HostCoop.RunClient(ip, port);
+                    return;
+                }
+
+                // Help
+                if (mode == "--help" || mode == "-?" || mode == "help")
+                {
+                    ShowHelp();
+                    return;
+                }
+            }
+
+            // Interactive menu
+            ShowMenu();
+        }
+
 
                 // JOIN HOST (Connect to host's game)
                 if (mode == "--join" || mode == "-j" || mode == "join")
@@ -94,6 +123,7 @@ namespace KenshiMultiplayer
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.WriteLine(@"
 ╔═══════════════════════════════════════════════════════════════════╗
+║                    KENSHI ONLINE MULTIPLAYER                      ║
 ║                                                                   ║
 ║                    KENSHI ONLINE MULTIPLAYER                      ║
 ║                                                                   ║
@@ -102,6 +132,31 @@ namespace KenshiMultiplayer
                 Console.WriteLine();
 
                 Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("  ═══ DEDICATED SERVER MODE ═══");
+                Console.ResetColor();
+                Console.WriteLine();
+                Console.WriteLine("  1. Start Dedicated Server");
+                Console.WriteLine("     Server coordinates players. Does NOT need Kenshi.");
+                Console.WriteLine();
+                Console.WriteLine("  2. Connect to Server");
+                Console.WriteLine("     Join a server. Run Kenshi first!");
+                Console.WriteLine();
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("  ═══ HOST MODE (Alternative) ═══");
+                Console.ResetColor();
+                Console.WriteLine();
+                Console.WriteLine("  3. Host Game");
+                Console.WriteLine("     You run Kenshi, friends control squads remotely.");
+                Console.WriteLine();
+                Console.WriteLine("  4. Join Host");
+                Console.WriteLine("     Control squads in host's game.");
+                Console.WriteLine();
+
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine("  5. Help");
+                Console.WriteLine("  6. Exit");
+                Console.ResetColor();
                 Console.WriteLine("  ═══ RECOMMENDED: DEDICATED SERVER MODE ═══");
                 Console.ResetColor();
                 Console.WriteLine();
@@ -194,6 +249,34 @@ namespace KenshiMultiplayer
             Console.WriteLine();
 
             Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("DEDICATED SERVER MODE");
+            Console.ResetColor();
+            Console.WriteLine("─────────────────────");
+            Console.WriteLine("1. One person runs 'Start Dedicated Server'");
+            Console.WriteLine("2. Everyone else runs Kenshi, then 'Connect to Server'");
+            Console.WriteLine("3. Pick a spawn location and play!");
+            Console.WriteLine();
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("HOST MODE");
+            Console.ResetColor();
+            Console.WriteLine("─────────");
+            Console.WriteLine("1. Host runs Kenshi + 'Host Game'");
+            Console.WriteLine("2. Friends run 'Join Host' to control squads");
+            Console.WriteLine("3. Only one Kenshi instance (the host's)");
+            Console.WriteLine();
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("COMMAND LINE");
+            Console.ResetColor();
+            Console.WriteLine("────────────");
+            Console.WriteLine("  KenshiOnline.exe --dedicated [port]     Start server");
+            Console.WriteLine("  KenshiOnline.exe --connect [ip] [port]  Connect to server");
+            Console.WriteLine("  KenshiOnline.exe --host [port]          Host game");
+            Console.WriteLine("  KenshiOnline.exe --join [ip] [port]     Join host");
+            Console.WriteLine();
+
+            Console.WriteLine("Press Enter to return...");
             Console.WriteLine("DEDICATED SERVER MODE (Recommended)");
             Console.ResetColor();
             Console.WriteLine("────────────────────────────────────");
