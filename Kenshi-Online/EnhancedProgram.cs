@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using KenshiMultiplayer.Data;
 using KenshiMultiplayer.Managers;
 using KenshiMultiplayer.Networking;
+using KenshiMultiplayer.Networking.Authority;
 using KenshiMultiplayer.Utility;
 using KenshiMultiplayer.Game;
 
@@ -437,19 +438,38 @@ namespace KenshiMultiplayer
             Console.Write("Server password (leave empty for public): ");
             string password = Console.ReadLine()?.Trim();
 
+            // World configuration
+            Console.Write("World name [default]: ");
+            string worldName = Console.ReadLine()?.Trim();
+            if (string.IsNullOrEmpty(worldName))
+                worldName = "default";
+
             // Start Server
             Console.WriteLine("\nSTEP 5: Starting multiplayer server...");
             try
             {
                 server = new EnhancedServer(kenshiPath);
+
+                // Initialize game state manager with save system integration
                 if (gameStateManager != null)
-                    server.SetGameStateManager(gameStateManager);
+                {
+                    // Get the server's internal ServerContext for save system
+                    // The server already creates a ServerContext, we need to use it
+                    // to wire up the save system properly
+                    server.SetGameStateManager(gameStateManager, null, worldName);
+
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine($"Save system initialized for world: {worldName}");
+                    Console.ResetColor();
+                }
+
                 server.Start(port);
 
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine($"\nSERVER ONLINE!");
                 Console.WriteLine($"Port: {port}");
                 Console.WriteLine($"Max players: {maxPlayers}");
+                Console.WriteLine($"World: {worldName}");
                 Console.ResetColor();
 
                 DisplayServerCommands();
@@ -705,8 +725,16 @@ namespace KenshiMultiplayer
                     case "/players":
                         DisplayActivePlayers();
                         break;
+                    case "/save":
+                        await ForceSaveWorld();
+                        break;
+                    case "/saves":
+                        DisplaySaveStatus();
+                        break;
                     case "/shutdown":
                     case "/stop":
+                        Console.WriteLine("Saving world state...");
+                        await ForceSaveWorld();
                         Console.WriteLine("Shutting down server...");
                         gameStateManager?.Stop();
                         server?.Stop();
@@ -721,14 +749,68 @@ namespace KenshiMultiplayer
             }
         }
 
+        static async Task ForceSaveWorld()
+        {
+            Console.WriteLine("Forcing world save...");
+            try
+            {
+                if (gameStateManager != null)
+                {
+                    await gameStateManager.ForceSaveAsync();
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine("World saved successfully!");
+                    Console.ResetColor();
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("Game state manager not initialized.");
+                    Console.ResetColor();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Save error: {ex.Message}");
+                Console.ResetColor();
+            }
+        }
+
+        static void DisplaySaveStatus()
+        {
+            Console.WriteLine("\n=== Save System Status ===");
+            if (gameStateManager?.WorldSave != null)
+            {
+                var worldSave = gameStateManager.WorldSave;
+                Console.WriteLine($"World Loaded: {worldSave.IsLoaded}");
+                if (worldSave.WorldSave != null)
+                {
+                    Console.WriteLine($"World ID: {worldSave.WorldSave.WorldId}");
+                    Console.WriteLine($"Save Version: {worldSave.WorldSave.SaveVersion}");
+                    Console.WriteLine($"Created: {DateTimeOffset.FromUnixTimeMilliseconds(worldSave.WorldSave.CreatedAt):g}");
+                    Console.WriteLine($"NPCs Tracked: {worldSave.WorldSave.NPCStates?.Count ?? 0}");
+                    Console.WriteLine($"Buildings: {worldSave.WorldSave.Buildings?.Count ?? 0}");
+                    Console.WriteLine($"World Events: {worldSave.WorldSave.WorldEvents?.Count ?? 0}");
+                }
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("Save system not initialized.");
+                Console.ResetColor();
+            }
+        }
+
         static void DisplayServerCommands()
         {
             Console.WriteLine("\n=== Server Commands ===");
             Console.WriteLine("/help       - Show this help");
             Console.WriteLine("/status     - Show server status");
             Console.WriteLine("/players    - List active players");
+            Console.WriteLine("/save       - Force save world state");
+            Console.WriteLine("/saves      - Show save system status");
             Console.WriteLine("/clear      - Clear console");
-            Console.WriteLine("/shutdown   - Stop the server");
+            Console.WriteLine("/shutdown   - Save and stop the server");
         }
 
         static void DisplayServerStatus()
@@ -737,6 +819,11 @@ namespace KenshiMultiplayer
             Console.WriteLine($"Game State Manager: {(gameStateManager?.IsRunning == true ? "RUNNING" : "STOPPED")}");
             Console.WriteLine($"Active Players: {gameStateManager?.ActivePlayerCount ?? 0}");
             Console.WriteLine($"Game Bridge: {(gameBridge?.IsConnected == true ? "CONNECTED" : "DISCONNECTED")}");
+            Console.WriteLine($"Save System: {(gameStateManager?.WorldSave?.IsLoaded == true ? "LOADED" : "NOT LOADED")}");
+            if (gameStateManager?.WorldSave?.WorldSave != null)
+            {
+                Console.WriteLine($"World: {gameStateManager.WorldSave.WorldSave.WorldId}");
+            }
         }
 
         static void DisplayActivePlayers()
