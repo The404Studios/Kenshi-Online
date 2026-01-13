@@ -186,7 +186,7 @@ namespace KenshiMultiplayer.Game
                         DisplayName = username,
                         Health = player.SaveData.Health,
                         MaxHealth = player.SaveData.MaxHealth,
-                        FactionId = 0 // Player faction
+                        FactionId = "player" // Player faction
                     };
 
                     bool spawned = gameBridge.SpawnPlayer(playerId, playerData, spawnPosition);
