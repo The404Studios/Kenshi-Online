@@ -143,7 +143,7 @@ namespace KenshiMultiplayer
                     case "0":
                         await Disconnect();
                         return;
-                    case "8":
+                    case "0":
                         return;
                     default:
                         Console.WriteLine("Invalid choice.");
@@ -311,7 +311,10 @@ namespace KenshiMultiplayer
                     Console.ResetColor();
 
                     Console.WriteLine($"Player ID: {networkClient.PlayerId}");
-                    Console.WriteLine($"Session ID: {networkClient.SessionId?.Substring(0, Math.Min(10, networkClient.SessionId.Length))}...");
+                    string sessionPreview = networkClient.SessionId != null
+                        ? networkClient.SessionId.Substring(0, Math.Min(10, networkClient.SessionId.Length)) + "..."
+                        : "(none)";
+                    Console.WriteLine($"Session ID: {sessionPreview}");
 
                     // Initialize multiplayer sync
                     if (multiplayerSync == null)
@@ -363,7 +366,7 @@ namespace KenshiMultiplayer
             // Show available spawn locations
             Console.WriteLine("\nAvailable spawn locations:");
             // Show available spawn locations
-            Console.WriteLine("Available spawn locations:");
+            Console.WriteLine("\nAvailable spawn locations:");
             Console.WriteLine("  Hub, Squin, Sho-Battai, Heng, Stack, Admag");
             Console.WriteLine("  BadTeeth, Bark, Stoat, WorldsEnd, FlatsLagoon");
             Console.WriteLine("  Shark, MudTown, Mongrel, Catun, Spring, Random");
@@ -446,30 +449,71 @@ namespace KenshiMultiplayer
 
             try
             {
-                // Request spawn from server
+                if (spawnChoice == "2")
+                {
+                    // Group spawn with friends
+                    var friends = networkClient.GetFriends();
+                    if (friends.Count == 0)
+                    {
+                        Console.WriteLine("\nYou have no friends added. Add friends first from the Friends menu.");
+                        Console.WriteLine("Falling back to solo spawn...\n");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"\nOnline friends ({friends.Count}):");
+                        for (int i = 0; i < friends.Count; i++)
+                        {
+                            var friend = friends[i];
+                            string status = friend.IsOnline ? "(online)" : "(offline)";
+                            Console.WriteLine($"  {i + 1}. {friend.Username} {status}");
+                        }
+
+                        Console.WriteLine("\nEnter friend numbers to invite (comma-separated), or 'all' for all online:");
+                        Console.Write("Selection: ");
+                        string selection = Console.ReadLine()?.Trim();
+
+                        var selectedFriends = new List<string> { networkClient.PlayerId };
+
+                        if (selection?.ToLower() == "all")
+                        {
+                            foreach (var f in friends.Where(f => f.IsOnline))
+                                selectedFriends.Add(f.Username);
+                        }
+                        else if (!string.IsNullOrEmpty(selection))
+                        {
+                            var indices = selection.Split(',').Select(s => s.Trim());
+                            foreach (var idx in indices)
+                            {
+                                if (int.TryParse(idx, out int num) && num > 0 && num <= friends.Count)
+                                {
+                                    selectedFriends.Add(friends[num - 1].Username);
+                                }
+                            }
+                        }
+
+                        if (selectedFriends.Count > 1)
+                        {
+                            Console.Write($"\nRequesting group spawn for {selectedFriends.Count} players at {location}... ");
+                            networkClient.RequestGroupSpawn(selectedFriends, location);
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.WriteLine("REQUEST SENT!");
+                            Console.ResetColor();
+                            Console.WriteLine("Waiting for all players to be ready...");
+                            StartMultiplayerSync();
+                            return;
+                        }
+                    }
+                }
+
+                // Solo spawn
+                Console.Write($"\nRequesting spawn at {location}... ");
                 networkClient.RequestSpawn(location);
 
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("REQUEST SENT!");
                 Console.ResetColor();
 
-                // Start multiplayer sync
-                if (multiplayerSync != null && !multiplayerSync.IsRunning)
-                {
-                    Console.Write("Starting multiplayer sync... ");
-                    if (multiplayerSync.Start(networkClient.PlayerId))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("OK");
-                        Console.ResetColor();
-                    }
-                    else
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("FAILED (will retry)");
-                        Console.ResetColor();
-                    }
-                }
+                StartMultiplayerSync();
 
                 Console.WriteLine("\nYou should now be spawned in the game world!");
                 Console.WriteLine("Other players will appear as you explore.");
@@ -566,6 +610,7 @@ namespace KenshiMultiplayer
                 Console.Clear();
                 Console.WriteLine("\n=== Friends Menu ===\n");
 
+                if (networkClient?.IsLoggedIn != true)
                 if (!networkClient?.IsLoggedIn == true)
                 {
                     Console.WriteLine("Please login first to manage friends.");
@@ -756,6 +801,7 @@ namespace KenshiMultiplayer
                 Console.Clear();
                 Console.WriteLine("\n=== Trainer / Debug Menu ===\n");
 
+                if (gameBridge?.IsConnected != true)
                 if (!gameBridge?.IsConnected == true)
                 {
                     Console.WriteLine("Please connect to Kenshi first.");
