@@ -7,9 +7,189 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Linq;
+using System.IO;
 
 namespace KenshiMultiplayer
 {
+    #region Spawn Point System
+
+    /// <summary>
+    /// Represents a spawn location in the world.
+    /// </summary>
+    public class SpawnPoint
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Z { get; set; }
+        public bool IsDefault { get; set; }
+        public string Region { get; set; }
+
+        public override string ToString() => $"{Name} ({Region}) at ({X:F0}, {Z:F0})";
+    }
+
+    /// <summary>
+    /// Manages spawn points loaded from config or defaults.
+    /// </summary>
+    public static class SpawnPointManager
+    {
+        private static List<SpawnPoint> _spawnPoints = new();
+        private static readonly string ConfigPath = "spawnpoints.json";
+
+        public static IReadOnlyList<SpawnPoint> SpawnPoints => _spawnPoints;
+
+        static SpawnPointManager()
+        {
+            LoadSpawnPoints();
+        }
+
+        public static void LoadSpawnPoints()
+        {
+            if (File.Exists(ConfigPath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(ConfigPath);
+                    _spawnPoints = JsonSerializer.Deserialize<List<SpawnPoint>>(json) ?? GetDefaultSpawnPoints();
+                    Console.WriteLine($"Loaded {_spawnPoints.Count} spawn points from config.");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading spawn points: {ex.Message}");
+                }
+            }
+
+            _spawnPoints = GetDefaultSpawnPoints();
+            SaveSpawnPoints();
+        }
+
+        public static void SaveSpawnPoints()
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(_spawnPoints, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(ConfigPath, json);
+            }
+            catch { }
+        }
+
+        public static List<SpawnPoint> GetDefaultSpawnPoints()
+        {
+            return new List<SpawnPoint>
+            {
+                new SpawnPoint
+                {
+                    Id = "hub",
+                    Name = "The Hub",
+                    Description = "Central trading town, good for beginners",
+                    X = -15850,
+                    Y = 0,
+                    Z = 11930,
+                    IsDefault = true,
+                    Region = "Border Zone"
+                },
+                new SpawnPoint
+                {
+                    Id = "squin",
+                    Name = "Squin",
+                    Description = "Shek Kingdom trading post",
+                    X = -26040,
+                    Y = 0,
+                    Z = 16640,
+                    IsDefault = false,
+                    Region = "Border Zone"
+                },
+                new SpawnPoint
+                {
+                    Id = "stack",
+                    Name = "Stack",
+                    Description = "Holy Nation city",
+                    X = -7200,
+                    Y = 0,
+                    Z = 22800,
+                    IsDefault = false,
+                    Region = "Okran's Pride"
+                },
+                new SpawnPoint
+                {
+                    Id = "mongrel",
+                    Name = "Mongrel",
+                    Description = "Hidden city in the fog",
+                    X = 3500,
+                    Y = 0,
+                    Z = 38500,
+                    IsDefault = false,
+                    Region = "Fog Islands"
+                },
+                new SpawnPoint
+                {
+                    Id = "shark",
+                    Name = "Shark",
+                    Description = "Swamp town, rough area",
+                    X = -35100,
+                    Y = 0,
+                    Z = -10400,
+                    IsDefault = false,
+                    Region = "The Swamp"
+                },
+                new SpawnPoint
+                {
+                    Id = "waystation",
+                    Name = "Way Station",
+                    Description = "Small outpost between zones",
+                    X = -19500,
+                    Y = 0,
+                    Z = 8500,
+                    IsDefault = false,
+                    Region = "Border Zone"
+                },
+                new SpawnPoint
+                {
+                    Id = "admag",
+                    Name = "Admag",
+                    Description = "Shek capital city",
+                    X = -30200,
+                    Y = 0,
+                    Z = 27800,
+                    IsDefault = false,
+                    Region = "Shek Kingdom"
+                },
+                new SpawnPoint
+                {
+                    Id = "heft",
+                    Name = "Heft",
+                    Description = "United Cities trade hub",
+                    X = 13400,
+                    Y = 0,
+                    Z = -24600,
+                    IsDefault = false,
+                    Region = "Great Desert"
+                }
+            };
+        }
+
+        public static SpawnPoint GetById(string id)
+        {
+            return _spawnPoints.FirstOrDefault(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public static SpawnPoint GetDefault()
+        {
+            return _spawnPoints.FirstOrDefault(s => s.IsDefault) ?? _spawnPoints.FirstOrDefault();
+        }
+
+        public static void AddSpawnPoint(SpawnPoint point)
+        {
+            _spawnPoints.Add(point);
+            SaveSpawnPoints();
+        }
+    }
+
+    #endregion
+
     /// <summary>
     /// DEDICATED SERVER MODEL
     ///
@@ -56,14 +236,17 @@ namespace KenshiMultiplayer
             Console.WriteLine();
 
             Console.WriteLine("Commands:");
-            Console.WriteLine("  /status    - Show server status");
-            Console.WriteLine("  /players   - List connected players");
-            Console.WriteLine("  /world     - Show world state");
-            Console.WriteLine("  /spawn [player] [x] [z]  - Spawn player at location");
-            Console.WriteLine("  /kick [player]   - Kick a player");
-            Console.WriteLine("  /save      - Save world state");
-            Console.WriteLine("  /load      - Load world state");
-            Console.WriteLine("  /quit      - Stop server");
+            Console.WriteLine("  /status     - Show server status");
+            Console.WriteLine("  /players    - List connected players");
+            Console.WriteLine("  /world      - Show world state");
+            Console.WriteLine("  /spawns     - List spawn points");
+            Console.WriteLine("  /addspawn [id] [name] [x] [z] [region] - Add spawn point");
+            Console.WriteLine("  /teleport [player] [x] [z]  - Teleport player");
+            Console.WriteLine("  /kick [player]  - Kick a player");
+            Console.WriteLine("  /broadcast [msg] - Send message to all");
+            Console.WriteLine("  /save       - Save world state");
+            Console.WriteLine("  /load       - Load world state");
+            Console.WriteLine("  /quit       - Stop server");
             Console.WriteLine();
 
             // Admin command loop
@@ -129,24 +312,62 @@ namespace KenshiMultiplayer
             Console.ResetColor();
             Console.WriteLine();
 
+            // Show spawn selection menu
+            client.ShowSpawnMenu();
+
+            // Get spawn selection from user
+            while (!client.HasSpawned)
+            {
+                var spawnChoice = Console.ReadLine()?.Trim();
+                if (!client.SelectSpawn(spawnChoice))
+                {
+                    Console.Write("Enter number to spawn (or press Enter for default): ");
+                }
+            }
+
+            Console.WriteLine();
             Console.WriteLine("═══════════════════════════════════════════════════════════════");
             Console.WriteLine("  MULTIPLAYER ACTIVE");
             Console.WriteLine("  Your position is being synced with other players.");
             Console.WriteLine("  Other players will appear as they move around.");
             Console.WriteLine("═══════════════════════════════════════════════════════════════");
             Console.WriteLine();
-            Console.WriteLine("Type /quit to disconnect.");
+            Console.WriteLine("Commands:");
+            Console.WriteLine("  /status  - Show your status and online players");
+            Console.WriteLine("  /chat    - Send a message to all players");
+            Console.WriteLine("  /quit    - Disconnect from server");
             Console.WriteLine();
 
             // Start sync
             client.StartSync();
 
-            // Wait for quit
+            // Wait for commands
             while (client.IsConnected)
             {
-                var input = Console.ReadLine()?.Trim().ToLower();
-                if (input == "/quit" || input == "quit") break;
-                if (input == "/status") client.ShowStatus();
+                var input = Console.ReadLine()?.Trim();
+                if (string.IsNullOrWhiteSpace(input)) continue;
+
+                if (input.ToLower() == "/quit" || input.ToLower() == "quit")
+                    break;
+
+                if (input.ToLower() == "/status")
+                {
+                    client.ShowStatus();
+                }
+                else if (input.StartsWith("/chat ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var message = input.Substring(6);
+                    client.SendChat(message);
+                }
+                else if (input.StartsWith("/"))
+                {
+                    Console.WriteLine("Unknown command. Use /status, /chat <message>, or /quit");
+                }
+                else
+                {
+                    // Treat bare text as chat
+                    client.SendChat(input);
+                }
             }
 
             client.Disconnect();
@@ -277,6 +498,8 @@ namespace KenshiMultiplayer
         public float Health { get; set; }
         public float MaxHealth { get; set; }
         public long LastUpdate { get; set; }
+        public bool HasSpawned { get; set; }
+        public string SpawnPointId { get; set; }
     }
 
     public class EntityState
@@ -325,7 +548,7 @@ namespace KenshiMultiplayer
 
     public class ServerMessage
     {
-        public string Type { get; set; }  // "welcome", "state", "kick", "spawn"
+        public string Type { get; set; }  // "welcome", "spawnpoints", "spawned", "state", "kick", "error"
         public string Data { get; set; }
 
         public string ToJson() => JsonSerializer.Serialize(this);
@@ -334,12 +557,31 @@ namespace KenshiMultiplayer
 
     public class ClientMessage
     {
-        public string Type { get; set; }  // "join", "update", "action"
+        public string Type { get; set; }  // "join", "spawn", "update", "action", "chat"
         public string PlayerId { get; set; }
         public string Data { get; set; }
 
         public string ToJson() => JsonSerializer.Serialize(this);
         public static ClientMessage FromJson(string json) => JsonSerializer.Deserialize<ClientMessage>(json);
+    }
+
+    public class SpawnRequest
+    {
+        public string SpawnPointId { get; set; }
+
+        public string ToJson() => JsonSerializer.Serialize(this);
+        public static SpawnRequest FromJson(string json) => JsonSerializer.Deserialize<SpawnRequest>(json);
+    }
+
+    public class SpawnPointInfo
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Region { get; set; }
+        public float X { get; set; }
+        public float Z { get; set; }
+        public bool IsDefault { get; set; }
     }
 
     public class PositionUpdate
@@ -404,14 +646,19 @@ namespace KenshiMultiplayer
             {
                 case "/status":
                     Console.WriteLine($"Tick: {world.Tick}");
-                    Console.WriteLine($"Players: {world.Players.Count}");
-                    Console.WriteLine($"Clients: {clients.Count}");
+                    Console.WriteLine($"Players: {world.Players.Count} (spawned), Clients: {clients.Count} (connected)");
+                    Console.WriteLine($"Spawn Points: {SpawnPointManager.SpawnPoints.Count}");
                     break;
 
                 case "/players":
                     Console.WriteLine($"Connected players ({world.Players.Count}):");
                     foreach (var p in world.Players.Values)
-                        Console.WriteLine($"  {p.Name} at ({p.X:F0}, {p.Z:F0}) HP: {p.Health:F0}");
+                    {
+                        var spawnedStr = p.HasSpawned ? $"at ({p.X:F0}, {p.Z:F0})" : "(not spawned)";
+                        Console.WriteLine($"  {p.Name} {spawnedStr} HP: {p.Health:F0}");
+                    }
+                    if (world.Players.Count == 0)
+                        Console.WriteLine("  (no players spawned)");
                     break;
 
                 case "/world":
@@ -419,12 +666,47 @@ namespace KenshiMultiplayer
                     Console.WriteLine($"  Players: {world.Players.Count}");
                     Console.WriteLine($"  NPCs: {world.NPCs.Count}");
                     Console.WriteLine($"  Items: {world.Items.Count}");
+                    Console.WriteLine($"  Events: {world.RecentEvents.Count}");
                     break;
 
-                case "/spawn":
+                case "/spawns":
+                    Console.WriteLine($"Spawn Points ({SpawnPointManager.SpawnPoints.Count}):");
+                    foreach (var sp in SpawnPointManager.SpawnPoints)
+                    {
+                        var defaultMark = sp.IsDefault ? " [DEFAULT]" : "";
+                        Console.WriteLine($"  {sp.Id}: {sp.Name} ({sp.Region}) at ({sp.X:F0}, {sp.Z:F0}){defaultMark}");
+                    }
+                    break;
+
+                case "/addspawn":
+                    if (parts.Length >= 6 &&
+                        float.TryParse(parts[3], out float ax) &&
+                        float.TryParse(parts[4], out float az))
+                    {
+                        var newSpawn = new SpawnPoint
+                        {
+                            Id = parts[1],
+                            Name = parts[2].Replace("_", " "),
+                            X = ax,
+                            Z = az,
+                            Region = parts[5].Replace("_", " "),
+                            Description = parts.Length > 6 ? string.Join(" ", parts.Skip(6)) : "Custom spawn point",
+                            IsDefault = false
+                        };
+                        SpawnPointManager.AddSpawnPoint(newSpawn);
+                        Console.WriteLine($"Added spawn point: {newSpawn}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Usage: /addspawn [id] [name] [x] [z] [region] [description]");
+                        Console.WriteLine("Example: /addspawn mybase My_Base -5000 10000 Border_Zone My custom base");
+                    }
+                    break;
+
+                case "/teleport":
                     if (parts.Length >= 4 &&
-                        float.TryParse(parts[2], out float sx) &&
-                        float.TryParse(parts[3], out float sz))
+                        float.TryParse(parts[2], out float tx) &&
+                        float.TryParse(parts[3], out float tz))
                     {
                         var playerName = parts[1];
                         var player = world.Players.Values.FirstOrDefault(p =>
@@ -432,9 +714,9 @@ namespace KenshiMultiplayer
 
                         if (player != null)
                         {
-                            player.X = sx;
-                            player.Z = sz;
-                            Console.WriteLine($"Moved {playerName} to ({sx}, {sz})");
+                            player.X = tx;
+                            player.Z = tz;
+                            Console.WriteLine($"Teleported {playerName} to ({tx:F0}, {tz:F0})");
                         }
                         else
                         {
@@ -443,7 +725,7 @@ namespace KenshiMultiplayer
                     }
                     else
                     {
-                        Console.WriteLine("Usage: /spawn [player] [x] [z]");
+                        Console.WriteLine("Usage: /teleport [player] [x] [z]");
                     }
                     break;
 
@@ -456,7 +738,7 @@ namespace KenshiMultiplayer
 
                         if (conn != null)
                         {
-                            SendToClient(conn, new ServerMessage { Type = "kick" });
+                            SendToClient(conn, new ServerMessage { Type = "kick", Data = "Kicked by admin" });
                             conn.Client?.Close();
                             Console.WriteLine($"Kicked {playerName}");
                         }
@@ -464,6 +746,28 @@ namespace KenshiMultiplayer
                         {
                             Console.WriteLine($"Player '{playerName}' not found");
                         }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Usage: /kick [player]");
+                    }
+                    break;
+
+                case "/broadcast":
+                    if (parts.Length >= 2)
+                    {
+                        var message = string.Join(" ", parts.Skip(1));
+                        world.RecentEvents.Add(new WorldEvent
+                        {
+                            Type = "broadcast",
+                            PlayerId = "SERVER",
+                            Data = message
+                        });
+                        Console.WriteLine($"Broadcasted: {message}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Usage: /broadcast [message]");
                     }
                     break;
 
@@ -475,6 +779,10 @@ namespace KenshiMultiplayer
                 case "/load":
                     LoadWorld();
                     Console.WriteLine("World loaded.");
+                    break;
+
+                default:
+                    Console.WriteLine($"Unknown command: {parts[0]}");
                     break;
             }
         }
@@ -560,28 +868,80 @@ namespace KenshiMultiplayer
                     conn.PlayerName = msg.Data ?? "Unknown";
                     clients[conn.PlayerId] = conn;
 
-                    // Add to world at random spawn
-                    var spawn = GetSpawnPoint();
-                    var player = world.AddPlayer(conn.PlayerId, conn.PlayerName, spawn.x, spawn.z);
+                    Console.WriteLine($"[+] {conn.PlayerName} connected (awaiting spawn selection)");
 
-                    Console.WriteLine($"[+] {conn.PlayerName} joined at ({spawn.x:F0}, {spawn.z:F0})");
-
-                    // Send welcome with player ID and initial state
+                    // Send welcome with player ID
                     SendToClient(conn, new ServerMessage
                     {
                         Type = "welcome",
                         Data = JsonSerializer.Serialize(new
                         {
                             PlayerId = conn.PlayerId,
-                            Name = conn.PlayerName,
-                            X = player.X,
-                            Z = player.Z
+                            Name = conn.PlayerName
                         })
+                    });
+
+                    // Send available spawn points
+                    var spawnInfos = SpawnPointManager.SpawnPoints.Select(s => new SpawnPointInfo
+                    {
+                        Id = s.Id,
+                        Name = s.Name,
+                        Description = s.Description,
+                        Region = s.Region,
+                        X = s.X,
+                        Z = s.Z,
+                        IsDefault = s.IsDefault
+                    }).ToList();
+
+                    SendToClient(conn, new ServerMessage
+                    {
+                        Type = "spawnpoints",
+                        Data = JsonSerializer.Serialize(spawnInfos)
                     });
                     break;
 
-                case "update":
+                case "spawn":
                     if (conn.PlayerId != null)
+                    {
+                        var spawnReq = SpawnRequest.FromJson(msg.Data);
+                        var spawnPoint = SpawnPointManager.GetById(spawnReq.SpawnPointId)
+                                        ?? SpawnPointManager.GetDefault();
+
+                        if (spawnPoint == null)
+                        {
+                            SendToClient(conn, new ServerMessage
+                            {
+                                Type = "error",
+                                Data = "No spawn points available"
+                            });
+                            break;
+                        }
+
+                        // Add player to world at chosen spawn
+                        var player = world.AddPlayer(conn.PlayerId, conn.PlayerName, spawnPoint.X, spawnPoint.Z);
+                        player.HasSpawned = true;
+                        player.SpawnPointId = spawnPoint.Id;
+
+                        Console.WriteLine($"[*] {conn.PlayerName} spawned at {spawnPoint.Name} ({spawnPoint.X:F0}, {spawnPoint.Z:F0})");
+
+                        // Send spawn confirmation
+                        SendToClient(conn, new ServerMessage
+                        {
+                            Type = "spawned",
+                            Data = JsonSerializer.Serialize(new
+                            {
+                                SpawnPoint = spawnPoint.Name,
+                                X = spawnPoint.X,
+                                Y = spawnPoint.Y,
+                                Z = spawnPoint.Z,
+                                Region = spawnPoint.Region
+                            })
+                        });
+                    }
+                    break;
+
+                case "update":
+                    if (conn.PlayerId != null && world.Players.TryGetValue(conn.PlayerId, out var existingPlayer) && existingPlayer.HasSpawned)
                     {
                         var pos = PositionUpdate.FromJson(msg.Data);
 
@@ -597,6 +957,20 @@ namespace KenshiMultiplayer
                     // Handle game actions (attack, pickup, etc.)
                     // For now, just log
                     Console.WriteLine($"[Action] {conn.PlayerName}: {msg.Data}");
+                    break;
+
+                case "chat":
+                    if (conn.PlayerId != null && !string.IsNullOrEmpty(msg.Data))
+                    {
+                        Console.WriteLine($"[Chat] {conn.PlayerName}: {msg.Data}");
+                        // Broadcast to all clients
+                        world.RecentEvents.Add(new WorldEvent
+                        {
+                            Type = "chat",
+                            PlayerId = conn.PlayerId,
+                            Data = $"{conn.PlayerName}: {msg.Data}"
+                        });
+                    }
                     break;
             }
         }
@@ -725,12 +1099,15 @@ namespace KenshiMultiplayer
         private TcpClient client;
         private NetworkStream stream;
         private bool running;
+        private bool hasSpawned;
 
         private string playerId;
         private WorldSnapshot lastSnapshot;
+        private List<SpawnPointInfo> availableSpawnPoints = new();
         private readonly ConcurrentDictionary<string, OtherPlayer> otherPlayers = new();
 
         public bool IsConnected => client?.Connected == true;
+        public bool HasSpawned => hasSpawned;
 
         public DedicatedClient(string playerName, GameMemoryLink gameLink)
         {
@@ -748,6 +1125,9 @@ namespace KenshiMultiplayer
                 // Send join
                 SendMessage(new ClientMessage { Type = "join", Data = playerName });
 
+                // Wait for welcome and spawn points
+                WaitForWelcome();
+
                 return true;
             }
             catch
@@ -756,8 +1136,205 @@ namespace KenshiMultiplayer
             }
         }
 
+        private void WaitForWelcome()
+        {
+            var buffer = new byte[65536];
+            var timeout = DateTime.Now.AddSeconds(5);
+
+            while (DateTime.Now < timeout)
+            {
+                if (stream.DataAvailable)
+                {
+                    int bytes = stream.Read(buffer, 0, buffer.Length);
+                    if (bytes > 0)
+                    {
+                        var json = Encoding.UTF8.GetString(buffer, 0, bytes);
+
+                        // May contain multiple messages
+                        foreach (var part in json.Split(new[] { "}{" }, StringSplitOptions.None))
+                        {
+                            var msgJson = part;
+                            if (!msgJson.StartsWith("{")) msgJson = "{" + msgJson;
+                            if (!msgJson.EndsWith("}")) msgJson = msgJson + "}";
+
+                            try
+                            {
+                                var msg = ServerMessage.FromJson(msgJson);
+                                ProcessMessage(msg);
+                            }
+                            catch { }
+                        }
+
+                        if (playerId != null && availableSpawnPoints.Count > 0)
+                            return;
+                    }
+                }
+                Thread.Sleep(50);
+            }
+        }
+
+        public void ShowSpawnMenu()
+        {
+            Console.Clear();
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine(@"
+╔═══════════════════════════════════════════════════════════════════╗
+║                     SELECT SPAWN LOCATION                          ║
+╚═══════════════════════════════════════════════════════════════════╝");
+            Console.ResetColor();
+            Console.WriteLine();
+
+            if (availableSpawnPoints.Count == 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("No spawn points available!");
+                Console.ResetColor();
+                return;
+            }
+
+            for (int i = 0; i < availableSpawnPoints.Count; i++)
+            {
+                var sp = availableSpawnPoints[i];
+                var defaultMark = sp.IsDefault ? " [DEFAULT]" : "";
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write($"  {i + 1}. ");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write($"{sp.Name}");
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine($"{defaultMark}");
+
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.WriteLine($"     Region: {sp.Region}");
+                Console.WriteLine($"     {sp.Description}");
+                Console.WriteLine($"     Coordinates: ({sp.X:F0}, {sp.Z:F0})");
+                Console.ResetColor();
+                Console.WriteLine();
+            }
+
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.Write("Enter number to spawn (or press Enter for default): ");
+        }
+
+        public bool SelectSpawn(string input)
+        {
+            SpawnPointInfo selectedSpawn;
+
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                // Use default spawn
+                selectedSpawn = availableSpawnPoints.FirstOrDefault(s => s.IsDefault)
+                               ?? availableSpawnPoints.FirstOrDefault();
+            }
+            else if (int.TryParse(input, out int choice) && choice >= 1 && choice <= availableSpawnPoints.Count)
+            {
+                selectedSpawn = availableSpawnPoints[choice - 1];
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Invalid choice!");
+                Console.ResetColor();
+                return false;
+            }
+
+            if (selectedSpawn == null)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("No spawn point selected!");
+                Console.ResetColor();
+                return false;
+            }
+
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"Spawning at {selectedSpawn.Name}...");
+            Console.ResetColor();
+
+            // Send spawn request
+            SendMessage(new ClientMessage
+            {
+                Type = "spawn",
+                PlayerId = playerId,
+                Data = new SpawnRequest { SpawnPointId = selectedSpawn.Id }.ToJson()
+            });
+
+            // Wait for spawn confirmation
+            var timeout = DateTime.Now.AddSeconds(5);
+            while (DateTime.Now < timeout && !hasSpawned)
+            {
+                if (stream.DataAvailable)
+                {
+                    var buffer = new byte[65536];
+                    int bytes = stream.Read(buffer, 0, buffer.Length);
+                    if (bytes > 0)
+                    {
+                        var json = Encoding.UTF8.GetString(buffer, 0, bytes);
+                        try
+                        {
+                            var msg = ServerMessage.FromJson(json);
+                            ProcessMessage(msg);
+                        }
+                        catch { }
+                    }
+                }
+                Thread.Sleep(50);
+            }
+
+            return hasSpawned;
+        }
+
+        private void ProcessMessage(ServerMessage msg)
+        {
+            switch (msg.Type)
+            {
+                case "welcome":
+                    var welcome = JsonSerializer.Deserialize<Dictionary<string, object>>(msg.Data);
+                    playerId = welcome["PlayerId"].ToString();
+                    Console.WriteLine($"Connected as: {welcome["Name"]}");
+                    break;
+
+                case "spawnpoints":
+                    availableSpawnPoints = JsonSerializer.Deserialize<List<SpawnPointInfo>>(msg.Data) ?? new();
+                    Console.WriteLine($"Received {availableSpawnPoints.Count} spawn points.");
+                    break;
+
+                case "spawned":
+                    hasSpawned = true;
+                    var spawnData = JsonSerializer.Deserialize<Dictionary<string, object>>(msg.Data);
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"\nSpawned at {spawnData["SpawnPoint"]} in {spawnData["Region"]}!");
+                    Console.ResetColor();
+                    break;
+
+                case "state":
+                    lastSnapshot = WorldSnapshot.FromJson(msg.Data);
+                    UpdateOtherPlayers(lastSnapshot);
+                    break;
+
+                case "kick":
+                    Console.WriteLine("\n[!] You have been kicked from the server.");
+                    running = false;
+                    break;
+
+                case "error":
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"\n[Error] {msg.Data}");
+                    Console.ResetColor();
+                    break;
+            }
+        }
+
         public void StartSync()
         {
+            if (!hasSpawned)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error: Cannot sync without spawning first!");
+                Console.ResetColor();
+                return;
+            }
+
             running = true;
 
             // Receive server state
@@ -778,6 +1355,7 @@ namespace KenshiMultiplayer
             Console.WriteLine($"\n=== STATUS ===");
             Console.WriteLine($"Player: {playerName} ({playerId})");
             Console.WriteLine($"Connected: {IsConnected}");
+            Console.WriteLine($"Spawned: {hasSpawned}");
 
             if (lastSnapshot != null)
             {
@@ -790,6 +1368,19 @@ namespace KenshiMultiplayer
                 }
             }
             Console.WriteLine();
+        }
+
+        public void SendChat(string message)
+        {
+            if (hasSpawned && !string.IsNullOrWhiteSpace(message))
+            {
+                SendMessage(new ClientMessage
+                {
+                    Type = "chat",
+                    PlayerId = playerId,
+                    Data = message
+                });
+            }
         }
 
         private void ReceiveLoop()
@@ -810,26 +1401,12 @@ namespace KenshiMultiplayer
                     if (bytes == 0) break;
 
                     var json = Encoding.UTF8.GetString(buffer, 0, bytes);
-                    var msg = ServerMessage.FromJson(json);
-
-                    switch (msg.Type)
+                    try
                     {
-                        case "welcome":
-                            var welcome = JsonSerializer.Deserialize<Dictionary<string, object>>(msg.Data);
-                            playerId = welcome["PlayerId"].ToString();
-                            Console.WriteLine($"\nJoined as: {welcome["Name"]} (ID: {playerId})");
-                            break;
-
-                        case "state":
-                            lastSnapshot = WorldSnapshot.FromJson(msg.Data);
-                            UpdateOtherPlayers(lastSnapshot);
-                            break;
-
-                        case "kick":
-                            Console.WriteLine("\n[!] You have been kicked from the server.");
-                            running = false;
-                            break;
+                        var msg = ServerMessage.FromJson(json);
+                        ProcessMessage(msg);
                     }
+                    catch { }
                 }
                 catch { }
             }
