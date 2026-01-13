@@ -433,6 +433,14 @@ namespace KenshiMultiplayer.Game
         public void Dispose()
         {
             // Final save before shutdown
+            try
+            {
+                SaveWorldStateAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"Error during dispose save: {ex.Message}");
+            }
             SaveWorldStateAsync().Wait();
             Logger.Log(LOG_PREFIX + "WorldSaveLoader disposed");
         }

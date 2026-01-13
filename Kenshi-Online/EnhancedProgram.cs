@@ -24,7 +24,7 @@ namespace KenshiMultiplayer
         private static EnhancedServer server;
         private static EnhancedClient client;
 
-        static async Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
             DisplayHeader();
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -17,15 +18,21 @@ namespace KenshiMultiplayer.Networking
     public class EnhancedServer
     {
         private TcpListener server;
-        private List<TcpClient> connectedClients = new List<TcpClient>();
-        private Dictionary<string, Lobby> lobbies = new Dictionary<string, Lobby>();
+        private readonly List<TcpClient> connectedClients = new List<TcpClient>();
+        private readonly object clientsLock = new object();
+        private readonly ConcurrentDictionary<string, Lobby> lobbies = new ConcurrentDictionary<string, Lobby>();
         private GameFileManager fileManager;
-        private Dictionary<string, string> activeUserSessions = new Dictionary<string, string>(); // Maps authToken to username
+        private readonly ConcurrentDictionary<string, string> activeUserSessions = new ConcurrentDictionary<string, string>(); // Maps authToken to username
 
         // Authority system integration
         private ServerContext serverContext;
-        private readonly Dictionary<string, TcpClient> playerClients = new Dictionary<string, TcpClient>();
-        private readonly Dictionary<TcpClient, string> clientPlayers = new Dictionary<TcpClient, string>();
+        private readonly ConcurrentDictionary<string, TcpClient> playerClients = new ConcurrentDictionary<string, TcpClient>();
+        private readonly ConcurrentDictionary<TcpClient, string> clientPlayers = new ConcurrentDictionary<TcpClient, string>();
+
+        /// <summary>
+        /// Get the server's authority context for save system integration
+        /// </summary>
+        public ServerContext Context => serverContext;
 
         /// <summary>
         /// Get the server's authority context for save system integration
@@ -89,7 +96,10 @@ namespace KenshiMultiplayer.Networking
             while (true)
             {
                 TcpClient client = server.AcceptTcpClient();
-                connectedClients.Add(client);
+                lock (clientsLock)
+                {
+                    connectedClients.Add(client);
+                }
                 Logger.Log("Client connected.");
 
                 Thread clientThread = new Thread(() => HandleClient(client));
@@ -236,27 +246,48 @@ namespace KenshiMultiplayer.Networking
                 // Clean up
                 if (authToken != null)
                 {
-                    activeUserSessions.Remove(authToken);
+                    activeUserSessions.TryRemove(authToken, out _);
                 }
 
                 // Unregister from authority system
-                if (clientPlayers.TryGetValue(client, out string playerId))
+                if (clientPlayers.TryRemove(client, out string playerId))
                 {
-                    _ = serverContext.UnregisterPlayer(playerId);
-                    playerClients.Remove(playerId);
-                    clientPlayers.Remove(client);
+                    _ = serverContext.UnregisterPlayer(playerId).ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                            Logger.Log($"Error unregistering player {playerId}: {t.Exception?.InnerException?.Message}");
+                    }, TaskContinuationOptions.OnlyOnFaulted);
+                    playerClients.TryRemove(playerId, out _);
                 }
 
-                connectedClients.Remove(client);
+                int remainingClients;
+                lock (clientsLock)
+                {
+                    connectedClients.Remove(client);
+                    remainingClients = connectedClients.Count;
+                }
                 client.Close();
-                Logger.Log($"Client connection closed. {connectedClients.Count} clients remaining.");
+                Logger.Log($"Client connection closed. {remainingClients} clients remaining.");
             }
         }
 
         private void HandleLogin(GameMessage message, TcpClient client)
         {
-            string username = message.Data["username"].ToString();
-            string password = message.Data["password"].ToString();
+            if (!message.Data.TryGetValue("username", out var usernameObj) ||
+                !message.Data.TryGetValue("password", out var passwordObj))
+            {
+                SendErrorToClient(client, "Login failed: missing credentials");
+                return;
+            }
+
+            string username = usernameObj?.ToString();
+            string password = passwordObj?.ToString();
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                SendErrorToClient(client, "Login failed: invalid credentials");
+                return;
+            }
 
             var (success, sessionId, errorMessage) = UserManager.Login(username, password);
 
@@ -270,11 +301,19 @@ namespace KenshiMultiplayer.Networking
 
                 // Register player with authority system
                 string playerId = username; // Use username as playerId for simplicity
-                _ = serverContext.RegisterPlayer(playerId, username);
+                _ = serverContext.RegisterPlayer(playerId, username).ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        Logger.Log($"Error registering player {playerId}: {t.Exception?.InnerException?.Message}");
+                }, TaskContinuationOptions.OnlyOnFaulted);
 
                 // Track client-player mapping
                 playerClients[playerId] = client;
                 clientPlayers[client] = playerId;
+
+                // Get available spawn locations
+                var gsm = this.GetGameStateManager();
+                var spawnLocations = gsm?.GetSpawnLocations() ?? new List<string> { "Hub", "Default" };
 
                 var response = new GameMessage
                 {
@@ -284,7 +323,8 @@ namespace KenshiMultiplayer.Networking
                         { "success", true },
                         { "token", token },
                         { "username", username },
-                        { "playerId", playerId }
+                        { "playerId", playerId },
+                        { "spawnLocations", spawnLocations }
                     }
                 };
 
@@ -310,9 +350,23 @@ namespace KenshiMultiplayer.Networking
 
         private void HandleRegistration(GameMessage message, TcpClient client)
         {
-            string username = message.Data["username"].ToString();
-            string password = message.Data["password"].ToString();
-            string email = message.Data["email"].ToString();
+            if (!message.Data.TryGetValue("username", out var usernameObj) ||
+                !message.Data.TryGetValue("password", out var passwordObj) ||
+                !message.Data.TryGetValue("email", out var emailObj))
+            {
+                SendErrorToClient(client, "Registration failed: missing required fields");
+                return;
+            }
+
+            string username = usernameObj?.ToString();
+            string password = passwordObj?.ToString();
+            string email = emailObj?.ToString();
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(email))
+            {
+                SendErrorToClient(client, "Registration failed: invalid fields");
+                return;
+            }
 
             var (success, errorMessage) = UserManager.RegisterUser(username, password, email);
 
@@ -340,7 +394,13 @@ namespace KenshiMultiplayer.Networking
 
         private void HandleFileRequest(GameMessage message, TcpClient client)
         {
-            string relativePath = message.Data["path"].ToString();
+            if (!message.Data.TryGetValue("path", out var pathObj) || pathObj == null)
+            {
+                SendErrorToClient(client, "File request failed: missing path");
+                return;
+            }
+
+            string relativePath = pathObj.ToString();
 
             try
             {
@@ -422,7 +482,13 @@ namespace KenshiMultiplayer.Networking
             string encryptedMessage = EncryptionHelper.Encrypt(jsonMessage);
             byte[] messageBuffer = Encoding.ASCII.GetBytes(encryptedMessage);
 
-            foreach (var client in connectedClients)
+            List<TcpClient> clientsCopy;
+            lock (clientsLock)
+            {
+                clientsCopy = new List<TcpClient>(connectedClients);
+            }
+
+            foreach (var client in clientsCopy)
             {
                 if (client != senderClient && client.Connected)
                 {
@@ -625,7 +691,7 @@ namespace KenshiMultiplayer.Networking
 
             if (tokenToRemove != null)
             {
-                activeUserSessions.Remove(tokenToRemove);
+                activeUserSessions.TryRemove(tokenToRemove, out _);
 
                 // Also check for user in lobbies
                 foreach (var lobby in lobbies.Values)
@@ -683,7 +749,13 @@ namespace KenshiMultiplayer.Networking
                 Data = new Dictionary<string, object> { { "message", message } }
             };
 
-            foreach (var client in connectedClients)
+            List<TcpClient> clientsCopy;
+            lock (clientsLock)
+            {
+                clientsCopy = new List<TcpClient>(connectedClients);
+            }
+
+            foreach (var client in clientsCopy)
             {
                 SendMessageToClient(client, systemMessage.ToJson());
             }
@@ -693,18 +765,18 @@ namespace KenshiMultiplayer.Networking
 
         public void CreateLobby(string lobbyId, bool isPrivate, string password, int maxPlayers)
         {
-            if (!lobbies.ContainsKey(lobbyId))
+            var newLobby = new Lobby(lobbyId, isPrivate, password, maxPlayers);
+            if (lobbies.TryAdd(lobbyId, newLobby))
             {
-                lobbies[lobbyId] = new Lobby(lobbyId, isPrivate, password, maxPlayers);
                 Logger.Log($"Lobby {lobbyId} created.");
             }
         }
 
         public bool JoinLobby(string lobbyId, TcpClient client, string password = "")
         {
-            if (lobbies.ContainsKey(lobbyId) && lobbies[lobbyId].CanJoin(password))
+            if (lobbies.TryGetValue(lobbyId, out var lobby) && lobby.CanJoin(password))
             {
-                lobbies[lobbyId].AddPlayer(client);
+                lobby.AddPlayer(client);
                 Logger.Log($"Client joined lobby {lobbyId}.");
                 return true;
             }
@@ -887,9 +959,16 @@ namespace KenshiMultiplayer.Networking
                     return;
 
                 // Validate inventory change through authority system
-                var validationTask = serverContext.ValidateInventoryChange(playerId, itemId, quantity, "pickup");
-                validationTask.Wait();
-                var validationResult = validationTask.Result;
+                AuthorityValidationResult validationResult;
+                try
+                {
+                    validationResult = serverContext.ValidateInventoryChange(playerId, itemId, quantity, "pickup").GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"Pickup validation error for {playerId}: {ex.Message}");
+                    return;
+                }
 
                 if (!validationResult.IsValid)
                 {
@@ -940,9 +1019,17 @@ namespace KenshiMultiplayer.Networking
                 switch (action)
                 {
                     case MessageType.SquadCreate:
-                        var playerIds = message.Data.ContainsKey("playerIds")
-                            ? JsonSerializer.Deserialize<List<string>>(message.Data["playerIds"].ToString())
-                            : new List<string> { playerId };
+                        List<string> playerIds;
+                        try
+                        {
+                            playerIds = message.Data.ContainsKey("playerIds") && message.Data["playerIds"] != null
+                                ? JsonSerializer.Deserialize<List<string>>(message.Data["playerIds"].ToString())
+                                : new List<string> { playerId };
+                        }
+                        catch (JsonException)
+                        {
+                            playerIds = new List<string> { playerId };
+                        }
                         string squadId = gsm.CreateSquad(playerIds);
 
                         // Send squad created notification
@@ -987,7 +1074,13 @@ namespace KenshiMultiplayer.Networking
             string encryptedMessage = EncryptionHelper.Encrypt(jsonMessage);
             byte[] messageBuffer = Encoding.ASCII.GetBytes(encryptedMessage);
 
-            foreach (var client in connectedClients.ToList())
+            List<TcpClient> clientsCopy;
+            lock (clientsLock)
+            {
+                clientsCopy = new List<TcpClient>(connectedClients);
+            }
+
+            foreach (var client in clientsCopy)
             {
                 if (client.Connected)
                 {

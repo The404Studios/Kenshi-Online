@@ -307,6 +307,9 @@ namespace KenshiMultiplayer.Game
                     }
 
                     // Create character structure
+                    // Convert string FactionId to int hash (Kenshi uses numeric faction IDs internally)
+                    int factionIdInt = string.IsNullOrEmpty(playerData.FactionId) ? 0 : playerData.FactionId.GetHashCode();
+
                     KenshiCharacter character = new KenshiCharacter
                     {
                         CharacterId = playerId.GetHashCode(),
@@ -318,7 +321,7 @@ namespace KenshiMultiplayer.Game
                         RotationZ = spawnPosition.RotZ,
                         Health = playerData.Health,
                         MaxHealth = playerData.MaxHealth,
-                        FactionId = playerData.FactionId
+                        FactionId = factionIdInt
                     };
 
                     // Write character name

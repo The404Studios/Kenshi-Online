@@ -124,6 +124,17 @@ namespace KenshiMultiplayer.Game
                 if (worldSaveLoader != null)
                 {
                     Logger.Log(LOG_PREFIX + "Loading world save...");
+                    try
+                    {
+                        var loadResult = worldSaveLoader.LoadWorldAsync().GetAwaiter().GetResult();
+                        if (!loadResult)
+                        {
+                            Logger.Log(LOG_PREFIX + "WARNING: World save load failed, using defaults");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log(LOG_PREFIX + $"WARNING: World save load exception: {ex.Message}");
                     var loadTask = worldSaveLoader.LoadWorldAsync();
                     loadTask.Wait();
 
@@ -194,6 +205,14 @@ namespace KenshiMultiplayer.Game
                 if (worldSaveLoader != null)
                 {
                     Logger.Log(LOG_PREFIX + "Saving world state...");
+                    try
+                    {
+                        worldSaveLoader.SaveWorldStateAsync().GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log(LOG_PREFIX + $"Error saving world state during stop: {ex.Message}");
+                    }
                     worldSaveLoader.SaveWorldStateAsync().Wait();
                 }
 
@@ -316,6 +335,38 @@ namespace KenshiMultiplayer.Game
         {
             try
             {
+                // Remove from tracking atomically first to prevent race conditions
+                PlayerData removedPlayer = null;
+                lock (lockObject)
+                {
+                    if (!activePlayers.TryGetValue(playerId, out removedPlayer))
+                    {
+                        Logger.Log(LOG_PREFIX + $"Player {playerId} not found");
+                        return false;
+                    }
+                    // Remove immediately to prevent other operations on this player
+                    activePlayers.Remove(playerId);
+                    lastUpdateTimes.Remove(playerId);
+                }
+
+                Logger.Log(LOG_PREFIX + $"Removing player {playerId}");
+
+                // Use save system if available - save and unload player
+                if (worldSaveLoader != null)
+                {
+                    try
+                    {
+                        worldSaveLoader.UnloadPlayerAsync(playerId).GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log(LOG_PREFIX + $"Error unloading player {playerId}: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    // Legacy path - just despawn
+                    spawnManager.DespawnPlayer(playerId);
                 if (!activePlayers.ContainsKey(playerId))
                 {
                     Logger.Log(LOG_PREFIX + $"Player {playerId} not found");
