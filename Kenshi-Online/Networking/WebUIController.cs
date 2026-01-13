@@ -14,7 +14,7 @@ using KenshiMultiplayer.Data;
 
 namespace KenshiMultiplayer.Networking
 {
-    public class WebUIController
+    public class WebUIController : IDisposable
     {
         private HttpListener listener;
         private Thread listenerThread;
@@ -22,6 +22,7 @@ namespace KenshiMultiplayer.Networking
         private EnhancedServer server;
         private string webRoot;
         private bool isRunning = false;
+        private bool disposed = false;
         private Dictionary<string, Func<HttpListenerRequest, Dictionary<string, object>>> apiEndpoints;
         private const string WebUIVersion = "1.0.1";
         private Dictionary<string, string> sessionTokens = new Dictionary<string, string>();
@@ -122,7 +123,19 @@ namespace KenshiMultiplayer.Networking
                 listenerThread.Start();
 
                 Logger.Log("WebUI started successfully");
-                Console.WriteLine($"WebUI is running at http://localhost:{listener.Prefixes.First().Split(':')[2].TrimEnd('/')}");
+
+                // Safely extract port from listener prefix
+                string port = "8080";
+                if (listener.Prefixes.Count > 0)
+                {
+                    var prefix = listener.Prefixes.First();
+                    var parts = prefix.Split(':');
+                    if (parts.Length >= 3)
+                    {
+                        port = parts[2].TrimEnd('/');
+                    }
+                }
+                Console.WriteLine($"WebUI is running at http://localhost:{port}");
             }
             catch (Exception ex)
             {
@@ -138,7 +151,15 @@ namespace KenshiMultiplayer.Networking
             try
             {
                 isRunning = false;
-                listener.Stop();
+
+                // Unsubscribe from client events
+                if (client != null)
+                {
+                    client.MessageReceived -= OnClientMessageReceived;
+                }
+
+                listener?.Stop();
+                listener?.Close();
 
                 if (listenerThread != null && listenerThread.IsAlive)
                 {
@@ -151,6 +172,16 @@ namespace KenshiMultiplayer.Networking
             {
                 Logger.Log($"Error stopping WebUI: {ex.Message}");
             }
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
+            Stop();
+            Logger.Log("WebUI disposed");
         }
 
         private void ListenerLoop()
@@ -252,7 +283,10 @@ namespace KenshiMultiplayer.Networking
                     context.Response.StatusCode = 500;
                     context.Response.Close();
                 }
-                catch { /* Ignore if response already closed */ }
+                catch (ObjectDisposedException)
+                {
+                    // Response already closed - expected in some error scenarios
+                }
             }
         }
 

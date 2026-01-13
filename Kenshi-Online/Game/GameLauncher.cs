@@ -431,7 +431,10 @@ namespace KenshiMultiplayer.Game
                         return;
                     }
                 }
-                catch { }
+                catch (InvalidOperationException)
+                {
+                    // Process may have exited during refresh - continue waiting
+                }
 
                 await Task.Delay(500);
             }
@@ -552,7 +555,14 @@ namespace KenshiMultiplayer.Game
                     process?.Kill();
                 }
             }
-            catch { }
+            catch (ArgumentException)
+            {
+                // Process already exited - nothing to do
+            }
+            catch (InvalidOperationException)
+            {
+                // Process already exited - nothing to do
+            }
         }
 
         /// <summary>

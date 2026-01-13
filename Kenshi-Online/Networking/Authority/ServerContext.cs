@@ -34,19 +34,22 @@ namespace KenshiMultiplayer.Networking
             StateReplicator = new StateReplicator();
             SaveManager = new ServerSaveManager(savePath);
 
-            // Wire up save manager events
-            SaveManager.OnPlayerSaved += (playerId, data) =>
-            {
-                Logger.Log(LOG_PREFIX + $"Player {playerId} save updated (v{data.SaveVersion})");
-                OnPlayerSaveUpdated?.Invoke(playerId, $"v{data.SaveVersion}");
-            };
-
-            SaveManager.OnSaveError += error =>
-            {
-                Logger.Log(LOG_PREFIX + $"Save error: {error}");
-            };
+            // Wire up save manager events using named methods for proper cleanup
+            SaveManager.OnPlayerSaved += OnPlayerSaved;
+            SaveManager.OnSaveError += OnSaveError;
 
             Logger.Log(LOG_PREFIX + "ServerContext initialized");
+        }
+
+        private void OnPlayerSaved(string playerId, PlayerSaveData data)
+        {
+            Logger.Log(LOG_PREFIX + $"Player {playerId} save updated (v{data.SaveVersion})");
+            OnPlayerSaveUpdated?.Invoke(playerId, $"v{data.SaveVersion}");
+        }
+
+        private void OnSaveError(string error)
+        {
+            Logger.Log(LOG_PREFIX + $"Save error: {error}");
         }
 
         #region Player Management
@@ -438,6 +441,14 @@ namespace KenshiMultiplayer.Networking
             {
                 Logger.Log(LOG_PREFIX + $"Error saving during dispose: {ex.Message}");
             }
+
+            // Unsubscribe from events to prevent memory leaks
+            if (SaveManager != null)
+            {
+                SaveManager.OnPlayerSaved -= OnPlayerSaved;
+                SaveManager.OnSaveError -= OnSaveError;
+            }
+
             SaveManager.Dispose();
             Logger.Log(LOG_PREFIX + "ServerContext disposed");
         }

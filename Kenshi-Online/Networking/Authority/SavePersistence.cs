@@ -416,7 +416,14 @@ namespace KenshiMultiplayer.Networking.Authority
 
             foreach (var file in files)
             {
-                try { file.Delete(); } catch { }
+                try
+                {
+                    file.Delete();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"[SavePersistence] Failed to delete old backup {file.Name}: {ex.Message}");
+                }
             }
         }
 
