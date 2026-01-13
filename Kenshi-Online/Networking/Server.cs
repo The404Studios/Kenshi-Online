@@ -840,7 +840,7 @@ namespace KenshiMultiplayer.Networking
                 var gsm = this.GetGameStateManager();
                 if (gsm != null)
                 {
-                    gsm.MovePlayer(playerId, new Data.Position { X = x, Y = y, Z = z });
+                    gsm.MovePlayer(playerId, new Position { X = x, Y = y, Z = z });
                 }
 
                 // Broadcast position update to other clients

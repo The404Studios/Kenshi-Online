@@ -225,7 +225,7 @@ namespace KenshiMultiplayer.Networking
             if (combatRandom.NextDouble() < CalculateCritChance(attacker, target))
             {
                 result.Critical = true;
-                result.Damage *= config.CriticalMultiplier;
+                result.Damage = (int)(result.Damage * config.CriticalMultiplier);
             }
             
             // Apply limb damage
