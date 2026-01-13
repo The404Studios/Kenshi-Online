@@ -14,7 +14,11 @@ namespace KenshiMultiplayer.Game
 {
     /// <summary>
     /// Direct bridge to Kenshi game engine via memory injection
-    /// Provides actual control over game entities, spawning, and world state
+    /// Provides actual control over game entities, spawning, and world state.
+    ///
+    /// IMPORTANT: This bridge uses RuntimeOffsets from OnlineOffsetProvider for dynamic
+    /// offset resolution. Offsets are fetched from online sources with fallback to cache
+    /// and hardcoded values. This ensures compatibility across Kenshi versions.
     /// </summary>
     public class KenshiGameBridge : IDisposable
     {
@@ -44,35 +48,39 @@ namespace KenshiMultiplayer.Game
         private const uint MEM_RELEASE = 0x8000;
         #endregion
 
-        #region Memory Addresses (Kenshi v0.98.50 - Update for your version!)
+        #region Dynamic Offsets via RuntimeOffsets
+        /// <summary>
+        /// Dynamic offset accessor that uses OnlineOffsetProvider with fallback chain:
+        /// Online -> Cache -> Hardcoded
+        /// </summary>
         private static class Offsets
         {
-            // Base addresses
-            public const long KENSHI_BASE = 0x140000000;
+            // Base address (loaded from RuntimeOffsets)
+            public static long KENSHI_BASE => RuntimeOffsets.BaseAddress;
 
             // Player character list
-            public const long CHARACTER_LIST_BASE = 0x24C5A20;
-            public const long CHARACTER_LIST_SIZE = 0x24C5A28;
+            public static long CHARACTER_LIST_BASE => RuntimeOffsets.PlayerSquadList;
+            public static long CHARACTER_LIST_SIZE => RuntimeOffsets.PlayerSquadCount;
 
             // World state
-            public const long WORLD_STATE_BASE = 0x24D8F40;
-            public const long TIME_OF_DAY = 0x24D8F48;
+            public static long WORLD_STATE_BASE => RuntimeOffsets.WorldInstance;
+            public static long TIME_OF_DAY => RuntimeOffsets.GameTime;
 
-            // Entity spawning
-            public const long SPAWN_FUNCTION = 0x8B3C80;
-            public const long DESPAWN_FUNCTION = 0x8B4120;
+            // Entity spawning (function offsets)
+            public static long SPAWN_FUNCTION => RuntimeOffsets.FnSpawnCharacter;
+            public static long DESPAWN_FUNCTION => RuntimeOffsets.FnDespawnCharacter;
 
-            // Character controller
-            public const long CHARACTER_CONTROLLER_BASE = 0x249BCB0;
-            public const long MOVEMENT_CONTROLLER = 0x249BD00;
+            // Character controller (derived from character list base)
+            public static long CHARACTER_CONTROLLER_BASE => RuntimeOffsets.AllCharactersList;
+            public static long MOVEMENT_CONTROLLER => RuntimeOffsets.AllCharactersList + 0x50;
 
             // Camera
-            public const long CAMERA_POSITION = 0x24E7C20;
-            public const long CAMERA_TARGET = 0x24E7C38;
+            public static long CAMERA_POSITION => RuntimeOffsets.Camera;
+            public static long CAMERA_TARGET => RuntimeOffsets.Camera + 0x18;
 
             // Input
-            public const long INPUT_HANDLER = 0x24F2D80;
-            public const long COMMAND_QUEUE = 0x24F2D90;
+            public static long INPUT_HANDLER => RuntimeOffsets.InputHandler;
+            public static long COMMAND_QUEUE => RuntimeOffsets.InputHandler + 0x10;
         }
 
         // Character structure in memory
@@ -117,12 +125,30 @@ namespace KenshiMultiplayer.Game
         }
 
         /// <summary>
-        /// Connect to running Kenshi process
+        /// Connect to running Kenshi process.
+        /// This method initializes RuntimeOffsets from online sources before connecting.
         /// </summary>
         public bool ConnectToKenshi()
         {
             try
             {
+                Logger.Log(LOG_PREFIX + "Initializing runtime offsets...");
+
+                // Initialize RuntimeOffsets from OnlineOffsetProvider
+                // This fetches offsets: Online -> Cache -> Hardcoded fallback
+                if (!RuntimeOffsets.IsInitialized)
+                {
+                    bool offsetsLoaded = RuntimeOffsets.Initialize();
+                    if (offsetsLoaded)
+                    {
+                        Logger.Log(LOG_PREFIX + "Runtime offsets loaded from online/cache source");
+                    }
+                    else
+                    {
+                        Logger.Log(LOG_PREFIX + "WARNING: Using hardcoded fallback offsets");
+                    }
+                }
+
                 Logger.Log(LOG_PREFIX + "Searching for Kenshi process...");
 
                 // Find Kenshi process
@@ -152,6 +178,7 @@ namespace KenshiMultiplayer.Game
 
                 isConnected = true;
                 Logger.Log(LOG_PREFIX + "Successfully connected to Kenshi!");
+                Logger.Log(LOG_PREFIX + $"Using offsets: Base=0x{Offsets.KENSHI_BASE:X}, CharList=0x{Offsets.CHARACTER_LIST_BASE:X}");
 
                 // Start monitoring thread
                 StartUpdateLoop();
@@ -374,7 +401,7 @@ namespace KenshiMultiplayer.Game
         }
 
         /// <summary>
-        /// Update player position in game
+        /// Update player position in game using dynamic offsets from RuntimeOffsets
         /// </summary>
         public bool UpdatePlayerPosition(string playerId, Position position)
         {
@@ -383,13 +410,16 @@ namespace KenshiMultiplayer.Game
 
             try
             {
-                // Update position in character structure
-                WriteFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("PositionX").ToInt32(), position.X);
-                WriteFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("PositionY").ToInt32(), position.Y);
-                WriteFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("PositionZ").ToInt32(), position.Z);
-                WriteFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("RotationX").ToInt32(), position.RotX);
-                WriteFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("RotationY").ToInt32(), position.RotY);
-                WriteFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("RotationZ").ToInt32(), position.RotZ);
+                // Update position using RuntimeOffsets.Character for dynamic offset resolution
+                int posOffset = RuntimeOffsets.Character.Position;
+                int rotOffset = RuntimeOffsets.Character.Rotation;
+
+                WriteFloat(characterPtr + posOffset, position.X);
+                WriteFloat(characterPtr + posOffset + 4, position.Y);
+                WriteFloat(characterPtr + posOffset + 8, position.Z);
+                WriteFloat(characterPtr + rotOffset, position.RotX);
+                WriteFloat(characterPtr + rotOffset + 4, position.RotY);
+                WriteFloat(characterPtr + rotOffset + 8, position.RotZ);
 
                 return true;
             }
@@ -400,7 +430,7 @@ namespace KenshiMultiplayer.Game
         }
 
         /// <summary>
-        /// Get player position from game
+        /// Get player position from game using dynamic offsets from RuntimeOffsets
         /// </summary>
         public Position GetPlayerPosition(string playerId)
         {
@@ -409,12 +439,16 @@ namespace KenshiMultiplayer.Game
 
             try
             {
-                float x = ReadFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("PositionX").ToInt32());
-                float y = ReadFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("PositionY").ToInt32());
-                float z = ReadFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("PositionZ").ToInt32());
-                float rotX = ReadFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("RotationX").ToInt32());
-                float rotY = ReadFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("RotationY").ToInt32());
-                float rotZ = ReadFloat(characterPtr + Marshal.OffsetOf<KenshiCharacter>("RotationZ").ToInt32());
+                // Read position using RuntimeOffsets.Character for dynamic offset resolution
+                int posOffset = RuntimeOffsets.Character.Position;
+                int rotOffset = RuntimeOffsets.Character.Rotation;
+
+                float x = ReadFloat(characterPtr + posOffset);
+                float y = ReadFloat(characterPtr + posOffset + 4);
+                float z = ReadFloat(characterPtr + posOffset + 8);
+                float rotX = ReadFloat(characterPtr + rotOffset);
+                float rotY = ReadFloat(characterPtr + rotOffset + 4);
+                float rotZ = ReadFloat(characterPtr + rotOffset + 8);
 
                 return new Position(x, y, z, rotX, rotY, rotZ);
             }
