@@ -242,7 +242,11 @@ namespace KenshiMultiplayer.Networking
                 // Unregister from authority system
                 if (clientPlayers.TryGetValue(client, out string playerId))
                 {
-                    _ = serverContext.UnregisterPlayer(playerId);
+                    _ = serverContext.UnregisterPlayer(playerId).ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                            Logger.Log($"Error unregistering player {playerId}: {t.Exception?.InnerException?.Message}");
+                    }, TaskContinuationOptions.OnlyOnFaulted);
                     playerClients.Remove(playerId);
                     clientPlayers.Remove(client);
                 }
@@ -255,8 +259,21 @@ namespace KenshiMultiplayer.Networking
 
         private void HandleLogin(GameMessage message, TcpClient client)
         {
-            string username = message.Data["username"].ToString();
-            string password = message.Data["password"].ToString();
+            if (!message.Data.TryGetValue("username", out var usernameObj) ||
+                !message.Data.TryGetValue("password", out var passwordObj))
+            {
+                SendErrorToClient(client, "Login failed: missing credentials");
+                return;
+            }
+
+            string username = usernameObj?.ToString();
+            string password = passwordObj?.ToString();
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                SendErrorToClient(client, "Login failed: invalid credentials");
+                return;
+            }
 
             var (success, sessionId, errorMessage) = UserManager.Login(username, password);
 
@@ -270,7 +287,11 @@ namespace KenshiMultiplayer.Networking
 
                 // Register player with authority system
                 string playerId = username; // Use username as playerId for simplicity
-                _ = serverContext.RegisterPlayer(playerId, username);
+                _ = serverContext.RegisterPlayer(playerId, username).ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        Logger.Log($"Error registering player {playerId}: {t.Exception?.InnerException?.Message}");
+                }, TaskContinuationOptions.OnlyOnFaulted);
 
                 // Track client-player mapping
                 playerClients[playerId] = client;
@@ -887,9 +908,16 @@ namespace KenshiMultiplayer.Networking
                     return;
 
                 // Validate inventory change through authority system
-                var validationTask = serverContext.ValidateInventoryChange(playerId, itemId, quantity, "pickup");
-                validationTask.Wait();
-                var validationResult = validationTask.Result;
+                AuthorityValidationResult validationResult;
+                try
+                {
+                    validationResult = serverContext.ValidateInventoryChange(playerId, itemId, quantity, "pickup").GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"Pickup validation error for {playerId}: {ex.Message}");
+                    return;
+                }
 
                 if (!validationResult.IsValid)
                 {

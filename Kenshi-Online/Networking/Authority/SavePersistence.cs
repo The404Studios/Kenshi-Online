@@ -42,7 +42,7 @@ namespace KenshiMultiplayer.Networking.Authority
     /// <summary>
     /// Server-side save manager - the single source of truth for all persistent data
     /// </summary>
-    public class ServerSaveManager
+    public class ServerSaveManager : IDisposable
     {
         private readonly string savePath;
         private readonly ConcurrentDictionary<string, PlayerSaveData> playerSaves = new();
@@ -415,7 +415,14 @@ namespace KenshiMultiplayer.Networking.Authority
         public void Dispose()
         {
             autoSaveTimer?.Dispose();
-            SaveAllDirty().Wait();
+            try
+            {
+                SaveAllDirty().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[ServerSaveManager] Error during dispose save: {ex.Message}");
+            }
         }
     }
 

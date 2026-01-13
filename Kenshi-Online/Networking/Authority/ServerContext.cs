@@ -430,7 +430,14 @@ namespace KenshiMultiplayer.Networking
         public void Dispose()
         {
             // Save all before shutdown
-            SaveManager.SaveAllDirty().Wait();
+            try
+            {
+                SaveManager.SaveAllDirty().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"Error saving during dispose: {ex.Message}");
+            }
             SaveManager.Dispose();
             Logger.Log(LOG_PREFIX + "ServerContext disposed");
         }
