@@ -166,8 +166,8 @@ namespace KenshiMultiplayer.Game
             if (string.IsNullOrEmpty(localPlayerId))
                 return;
 
-            // Read position from game memory
-            Position currentPosition = gameBridge.GetPlayerPosition(localPlayerId);
+            // Read position from game memory (use local player method for actual Kenshi player)
+            Position currentPosition = gameBridge.GetLocalPlayerPosition();
 
             if (currentPosition == null)
                 return;
