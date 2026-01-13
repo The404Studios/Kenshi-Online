@@ -214,23 +214,30 @@ namespace KenshiMultiplayer.Game
             {
                 foreach (var player in otherPlayers.Values)
                 {
-                    // Interpolate between current and target position
-                    if (player.TargetPosition != null && player.CurrentPosition != null)
+                    try
                     {
-                        float t = Math.Min(1.0f, (float)(DateTime.UtcNow - player.LastUpdateTime).TotalMilliseconds / 100f);
+                        // Interpolate between current and target position
+                        if (player.TargetPosition != null && player.CurrentPosition != null)
+                        {
+                            float t = Math.Min(1.0f, (float)(DateTime.UtcNow - player.LastUpdateTime).TotalMilliseconds / 100f);
 
-                        Position interpolated = new Position(
-                            Lerp(player.CurrentPosition.X, player.TargetPosition.X, t),
-                            Lerp(player.CurrentPosition.Y, player.TargetPosition.Y, t),
-                            Lerp(player.CurrentPosition.Z, player.TargetPosition.Z, t),
-                            Lerp(player.CurrentPosition.RotX, player.TargetPosition.RotX, t),
-                            Lerp(player.CurrentPosition.RotY, player.TargetPosition.RotY, t),
-                            Lerp(player.CurrentPosition.RotZ, player.TargetPosition.RotZ, t)
-                        );
+                            Position interpolated = new Position(
+                                Lerp(player.CurrentPosition.X, player.TargetPosition.X, t),
+                                Lerp(player.CurrentPosition.Y, player.TargetPosition.Y, t),
+                                Lerp(player.CurrentPosition.Z, player.TargetPosition.Z, t),
+                                Lerp(player.CurrentPosition.RotX, player.TargetPosition.RotX, t),
+                                Lerp(player.CurrentPosition.RotY, player.TargetPosition.RotY, t),
+                                Lerp(player.CurrentPosition.RotZ, player.TargetPosition.RotZ, t)
+                            );
 
-                        // Update in game
-                        gameBridge.UpdatePlayerPosition(player.PlayerId, interpolated);
-                        player.CurrentPosition = interpolated;
+                            // Update in game
+                            gameBridge.UpdatePlayerPosition(player.PlayerId, interpolated);
+                            player.CurrentPosition = interpolated;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log(LOG_PREFIX + $"Error updating player {player.PlayerId}: {ex.Message}");
                     }
                 }
             }

@@ -467,7 +467,7 @@ namespace KenshiMultiplayer.Game
         /// </summary>
         public Position GetLocalPlayerPosition()
         {
-            if (!isConnected)
+            if (!isConnected || kenshiProcess == null)
                 return null;
 
             try
@@ -477,8 +477,14 @@ namespace KenshiMultiplayer.Game
                 int posOffset = RuntimeOffsets.Character.Position;
                 int rotOffset = RuntimeOffsets.Character.Rotation;
 
-                // Read selected character pointer
-                IntPtr baseAddr = kenshiProcess.MainModule.BaseAddress;
+                // Read selected character pointer with null checks
+                var mainModule = kenshiProcess.MainModule;
+                if (mainModule == null)
+                {
+                    Logger.Log(LOG_PREFIX + "MainModule is null");
+                    return null;
+                }
+                IntPtr baseAddr = mainModule.BaseAddress;
                 IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
 
                 if (playerPtr == IntPtr.Zero)
@@ -522,7 +528,7 @@ namespace KenshiMultiplayer.Game
         /// </summary>
         public bool SetLocalPlayerPosition(Position position)
         {
-            if (!isConnected || position == null)
+            if (!isConnected || position == null || kenshiProcess == null)
                 return false;
 
             try
@@ -531,8 +537,14 @@ namespace KenshiMultiplayer.Game
                 long selectedCharOffset = RuntimeOffsets.SelectedCharacter;
                 int posOffset = RuntimeOffsets.Character.Position;
 
-                // Read selected character pointer
-                IntPtr baseAddr = kenshiProcess.MainModule.BaseAddress;
+                // Read selected character pointer with null checks
+                var mainModule = kenshiProcess.MainModule;
+                if (mainModule == null)
+                {
+                    Logger.Log(LOG_PREFIX + "MainModule is null");
+                    return false;
+                }
+                IntPtr baseAddr = mainModule.BaseAddress;
                 IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
 
                 if (playerPtr == IntPtr.Zero)

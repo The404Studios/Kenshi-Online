@@ -34,11 +34,6 @@ namespace KenshiMultiplayer.Networking
         /// </summary>
         public ServerContext Context => serverContext;
 
-        /// <summary>
-        /// Get the server's authority context for save system integration
-        /// </summary>
-        public ServerContext Context => serverContext;
-
         public EnhancedServer(string kenshiRootPath)
         {
             fileManager = new GameFileManager(kenshiRootPath);
@@ -553,7 +548,11 @@ namespace KenshiMultiplayer.Networking
         {
             // Extract user info from token
             string username = null;
-            ValidateAuthToken(message.SessionId, out username);
+            if (!ValidateAuthToken(message.SessionId, out username) || string.IsNullOrEmpty(username))
+            {
+                // Use PlayerId as fallback, or "Unknown" if that's also null
+                username = message.PlayerId ?? "Unknown";
+            }
 
             if (message.LobbyId != null && lobbies.TryGetValue(message.LobbyId, out var lobby))
             {
@@ -959,10 +958,13 @@ namespace KenshiMultiplayer.Networking
                     return;
 
                 // Validate inventory change through authority system
+                // Use Task.Run to avoid sync-over-async deadlock
                 AuthorityValidationResult validationResult;
                 try
                 {
-                    validationResult = serverContext.ValidateInventoryChange(playerId, itemId, quantity, "pickup").GetAwaiter().GetResult();
+                    validationResult = Task.Run(async () =>
+                        await serverContext.ValidateInventoryChange(playerId, itemId, quantity, "pickup")
+                    ).GetAwaiter().GetResult();
                 }
                 catch (Exception ex)
                 {

@@ -311,7 +311,10 @@ namespace KenshiMultiplayer
                     Console.ResetColor();
 
                     Console.WriteLine($"Player ID: {networkClient.PlayerId}");
-                    Console.WriteLine($"Session ID: {networkClient.SessionId?.Substring(0, Math.Min(10, networkClient.SessionId.Length))}...");
+                    string sessionPreview = networkClient.SessionId != null
+                        ? networkClient.SessionId.Substring(0, Math.Min(10, networkClient.SessionId.Length)) + "..."
+                        : "(none)";
+                    Console.WriteLine($"Session ID: {sessionPreview}");
 
                     // Initialize multiplayer sync
                     if (multiplayerSync == null)
@@ -566,7 +569,7 @@ namespace KenshiMultiplayer
                 Console.Clear();
                 Console.WriteLine("\n=== Friends Menu ===\n");
 
-                if (!networkClient?.IsLoggedIn == true)
+                if (networkClient?.IsLoggedIn != true)
                 {
                     Console.WriteLine("Please login first to manage friends.");
                     return;
@@ -756,7 +759,7 @@ namespace KenshiMultiplayer
                 Console.Clear();
                 Console.WriteLine("\n=== Trainer / Debug Menu ===\n");
 
-                if (!gameBridge?.IsConnected == true)
+                if (gameBridge?.IsConnected != true)
                 {
                     Console.WriteLine("Please connect to Kenshi first.");
                     Console.WriteLine("\nPress any key to go back...");
