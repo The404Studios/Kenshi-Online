@@ -54,7 +54,7 @@ namespace KenshiMultiplayer.Systems
                     {
                         FactionID = gameFaction.FactionID,
                         Name = gameBridge.ReadString(gameFaction.NamePtr) ?? $"Faction_{gameFaction.FactionID}",
-                        FactionType = (FactionType)gameFaction.FactionType,
+                        MultiplayerFactionType = (MultiplayerFactionType)gameFaction.FactionType,
                         IsPlayerFaction = gameFaction.IsPlayerFaction == 1,
                         IsHostile = gameFaction.IsHostileToPlayer == 1,
                         CanRecruit = gameFaction.CanRecruit == 1,
@@ -145,7 +145,7 @@ namespace KenshiMultiplayer.Systems
                     FactionID = newId,
                     Name = name,
                     LeaderPlayerId = leaderId,
-                    FactionType = FactionType.Player,
+                    MultiplayerFactionType = MultiplayerFactionType.Player,
                     IsPlayerFaction = true,
                     IsHostile = false,
                     CanRecruit = true,
@@ -456,7 +456,7 @@ namespace KenshiMultiplayer.Systems
         public int FactionID { get; set; }
         public string Name { get; set; }
         public string LeaderPlayerId { get; set; }
-        public FactionType FactionType { get; set; }
+        public MultiplayerFactionType MultiplayerFactionType { get; set; }
         public bool IsPlayerFaction { get; set; }
         public bool IsHostile { get; set; }
         public bool CanRecruit { get; set; }
@@ -467,7 +467,7 @@ namespace KenshiMultiplayer.Systems
         public Dictionary<string, object> CustomData { get; set; } = new Dictionary<string, object>();
     }
 
-    public enum FactionType
+    public enum MultiplayerFactionType
     {
         Player = 0,
         Hostile = 1,
