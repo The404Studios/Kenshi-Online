@@ -306,6 +306,10 @@ namespace KenshiMultiplayer.Networking
                 playerClients[playerId] = client;
                 clientPlayers[client] = playerId;
 
+                // Get available spawn locations
+                var gsm = this.GetGameStateManager();
+                var spawnLocations = gsm?.GetSpawnLocations() ?? new List<string> { "Hub", "Default" };
+
                 var response = new GameMessage
                 {
                     Type = MessageType.Authentication,
@@ -314,7 +318,8 @@ namespace KenshiMultiplayer.Networking
                         { "success", true },
                         { "token", token },
                         { "username", username },
-                        { "playerId", playerId }
+                        { "playerId", playerId },
+                        { "spawnLocations", spawnLocations }
                     }
                 };
 

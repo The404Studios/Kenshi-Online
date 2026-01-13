@@ -505,6 +505,183 @@ namespace KenshiMultiplayer.Networking
             stream.Write(messageBuffer, 0, messageBuffer.Length);
         }
 
+        #region Spawn Methods
+
+        /// <summary>
+        /// Request to spawn into the game at a specific location
+        /// </summary>
+        public void RequestSpawn(string location = "Hub")
+        {
+            if (!IsLoggedIn)
+            {
+                Console.WriteLine("Cannot request spawn: not logged in");
+                return;
+            }
+
+            var spawnRequest = new GameMessage
+            {
+                Type = MessageType.SpawnRequest,
+                PlayerId = playerId,
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
+                {
+                    { "location", location }
+                }
+            };
+
+            SendMessageToServer(spawnRequest);
+            Console.WriteLine($"Spawn request sent for location: {location}");
+        }
+
+        /// <summary>
+        /// Request to spawn with friends at a specific location
+        /// </summary>
+        public void RequestGroupSpawn(List<string> playerIds, string location = "Hub")
+        {
+            if (!IsLoggedIn)
+            {
+                Console.WriteLine("Cannot request group spawn: not logged in");
+                return;
+            }
+
+            var groupSpawnRequest = new GameMessage
+            {
+                Type = MessageType.GroupSpawnRequest,
+                PlayerId = playerId,
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
+                {
+                    { "playerIds", playerIds },
+                    { "location", location }
+                }
+            };
+
+            SendMessageToServer(groupSpawnRequest);
+            Console.WriteLine($"Group spawn request sent for {playerIds.Count} players at {location}");
+        }
+
+        /// <summary>
+        /// Signal ready for group spawn
+        /// </summary>
+        public void ReadyForGroupSpawn(string groupId)
+        {
+            if (!IsLoggedIn || string.IsNullOrEmpty(groupId))
+                return;
+
+            var readyMessage = new GameMessage
+            {
+                Type = MessageType.GroupSpawnReady,
+                PlayerId = playerId,
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
+                {
+                    { "groupId", groupId }
+                }
+            };
+
+            SendMessageToServer(readyMessage);
+            Console.WriteLine($"Ready for group spawn: {groupId}");
+        }
+
+        #endregion
+
+        #region Game Commands
+
+        /// <summary>
+        /// Send move command to server
+        /// </summary>
+        public void SendMoveCommand(float x, float y, float z)
+        {
+            if (!IsLoggedIn)
+                return;
+
+            var moveMessage = new GameMessage
+            {
+                Type = MessageType.MoveCommand,
+                PlayerId = playerId,
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
+                {
+                    { "x", x },
+                    { "y", y },
+                    { "z", z }
+                }
+            };
+
+            SendMessageToServer(moveMessage);
+        }
+
+        /// <summary>
+        /// Send attack command to server
+        /// </summary>
+        public void SendAttackCommand(string targetId)
+        {
+            if (!IsLoggedIn || string.IsNullOrEmpty(targetId))
+                return;
+
+            var attackMessage = new GameMessage
+            {
+                Type = MessageType.AttackCommand,
+                PlayerId = playerId,
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
+                {
+                    { "targetId", targetId }
+                }
+            };
+
+            SendMessageToServer(attackMessage);
+        }
+
+        /// <summary>
+        /// Send follow command to server
+        /// </summary>
+        public void SendFollowCommand(string targetPlayerId)
+        {
+            if (!IsLoggedIn || string.IsNullOrEmpty(targetPlayerId))
+                return;
+
+            var followMessage = new GameMessage
+            {
+                Type = MessageType.FollowCommand,
+                PlayerId = playerId,
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
+                {
+                    { "targetId", targetPlayerId }
+                }
+            };
+
+            SendMessageToServer(followMessage);
+        }
+
+        /// <summary>
+        /// Send position update to server
+        /// </summary>
+        public void SendPositionUpdate(float x, float y, float z, float rotationY = 0)
+        {
+            if (!IsLoggedIn)
+                return;
+
+            var positionMessage = new GameMessage
+            {
+                Type = MessageType.Position,
+                PlayerId = playerId,
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
+                {
+                    { "x", x },
+                    { "y", y },
+                    { "z", z },
+                    { "rotY", rotationY }
+                }
+            };
+
+            SendMessageToServer(positionMessage);
+        }
+
+        #endregion
+
         public void Disconnect()
         {
             DisableWebInterface();
