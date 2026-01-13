@@ -14,7 +14,7 @@ using KenshiMultiplayer.Data;
 
 namespace KenshiMultiplayer.Networking
 {
-    public class WebUIController
+    public class WebUIController : IDisposable
     {
         private HttpListener listener;
         private Thread listenerThread;
@@ -22,6 +22,7 @@ namespace KenshiMultiplayer.Networking
         private EnhancedServer server;
         private string webRoot;
         private bool isRunning = false;
+        private bool disposed = false;
         private Dictionary<string, Func<HttpListenerRequest, Dictionary<string, object>>> apiEndpoints;
         private const string WebUIVersion = "1.0.1";
         private Dictionary<string, string> sessionTokens = new Dictionary<string, string>();
@@ -138,7 +139,15 @@ namespace KenshiMultiplayer.Networking
             try
             {
                 isRunning = false;
-                listener.Stop();
+
+                // Unsubscribe from client events
+                if (client != null)
+                {
+                    client.MessageReceived -= OnClientMessageReceived;
+                }
+
+                listener?.Stop();
+                listener?.Close();
 
                 if (listenerThread != null && listenerThread.IsAlive)
                 {
@@ -151,6 +160,16 @@ namespace KenshiMultiplayer.Networking
             {
                 Logger.Log($"Error stopping WebUI: {ex.Message}");
             }
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
+            Stop();
+            Logger.Log("WebUI disposed");
         }
 
         private void ListenerLoop()

@@ -16,6 +16,7 @@ namespace KenshiMultiplayer.Networking
     {
         private static GameStateManager gameStateManager;
         private static EnhancedServer currentServer;
+        private static readonly object syncLock = new object();
 
         // Named event handlers for proper cleanup
         private static Action<string, Data.PlayerData> playerJoinedHandler;
@@ -34,62 +35,76 @@ namespace KenshiMultiplayer.Networking
         public static void SetGameStateManager(this EnhancedServer server, GameStateManager manager,
             ServerContext serverContext = null, string worldId = "default")
         {
-            // Unsubscribe from previous manager if any
-            UnsubscribeFromEvents();
-
-            gameStateManager = manager;
-            currentServer = server;
-
-            // Initialize save system if server context provided
-            if (serverContext != null && gameStateManager != null)
+            lock (syncLock)
             {
-                gameStateManager.InitializeWithSaveSystem(serverContext, worldId);
-                Console.WriteLine($"[ServerExtensions] Save system initialized for world: {worldId}");
-            }
+                // Unsubscribe from previous manager if any
+                UnsubscribeFromEventsLocked();
 
-            // Subscribe to game state events using named handlers for proper cleanup
-            if (gameStateManager != null)
-            {
-                playerJoinedHandler = (playerId, playerData) =>
-                {
-                    Console.WriteLine($"Player {playerId} joined the game");
-                    BroadcastPlayerJoined(currentServer, playerId, playerData);
-                };
-                gameStateManager.OnPlayerJoined += playerJoinedHandler;
+                gameStateManager = manager;
+                currentServer = server;
 
-                playerLeftHandler = (playerId) =>
+                // Initialize save system if server context provided
+                if (serverContext != null && gameStateManager != null)
                 {
-                    Console.WriteLine($"Player {playerId} left the game");
-                    BroadcastPlayerLeft(currentServer, playerId);
-                };
-                gameStateManager.OnPlayerLeft += playerLeftHandler;
+                    gameStateManager.InitializeWithSaveSystem(serverContext, worldId);
+                    Console.WriteLine($"[ServerExtensions] Save system initialized for world: {worldId}");
+                }
 
-                playerStateChangedHandler = (playerId, playerData) =>
+                // Subscribe to game state events using named handlers for proper cleanup
+                if (gameStateManager != null)
                 {
-                    BroadcastPlayerState(currentServer, playerId, playerData);
-                };
-                gameStateManager.OnPlayerStateChanged += playerStateChangedHandler;
+                    playerJoinedHandler = (playerId, playerData) =>
+                    {
+                        Console.WriteLine($"Player {playerId} joined the game");
+                        BroadcastPlayerJoined(currentServer, playerId, playerData);
+                    };
+                    gameStateManager.OnPlayerJoined += playerJoinedHandler;
 
-                playerSpawnedHandler = (playerId, position) =>
-                {
-                    Console.WriteLine($"Player {playerId} spawned at {position.X}, {position.Y}, {position.Z}");
-                    BroadcastPlayerSpawned(currentServer, playerId, position);
-                };
-                gameStateManager.OnPlayerSpawnedBroadcast += playerSpawnedHandler;
+                    playerLeftHandler = (playerId) =>
+                    {
+                        Console.WriteLine($"Player {playerId} left the game");
+                        BroadcastPlayerLeft(currentServer, playerId);
+                    };
+                    gameStateManager.OnPlayerLeft += playerLeftHandler;
 
-                groupSpawnCompletedHandler = (groupId, playerIds) =>
-                {
-                    Console.WriteLine($"Group spawn {groupId} completed for {playerIds.Count} players");
-                    BroadcastGroupSpawnCompleted(currentServer, groupId, playerIds);
-                };
-                gameStateManager.OnGroupSpawnCompletedBroadcast += groupSpawnCompletedHandler;
+                    playerStateChangedHandler = (playerId, playerData) =>
+                    {
+                        BroadcastPlayerState(currentServer, playerId, playerData);
+                    };
+                    gameStateManager.OnPlayerStateChanged += playerStateChangedHandler;
+
+                    playerSpawnedHandler = (playerId, position) =>
+                    {
+                        Console.WriteLine($"Player {playerId} spawned at {position.X}, {position.Y}, {position.Z}");
+                        BroadcastPlayerSpawned(currentServer, playerId, position);
+                    };
+                    gameStateManager.OnPlayerSpawnedBroadcast += playerSpawnedHandler;
+
+                    groupSpawnCompletedHandler = (groupId, playerIds) =>
+                    {
+                        Console.WriteLine($"Group spawn {groupId} completed for {playerIds.Count} players");
+                        BroadcastGroupSpawnCompleted(currentServer, groupId, playerIds);
+                    };
+                    gameStateManager.OnGroupSpawnCompletedBroadcast += groupSpawnCompletedHandler;
+                }
             }
         }
 
         /// <summary>
-        /// Unsubscribe from all game state manager events
+        /// Unsubscribe from all game state manager events (acquires lock)
         /// </summary>
         private static void UnsubscribeFromEvents()
+        {
+            lock (syncLock)
+            {
+                UnsubscribeFromEventsLocked();
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribe from all game state manager events (must be called within lock)
+        /// </summary>
+        private static void UnsubscribeFromEventsLocked()
         {
             if (gameStateManager != null)
             {
@@ -117,7 +132,10 @@ namespace KenshiMultiplayer.Networking
         /// </summary>
         public static GameStateManager GetGameStateManager(this EnhancedServer server)
         {
-            return gameStateManager;
+            lock (syncLock)
+            {
+                return gameStateManager;
+            }
         }
 
         /// <summary>
@@ -134,7 +152,9 @@ namespace KenshiMultiplayer.Networking
                 }
 
                 string playerId = message.PlayerId;
-                string location = message.Data.ContainsKey("location") ? message.Data["location"].ToString() : "Hub";
+                string location = message.Data.TryGetValue("location", out var locationObj) && locationObj != null
+                    ? locationObj.ToString()
+                    : "Hub";
 
                 Console.WriteLine($"Spawn request from {playerId} at {location}");
 
@@ -192,7 +212,9 @@ namespace KenshiMultiplayer.Networking
                     Console.WriteLine($"[ServerExtensions] Failed to parse playerIds, using requester only: {ex.Message}");
                     playerIds = new List<string> { playerId };
                 }
-                string location = message.Data.ContainsKey("location") ? message.Data["location"].ToString() : "Hub";
+                string location = message.Data.TryGetValue("location", out var locationObj) && locationObj != null
+                    ? locationObj.ToString()
+                    : "Hub";
 
                 Console.WriteLine($"Group spawn request from {playerId} for {playerIds.Count} players at {location}");
 
@@ -232,7 +254,9 @@ namespace KenshiMultiplayer.Networking
                     return;
 
                 string playerId = message.PlayerId;
-                string groupId = message.Data.ContainsKey("groupId") ? message.Data["groupId"].ToString() : "";
+                string groupId = message.Data.TryGetValue("groupId", out var groupIdObj) && groupIdObj != null
+                    ? groupIdObj.ToString()
+                    : "";
 
                 if (!string.IsNullOrEmpty(groupId))
                 {
@@ -253,12 +277,20 @@ namespace KenshiMultiplayer.Networking
         {
             Console.WriteLine("Stopping server...");
 
-            // Unsubscribe from events before stopping to prevent memory leaks
-            UnsubscribeFromEvents();
+            GameStateManager managerToStop = null;
 
-            gameStateManager?.Stop();
-            gameStateManager = null;
-            currentServer = null;
+            lock (syncLock)
+            {
+                // Unsubscribe from events before stopping to prevent memory leaks
+                UnsubscribeFromEventsLocked();
+
+                managerToStop = gameStateManager;
+                gameStateManager = null;
+                currentServer = null;
+            }
+
+            // Stop the manager outside the lock to avoid potential deadlocks
+            managerToStop?.Stop();
         }
 
         #region Broadcasting

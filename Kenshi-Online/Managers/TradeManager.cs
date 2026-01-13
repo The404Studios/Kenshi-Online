@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using KenshiMultiplayer.Networking;
 using KenshiMultiplayer.Utility;
@@ -47,7 +48,7 @@ namespace KenshiMultiplayer.Managers
         public DateTime LastActivity { get; set; } = DateTime.UtcNow;
     }
 
-    public class TradeManager
+    public class TradeManager : IDisposable
     {
         // Trade timeout (5 minutes)
         private readonly TimeSpan TradeTimeout = TimeSpan.FromMinutes(5);
@@ -59,6 +60,8 @@ namespace KenshiMultiplayer.Managers
         private readonly string dataFilePath;
         private readonly EnhancedClient client;
         private readonly EnhancedServer server;
+        private readonly CancellationTokenSource cleanupCancellation = new CancellationTokenSource();
+        private bool disposed;
 
         // Server-side constructor
         public TradeManager(EnhancedServer serverInstance, string dataDirectory = "data")
@@ -69,14 +72,28 @@ namespace KenshiMultiplayer.Managers
 
             LoadData(GetCompletedTrades());
 
-            // Cleanup inactive trades periodically
-            Task.Run(async () => {
-                while (true)
+            // Cleanup inactive trades periodically with cancellation support
+            _ = RunCleanupLoopAsync(cleanupCancellation.Token);
+        }
+
+        private async Task RunCleanupLoopAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    await Task.Delay(TimeSpan.FromMinutes(1));
+                    await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
                     CleanupInactiveTrades();
                 }
-            });
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when cancellation is requested
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[TradeManager] Cleanup loop error: {ex.Message}");
+            }
         }
 
         // Client-side constructor
@@ -789,6 +806,29 @@ namespace KenshiMultiplayer.Managers
 
                 CompleteTradeLocally(tradeId);
             }
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
+
+            // Cancel the cleanup loop
+            cleanupCancellation.Cancel();
+            cleanupCancellation.Dispose();
+
+            // Unsubscribe from client events
+            if (client != null)
+            {
+                client.MessageReceived -= OnMessageReceived;
+            }
+
+            // Save data before disposing
+            SaveData();
+
+            Logger.Log("[TradeManager] Disposed");
         }
     }
 

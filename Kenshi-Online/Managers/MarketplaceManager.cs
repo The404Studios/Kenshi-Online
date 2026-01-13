@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using KenshiMultiplayer.Networking;
 using KenshiMultiplayer.Utility;
 using KenshiMultiplayer.Data;
 
 namespace KenshiMultiplayer.Managers
-{   
+{
     public class MarketListing
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
@@ -28,12 +29,14 @@ namespace KenshiMultiplayer.Managers
         public string BuyerName { get; set; }
     }
 
-    public class MarketplaceManager
+    public class MarketplaceManager : IDisposable
     {
         private readonly Dictionary<string, MarketListing> listings = new Dictionary<string, MarketListing>();
         private readonly string dataFilePath;
         private readonly EnhancedClient client;
         private readonly EnhancedServer server;
+        private readonly CancellationTokenSource cleanupCancellation = new CancellationTokenSource();
+        private bool disposed;
 
         // Server-side constructor
         public MarketplaceManager(EnhancedServer serverInstance, string dataDirectory = "data")
@@ -44,14 +47,28 @@ namespace KenshiMultiplayer.Managers
 
             LoadData();
 
-            // Cleanup expired listings periodically
-            Task.Run(async () => {
-                while (true)
+            // Cleanup expired listings periodically with cancellation support
+            _ = RunCleanupLoopAsync(cleanupCancellation.Token);
+        }
+
+        private async Task RunCleanupLoopAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    await Task.Delay(TimeSpan.FromHours(1));
+                    await Task.Delay(TimeSpan.FromHours(1), cancellationToken);
                     CleanupExpiredListings();
                 }
-            });
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when cancellation is requested
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[MarketplaceManager] Cleanup loop error: {ex.Message}");
+            }
         }
 
         // Client-side constructor
@@ -353,6 +370,29 @@ namespace KenshiMultiplayer.Managers
                     SaveData();
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
+
+            // Cancel the cleanup loop
+            cleanupCancellation.Cancel();
+            cleanupCancellation.Dispose();
+
+            // Unsubscribe from client events
+            if (client != null)
+            {
+                client.MessageReceived -= OnMessageReceived;
+            }
+
+            // Save data before disposing
+            SaveData();
+
+            Logger.Log("[MarketplaceManager] Disposed");
         }
     }
 
