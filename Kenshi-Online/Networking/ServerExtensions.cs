@@ -139,8 +139,17 @@ namespace KenshiMultiplayer.Networking
                 }
 
                 string playerId = message.PlayerId;
-                var playerIds = message.Data.ContainsKey("playerIds") ?
-                    (List<string>)message.Data["playerIds"] : new List<string> { playerId };
+                List<string> playerIds;
+                try
+                {
+                    playerIds = message.Data.ContainsKey("playerIds") && message.Data["playerIds"] != null
+                        ? System.Text.Json.JsonSerializer.Deserialize<List<string>>(message.Data["playerIds"].ToString())
+                        : new List<string> { playerId };
+                }
+                catch
+                {
+                    playerIds = new List<string> { playerId };
+                }
                 string location = message.Data.ContainsKey("location") ? message.Data["location"].ToString() : "Hub";
 
                 Console.WriteLine($"Group spawn request from {playerId} for {playerIds.Count} players at {location}");
