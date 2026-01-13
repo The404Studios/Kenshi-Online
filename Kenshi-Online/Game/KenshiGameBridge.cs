@@ -468,6 +468,7 @@ namespace KenshiMultiplayer.Game
         public Position GetLocalPlayerPosition()
         {
             if (!isConnected || kenshiProcess == null)
+            if (!isConnected)
                 return null;
 
             try
@@ -485,6 +486,8 @@ namespace KenshiMultiplayer.Game
                     return null;
                 }
                 IntPtr baseAddr = mainModule.BaseAddress;
+                // Read selected character pointer
+                IntPtr baseAddr = kenshiProcess.MainModule.BaseAddress;
                 IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
 
                 if (playerPtr == IntPtr.Zero)
@@ -529,6 +532,7 @@ namespace KenshiMultiplayer.Game
         public bool SetLocalPlayerPosition(Position position)
         {
             if (!isConnected || position == null || kenshiProcess == null)
+            if (!isConnected || position == null)
                 return false;
 
             try
@@ -545,6 +549,8 @@ namespace KenshiMultiplayer.Game
                     return false;
                 }
                 IntPtr baseAddr = mainModule.BaseAddress;
+                // Read selected character pointer
+                IntPtr baseAddr = kenshiProcess.MainModule.BaseAddress;
                 IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
 
                 if (playerPtr == IntPtr.Zero)
