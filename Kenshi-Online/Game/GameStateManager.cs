@@ -135,6 +135,12 @@ namespace KenshiMultiplayer.Game
                     catch (Exception ex)
                     {
                         Logger.Log(LOG_PREFIX + $"WARNING: World save load exception: {ex.Message}");
+                    var loadTask = worldSaveLoader.LoadWorldAsync();
+                    loadTask.Wait();
+
+                    if (!loadTask.Result)
+                    {
+                        Logger.Log(LOG_PREFIX + "WARNING: World save load failed, using defaults");
                     }
                 }
 
@@ -207,6 +213,7 @@ namespace KenshiMultiplayer.Game
                     {
                         Logger.Log(LOG_PREFIX + $"Error saving world state during stop: {ex.Message}");
                     }
+                    worldSaveLoader.SaveWorldStateAsync().Wait();
                 }
 
                 // Despawn all players
@@ -360,6 +367,29 @@ namespace KenshiMultiplayer.Game
                 {
                     // Legacy path - just despawn
                     spawnManager.DespawnPlayer(playerId);
+                if (!activePlayers.ContainsKey(playerId))
+                {
+                    Logger.Log(LOG_PREFIX + $"Player {playerId} not found");
+                    return false;
+                }
+
+                Logger.Log(LOG_PREFIX + $"Removing player {playerId}");
+
+                // Use save system if available - save and unload player
+                if (worldSaveLoader != null)
+                {
+                    worldSaveLoader.UnloadPlayerAsync(playerId).Wait();
+                }
+                else
+                {
+                    // Legacy path - just despawn
+                    spawnManager.DespawnPlayer(playerId);
+                }
+
+                lock (lockObject)
+                {
+                    activePlayers.Remove(playerId);
+                    lastUpdateTimes.Remove(playerId);
                 }
 
                 Logger.Log(LOG_PREFIX + $"Player {playerId} removed and saved");

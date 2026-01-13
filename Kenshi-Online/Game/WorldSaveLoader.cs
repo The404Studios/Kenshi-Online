@@ -441,6 +441,7 @@ namespace KenshiMultiplayer.Game
             {
                 Logger.Log(LOG_PREFIX + $"Error during dispose save: {ex.Message}");
             }
+            SaveWorldStateAsync().Wait();
             Logger.Log(LOG_PREFIX + "WorldSaveLoader disposed");
         }
     }

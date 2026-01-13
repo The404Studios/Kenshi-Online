@@ -34,6 +34,11 @@ namespace KenshiMultiplayer.Networking
         /// </summary>
         public ServerContext Context => serverContext;
 
+        /// <summary>
+        /// Get the server's authority context for save system integration
+        /// </summary>
+        public ServerContext Context => serverContext;
+
         public EnhancedServer(string kenshiRootPath)
         {
             fileManager = new GameFileManager(kenshiRootPath);
