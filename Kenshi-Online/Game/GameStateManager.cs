@@ -202,12 +202,12 @@ namespace KenshiMultiplayer.Game
                     try
                     {
                         worldSaveLoader.SaveWorldStateAsync().GetAwaiter().GetResult();
+                        Logger.Log(LOG_PREFIX + "World state saved successfully");
                     }
                     catch (Exception ex)
                     {
                         Logger.Log(LOG_PREFIX + $"Error saving world state during stop: {ex.Message}");
                     }
-                    worldSaveLoader.SaveWorldStateAsync().Wait();
                 }
 
                 // Despawn all players
