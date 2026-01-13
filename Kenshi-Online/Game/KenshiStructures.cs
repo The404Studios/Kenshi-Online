@@ -232,6 +232,36 @@ namespace KenshiMultiplayer.Game
         STATE_COUNT = 23
     }
 
+    /// <summary>
+    /// Character state enum - mirrors AIState for NPC synchronization
+    /// </summary>
+    public enum CharacterState
+    {
+        Idle = 0,
+        Moving = 1,
+        Fighting = 2,
+        Looting = 3,
+        Crafting = 4,
+        Sleeping = 5,
+        Eating = 6,
+        Healing = 7,
+        FirstAid = 8,
+        Building = 9,
+        Mining = 10,
+        Farming = 11,
+        Working = 12,
+        Talking = 13,
+        Trading = 14,
+        Fleeing = 15,
+        Unconscious = 16,
+        Dead = 17,
+        PlayingDead = 18,
+        Recovery = 19,
+        Following = 20,
+        Patrolling = 21,
+        Guarding = 22
+    }
+
     public enum AIPackageType
     {
         None = 0,
@@ -692,6 +722,15 @@ namespace KenshiMultiplayer.Game
         public int Bounty;
         public IntPtr FactionBounties;
         public int BountyFactionCount;
+
+        // Compatibility properties - these don't affect memory layout
+        public int CharacterID => (int)CharacterId;
+        public int FactionID => FactionId;
+        public float PosX => Position.X;
+        public float PosY => Position.Y;
+        public float PosZ => Position.Z;
+        public IntPtr NamePtr => Name;
+        public AIState CharacterState => CurrentState;
     }
 
     /// <summary>
@@ -781,6 +820,10 @@ namespace KenshiMultiplayer.Game
         public byte IsHidden;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
         public byte[] Padding2;
+
+        // Compatibility properties
+        public int FactionID => (int)FactionId;
+        public IntPtr NamePtr => Name;
     }
 
     /// <summary>
@@ -1136,204 +1179,6 @@ namespace KenshiMultiplayer.Game
         public int TotalBuildingCount;
 
         public ulong SyncTick;
-    }
-
-    #endregion
-
-    #region Memory Addresses (Kenshi v1.0.x)
-
-    /// <summary>
-    /// Known memory addresses for Kenshi game structures
-    /// IMPORTANT: These are fallback values. Use RuntimeOffsets for dynamic online-fetched offsets!
-    /// Call KenshiMemory.InitializeOnlineOffsets() at startup to fetch from online source.
-    /// </summary>
-    public static class KenshiMemory
-    {
-        // Base address (ASLR - calculate at runtime)
-        public static long BaseAddress = 0x140000000;
-
-        // Dynamic offset storage (populated from online source)
-        private static GameOffsetsData? _onlineOffsets;
-        private static FunctionOffsetsData? _onlineFunctions;
-        private static bool _onlineInitialized;
-
-        /// <summary>
-        /// Initialize offsets from online source. Call this before accessing memory.
-        /// </summary>
-        public static async System.Threading.Tasks.Task<bool> InitializeOnlineOffsetsAsync()
-        {
-            if (_onlineInitialized) return true;
-
-            var provider = OnlineOffsetProvider.Instance;
-            var success = await provider.InitializeAsync();
-
-            if (success)
-            {
-                _onlineOffsets = provider.GetCurrentOffsets();
-                _onlineFunctions = FunctionOffsetsData.CreateHardcodedDefaults();
-                Console.WriteLine("[KenshiMemory] Online offsets loaded successfully");
-            }
-
-            _onlineInitialized = true;
-            return success;
-        }
-
-        /// <summary>
-        /// Synchronous initialization
-        /// </summary>
-        public static bool InitializeOnlineOffsets()
-        {
-            return InitializeOnlineOffsetsAsync().GetAwaiter().GetResult();
-        }
-
-        /// <summary>
-        /// Check if online offsets are loaded
-        /// </summary>
-        public static bool HasOnlineOffsets => _onlineOffsets != null;
-
-        /// <summary>
-        /// Get dynamic offset value (online or fallback to hardcoded)
-        /// </summary>
-        public static long GetOffset(string category, string name)
-        {
-            if (_onlineOffsets == null) return 0;
-
-            return (category, name) switch
-            {
-                ("Game", "WorldInstance") => _onlineOffsets.WorldInstance,
-                ("Game", "GameState") => _onlineOffsets.GameState,
-                ("Game", "GameTime") => _onlineOffsets.GameTime,
-                ("Game", "GameDay") => _onlineOffsets.GameDay,
-                ("Characters", "PlayerSquadList") => _onlineOffsets.PlayerSquadList,
-                ("Characters", "PlayerSquadCount") => _onlineOffsets.PlayerSquadCount,
-                ("Characters", "AllCharactersList") => _onlineOffsets.AllCharactersList,
-                ("Characters", "AllCharactersCount") => _onlineOffsets.AllCharactersCount,
-                ("Characters", "SelectedCharacter") => _onlineOffsets.SelectedCharacter,
-                ("Factions", "FactionList") => _onlineOffsets.FactionList,
-                ("Factions", "FactionCount") => _onlineOffsets.FactionCount,
-                ("Factions", "PlayerFaction") => _onlineOffsets.PlayerFaction,
-                ("World", "BuildingList") => _onlineOffsets.BuildingList,
-                ("World", "BuildingCount") => _onlineOffsets.BuildingCount,
-                ("World", "WeatherSystem") => _onlineOffsets.WeatherSystem,
-                ("Engine", "PhysicsWorld") => _onlineOffsets.PhysicsWorld,
-                ("Engine", "Camera") => _onlineOffsets.Camera,
-                ("Input", "InputHandler") => _onlineOffsets.InputHandler,
-                _ => 0
-            };
-        }
-
-        /// <summary>
-        /// Get absolute address using online or hardcoded offset
-        /// </summary>
-        public static long GetAbsoluteAddress(string category, string name)
-        {
-            var offset = GetOffset(category, name);
-            if (offset == 0)
-            {
-                // Fall back to hardcoded
-                offset = (category, name) switch
-                {
-                    ("Game", "WorldInstance") => Game.WorldInstance,
-                    ("Game", "GameState") => Game.GameState,
-                    ("Characters", "PlayerSquadList") => Characters.PlayerSquadList,
-                    ("Characters", "AllCharactersList") => Characters.AllCharactersList,
-                    _ => 0
-                };
-            }
-            return BaseAddress + offset;
-        }
-
-        // Core game pointers
-        public static class Game
-        {
-            public const long WorldInstance = 0x24D8F40;
-            public const long GameState = 0x24D8F48;
-            public const long GameTime = 0x24D8F50;
-            public const long GameDay = 0x24D8F58;
-        }
-
-        // Character management
-        public static class Characters
-        {
-            public const long PlayerSquadList = 0x24C5A20;
-            public const long PlayerSquadCount = 0x24C5A28;
-            public const long AllCharactersList = 0x24C5B00;
-            public const long AllCharactersCount = 0x24C5B08;
-            public const long SelectedCharacter = 0x24C5A30;
-        }
-
-        // Faction system
-        public static class Factions
-        {
-            public const long FactionList = 0x24D2100;
-            public const long FactionCount = 0x24D2108;
-            public const long PlayerFaction = 0x24D2110;
-            public const long RelationMatrix = 0x24D2200;
-        }
-
-        // World and buildings
-        public static class World
-        {
-            public const long BuildingList = 0x24E1000;
-            public const long BuildingCount = 0x24E1008;
-            public const long WorldItemsList = 0x24E1100;
-            public const long WorldItemsCount = 0x24E1108;
-            public const long WeatherSystem = 0x24E7000;
-        }
-
-        // Physics and rendering
-        public static class Engine
-        {
-            public const long PhysicsWorld = 0x24F0000;
-            public const long Camera = 0x24E7C20;
-            public const long CameraTarget = 0x24E7C38;
-            public const long Renderer = 0x24F5000;
-        }
-
-        // Input and UI
-        public static class Input
-        {
-            public const long InputHandler = 0x24F2D80;
-            public const long CommandQueue = 0x24F2D90;
-            public const long SelectedUnits = 0x24F2DA0;
-            public const long UIState = 0x24F3000;
-        }
-
-        // Functions
-        public static class Functions
-        {
-            public const long SpawnCharacter = 0x8B3C80;
-            public const long DespawnCharacter = 0x8B4120;
-            public const long AddToSquad = 0x8B4500;
-            public const long RemoveFromSquad = 0x8B4600;
-            public const long AddItemToInventory = 0x9C2100;
-            public const long RemoveItemFromInventory = 0x9C2200;
-            public const long SetCharacterState = 0x8C1000;
-            public const long IssueCommand = 0x8D5000;
-            public const long CreateFaction = 0x7A2000;
-            public const long SetFactionRelation = 0x7A2500;
-            public const long PathfindRequest = 0x7B1000;
-            public const long CombatAttack = 0x8E2000;
-        }
-
-        // Character structure offsets
-        public static class CharacterOffsets
-        {
-            public const int Position = 0x70;
-            public const int Rotation = 0x7C;
-            public const int Health = 0xC0;
-            public const int MaxHealth = 0xC4;
-            public const int Blood = 0xC8;
-            public const int Hunger = 0xD0;
-            public const int Inventory = 0xF0;
-            public const int Equipment = 0xF8;
-            public const int AI = 0x110;
-            public const int State = 0x118;
-            public const int Faction = 0x158;
-            public const int Squad = 0x168;
-            public const int AnimState = 0x140;
-            public const int Body = 0xB8;
-        }
     }
 
     #endregion
