@@ -141,9 +141,6 @@ namespace KenshiMultiplayer
                         await Disconnect();
                         return;
                     case "0":
-                        await Disconnect();
-                        return;
-                    case "8":
                         return;
                     default:
                         Console.WriteLine("Invalid choice.");
@@ -193,8 +190,6 @@ namespace KenshiMultiplayer
             Console.WriteLine("8. Trainer (Debug)");
             Console.WriteLine("9. Disconnect & Quit");
             Console.WriteLine("0. Exit");
-            Console.WriteLine("7. Disconnect & Quit");
-            Console.WriteLine("8. Exit");
         }
 
         private static async Task ConnectToGame()
@@ -365,8 +360,6 @@ namespace KenshiMultiplayer
 
             // Show available spawn locations
             Console.WriteLine("\nAvailable spawn locations:");
-            // Show available spawn locations
-            Console.WriteLine("Available spawn locations:");
             Console.WriteLine("  Hub, Squin, Sho-Battai, Heng, Stack, Admag");
             Console.WriteLine("  BadTeeth, Bark, Stoat, WorldsEnd, FlatsLagoon");
             Console.WriteLine("  Shark, MudTown, Mongrel, Catun, Spring, Random");
@@ -444,35 +437,6 @@ namespace KenshiMultiplayer
                 Console.ResetColor();
 
                 StartMultiplayerSync();
-
-            Console.Write($"\nRequesting spawn at {location}... ");
-
-            try
-            {
-                // Request spawn from server
-                networkClient.RequestSpawn(location);
-
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("REQUEST SENT!");
-                Console.ResetColor();
-
-                // Start multiplayer sync
-                if (multiplayerSync != null && !multiplayerSync.IsRunning)
-                {
-                    Console.Write("Starting multiplayer sync... ");
-                    if (multiplayerSync.Start(networkClient.PlayerId))
-                    {
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("OK");
-                        Console.ResetColor();
-                    }
-                    else
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("FAILED (will retry)");
-                        Console.ResetColor();
-                    }
-                }
 
                 Console.WriteLine("\nYou should now be spawned in the game world!");
                 Console.WriteLine("Other players will appear as you explore.");
