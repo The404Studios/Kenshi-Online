@@ -43,7 +43,8 @@ namespace KenshiMultiplayer.Managers
             if (File.Exists(dataFilePath))
             {
                 var json = File.ReadAllText(dataFilePath);
-                playerData = JsonSerializer.Deserialize<Dictionary<string, PlayerData>>(json);
+                playerData = JsonSerializer.Deserialize<Dictionary<string, PlayerData>>(json)
+                    ?? new Dictionary<string, PlayerData>();
             }
         }
 
@@ -52,7 +53,8 @@ namespace KenshiMultiplayer.Managers
             if (File.Exists(sessionFilePath))
             {
                 var json = File.ReadAllText(sessionFilePath);
-                activeSessions = JsonSerializer.Deserialize<Dictionary<string, UserSession>>(json);
+                activeSessions = JsonSerializer.Deserialize<Dictionary<string, UserSession>>(json)
+                    ?? new Dictionary<string, UserSession>();
 
                 // Clean up expired sessions
                 var expiredSessions = activeSessions

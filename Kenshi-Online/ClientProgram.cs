@@ -251,7 +251,9 @@ namespace KenshiMultiplayer
 
             Console.Write("Server port [7777]: ");
             string portStr = Console.ReadLine()?.Trim();
-            int port = string.IsNullOrEmpty(portStr) ? 7777 : int.Parse(portStr);
+            int port = 7777;
+            if (!string.IsNullOrEmpty(portStr) && !int.TryParse(portStr, out port))
+                port = 7777;
 
             Console.Write("\nConnecting to {0}:{1}... ", address, port);
 
@@ -282,7 +284,9 @@ namespace KenshiMultiplayer
 
             Console.Write("Server port [7777]: ");
             string portStr = Console.ReadLine()?.Trim();
-            int port = string.IsNullOrEmpty(portStr) ? 7777 : int.Parse(portStr);
+            int port = 7777;
+            if (!string.IsNullOrEmpty(portStr) && !int.TryParse(portStr, out port))
+                port = 7777;
 
             Console.Write("Username: ");
             string username = Console.ReadLine()?.Trim();
@@ -937,7 +941,9 @@ namespace KenshiMultiplayer
 
             Console.Write("\nNew health value (0-100) [100]: ");
             string healthStr = Console.ReadLine()?.Trim();
-            float health = string.IsNullOrEmpty(healthStr) ? 100f : float.Parse(healthStr);
+            float health = 100f;
+            if (!string.IsNullOrEmpty(healthStr) && !float.TryParse(healthStr, out health))
+                health = 100f;
 
             Console.Write($"Setting health to {health}... ");
 

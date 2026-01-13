@@ -431,6 +431,7 @@ namespace KenshiMultiplayer.Networking.Authority
             {
                 Logger.Log($"[ServerSaveManager] Error during dispose save: {ex.Message}");
             }
+            saveLock?.Dispose();
         }
     }
 

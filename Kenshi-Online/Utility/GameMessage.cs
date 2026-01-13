@@ -107,7 +107,9 @@ namespace KenshiMultiplayer.Utility
         public string ToJson() => JsonSerializer.Serialize(this);
 
         // Create from JSON string
-        public static GameMessage FromJson(string json) => JsonSerializer.Deserialize<GameMessage>(json);
+        public static GameMessage FromJson(string json) =>
+            JsonSerializer.Deserialize<GameMessage>(json)
+            ?? throw new JsonException($"Failed to deserialize GameMessage from JSON: {json?.Substring(0, Math.Min(100, json?.Length ?? 0))}");
 
         // Validation
         public bool IsValid()

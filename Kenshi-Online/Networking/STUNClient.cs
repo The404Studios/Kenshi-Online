@@ -59,7 +59,9 @@ namespace KenshiMultiplayer.Networking
                     {
                         string[] parts = stunServer.Split(':');
                         string host = parts[0];
-                        int port = parts.Length > 1 ? int.Parse(parts[1]) : 3478; // Default STUN port
+                        int port = 3478; // Default STUN port
+                        if (parts.Length > 1 && !int.TryParse(parts[1], out port))
+                            port = 3478;
 
                         IPAddress[] addresses = await Dns.GetHostAddressesAsync(host);
                         if (addresses.Length == 0) continue;
@@ -170,14 +172,18 @@ namespace KenshiMultiplayer.Networking
             IPAddress mappedAddress = null;
             int mappedPort = 0;
 
-            while (pos < response.Length && pos < 20 + messageLength)
+            while (pos + 4 <= response.Length && pos < 20 + messageLength)
             {
-                // Attribute header
+                // Attribute header - need at least 4 bytes for type and length
                 ushort attrType = (ushort)((response[pos] << 8) + response[pos + 1]);
                 ushort attrLength = (ushort)((response[pos + 2] << 8) + response[pos + 3]);
                 pos += 4;
 
-                if (attrType == MappedAddress)
+                // Verify we have enough data for the attribute value
+                if (pos + attrLength > response.Length)
+                    break;
+
+                if (attrType == MappedAddress && attrLength >= 8)
                 {
                     // Skip first byte (reserved) and family
                     byte family = response[pos + 1];
@@ -194,7 +200,7 @@ namespace KenshiMultiplayer.Networking
                     Array.Copy(response, pos + 4, ipBytes, 0, 4);
                     mappedAddress = new IPAddress(ipBytes);
                 }
-                else if (attrType == XorMappedAddress)
+                else if (attrType == XorMappedAddress && attrLength >= 8)
                 {
                     // Skip first byte (reserved) and family
                     byte family = response[pos + 1];
