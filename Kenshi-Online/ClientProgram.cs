@@ -497,6 +497,20 @@ namespace KenshiMultiplayer
             Console.WriteLine("\n--- Multiplayer Sync ---");
             Console.WriteLine($"  Running: {multiplayerSync?.IsRunning}");
             Console.WriteLine($"  Other Players: {multiplayerSync?.OtherPlayerCount ?? 0}");
+
+            // Display Coordinate System stats if available
+            if (multiplayerSync?.Coordinator != null)
+            {
+                Console.WriteLine("\n--- Coordinate System ---");
+                var stats = multiplayerSync.Coordinator.GetStats();
+                Console.WriteLine($"  Current Tick: {stats.CurrentTick}");
+                Console.WriteLine($"  Authority Commits: {stats.AuthorityCommits}");
+                Console.WriteLine($"  Info Pending: {stats.InfoPending}");
+                Console.WriteLine($"  Bus Read Hit Rate: {stats.BusReadHitRate:P1}");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("  Ring Architecture: ACTIVE");
+                Console.ResetColor();
+            }
         }
 
         private static void DisplayOtherPlayers()
