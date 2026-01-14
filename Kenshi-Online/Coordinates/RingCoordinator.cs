@@ -33,11 +33,12 @@ namespace KenshiOnline.Coordinates
     /// </summary>
     public class RingCoordinator : IDisposable
     {
-        // The four rings
+        // The four rings + data bus
         public ContainerRing ContainerRing { get; }
         public InfoRing InfoRing { get; }
         public AuthorityRing AuthorityRing { get; }
         public AttributeRing AttributeRing { get; }
+        public DataBus DataBus { get; }
 
         // Core systems
         public NetIdRegistry NetIdRegistry { get; }
@@ -79,6 +80,9 @@ namespace KenshiOnline.Coordinates
             InfoRing = new InfoRing(_config.InfoRingCapacity);
             AuthorityRing = new AuthorityRing(_config.AuthorityRingCapacity, _config.SnapshotInterval);
             AttributeRing = new AttributeRing(AuthorityRing, Clock, _config.GateConfig);
+
+            // Initialize data bus (bidirectional pipeline to memory)
+            DataBus = new DataBus(AuthorityRing, AttributeRing, Clock, _config.BusConfig);
 
             // Frame resolver - gets parent transforms from Container/Authority rings
             _frameResolver = new SimpleFrameResolver((parentId, boneIndex) =>
@@ -134,6 +138,14 @@ namespace KenshiOnline.Coordinates
 
                 // 4. Process attribute ring frame (gates writes, updates presentation state)
                 AttributeRing.ProcessFrame(Clock.Now.ContinuousTime);
+
+                // 5. Flush data bus to memory (atomic batch at tick boundary)
+                if (_memoryActuator != null)
+                {
+                    var flushResult = DataBus.Flush(_memoryActuator);
+                    result.BusWritesApplied = flushResult.Applied;
+                    result.BusWritesFailed = flushResult.Failed;
+                }
 
                 Interlocked.Increment(ref _cyclesProcessed);
             }
@@ -610,6 +622,48 @@ namespace KenshiOnline.Coordinates
             return AttributeRing.GetInterpolatedRotation(entityId, Clock.Now.ContinuousTime);
         }
 
+        /// <summary>
+        /// Enqueue a write through the data bus pipeline.
+        /// Write goes through validation → normalization → authorization → gating.
+        /// </summary>
+        public BusWriteResult EnqueueWrite(NetId entityId, AttributeKind kind, object value, NetId sourceId)
+        {
+            return DataBus.EnqueueWrite(entityId, kind, value, sourceId);
+        }
+
+        /// <summary>
+        /// Resolve a read request through the data bus.
+        /// Returns authoritative data instead of potentially stale memory.
+        /// </summary>
+        public BusReadResult ResolveRead(NetId entityId, AttributeKind kind)
+        {
+            return DataBus.ResolveRead(entityId, kind);
+        }
+
+        /// <summary>
+        /// Resolve position through the data bus (memory is requesting position).
+        /// </summary>
+        public Vector3? ResolvePosition(NetId entityId)
+        {
+            return DataBus.ResolvePosition(entityId);
+        }
+
+        /// <summary>
+        /// Resolve rotation through the data bus (memory is requesting rotation).
+        /// </summary>
+        public Quaternion? ResolveRotation(NetId entityId)
+        {
+            return DataBus.ResolveRotation(entityId);
+        }
+
+        /// <summary>
+        /// Resolve health through the data bus (memory is requesting health).
+        /// </summary>
+        public float? ResolveHealth(NetId entityId)
+        {
+            return DataBus.ResolveHealth(entityId);
+        }
+
         #endregion
 
         #region Statistics
@@ -619,6 +673,7 @@ namespace KenshiOnline.Coordinates
             var (infoEnqueued, infoDropped, infoProcessed) = InfoRing.GetStats();
             var (commits, rejected, coalesced) = AuthorityRing.GetStats();
             var attrStats = AttributeRing.GetStats();
+            var busStats = DataBus.GetStats();
 
             return new CoordinatorStats
             {
@@ -637,7 +692,12 @@ namespace KenshiOnline.Coordinates
                 AttributeInterpolations = attrStats.Interpolations,
                 AttributeExtrapolations = attrStats.Extrapolations,
                 AttributeGatedWrites = attrStats.GatedWrites,
-                AttributeBlockedWrites = attrStats.BlockedWrites
+                AttributeBlockedWrites = attrStats.BlockedWrites,
+                BusWritesEnqueued = busStats.WritesEnqueued,
+                BusWritesFlushed = busStats.WritesFlushed,
+                BusWritesRejected = busStats.WritesRejected,
+                BusReadsResolved = busStats.ReadsResolved,
+                BusReadsMissed = busStats.ReadsMissed
             };
         }
 
@@ -665,6 +725,7 @@ namespace KenshiOnline.Coordinates
         public float RejectThreshold { get; set; } = 0.2f;
         public float VerificationThreshold { get; set; } = 0.1f; // Max distance for verification pass
         public GateConfig GateConfig { get; set; } = new GateConfig(); // Attribute ring gating config
+        public BusConfig BusConfig { get; set; } = new BusConfig(); // Data bus pipeline config
     }
 
     /// <summary>
@@ -680,6 +741,8 @@ namespace KenshiOnline.Coordinates
         public int Snaps { get; set; }
         public int VerificationsSucceeded { get; set; }
         public int VerificationsFailed { get; set; }
+        public int BusWritesApplied { get; set; }
+        public int BusWritesFailed { get; set; }
         public double ProcessingTimeMs { get; set; }
         public string? Error { get; set; }
     }
@@ -708,9 +771,21 @@ namespace KenshiOnline.Coordinates
         public long AttributeGatedWrites { get; set; }
         public long AttributeBlockedWrites { get; set; }
 
+        // Data bus stats (pipeline)
+        public long BusWritesEnqueued { get; set; }
+        public long BusWritesFlushed { get; set; }
+        public long BusWritesRejected { get; set; }
+        public long BusReadsResolved { get; set; }
+        public long BusReadsMissed { get; set; }
+
         public float ExtrapolationRatio =>
             (AttributeInterpolations + AttributeExtrapolations) > 0
                 ? AttributeExtrapolations / (float)(AttributeInterpolations + AttributeExtrapolations)
+                : 0;
+
+        public float BusReadHitRate =>
+            (BusReadsResolved + BusReadsMissed) > 0
+                ? BusReadsResolved / (float)(BusReadsResolved + BusReadsMissed)
                 : 0;
     }
 
