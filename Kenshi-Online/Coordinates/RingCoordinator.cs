@@ -93,6 +93,14 @@ namespace KenshiOnline.Coordinates
         }
 
         /// <summary>
+        /// Set the memory actuator for game memory operations.
+        /// </summary>
+        public void SetMemoryActuator(IMemoryActuator actuator)
+        {
+            _memoryActuator = actuator;
+        }
+
+        /// <summary>
         /// Start the processing loop.
         /// </summary>
         public void Start()
