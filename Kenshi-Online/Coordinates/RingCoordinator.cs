@@ -34,6 +34,7 @@ namespace KenshiOnline.Coordinates
     public class RingCoordinator : IDisposable
     {
         // The four rings + data bus
+        // The four rings
         public ContainerRing ContainerRing { get; }
         public InfoRing InfoRing { get; }
         public AuthorityRing AuthorityRing { get; }
@@ -706,6 +707,7 @@ namespace KenshiOnline.Coordinates
                 BusWritesRejected = busStats.WritesRejected,
                 BusReadsResolved = busStats.ReadsResolved,
                 BusReadsMissed = busStats.ReadsMissed
+                AttributeBlockedWrites = attrStats.BlockedWrites
             };
         }
 
@@ -733,7 +735,6 @@ namespace KenshiOnline.Coordinates
         public float RejectThreshold { get; set; } = 0.2f;
         public float VerificationThreshold { get; set; } = 0.1f; // Max distance for verification pass
         public GateConfig GateConfig { get; set; } = new GateConfig(); // Attribute ring gating config
-        public BusConfig BusConfig { get; set; } = new BusConfig(); // Data bus pipeline config
     }
 
     /// <summary>
