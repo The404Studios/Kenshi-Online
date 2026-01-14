@@ -11,11 +11,16 @@ namespace KenshiOnline.Coordinates
     ///
     /// All information flows through the bus:
     ///   OUTBOUND (Write): Authority → Gate → Bus → Memory
-    ///   INBOUND (Read):   Memory → Bus → Resolver → Response
+    ///   INBOUND (Read):   Precondition → Resolve → Response
     ///
-    /// The game's memory isn't passive - it requests data constantly.
-    /// We intercept those requests, resolve against authoritative state,
-    /// and respond with correct data. The game never reads stale memory directly.
+    /// IMPORTANT: The CPU will ALWAYS read memory. We don't intercept omnisciently.
+    /// What we CAN control is Read Virtualization at semantic choke points:
+    ///   - Physics calls ResolvePhysicsTransforms() BEFORE stepping
+    ///   - Renderer calls ResolveRenderTransforms() BEFORE drawing
+    ///   - AI calls ResolveAITargets() BEFORE deciding
+    ///
+    /// This is preconditioning, not interception. We supply resolved inputs
+    /// to subsystems before they act. See SemanticResolver and ResponseBus.
     ///
     /// Like DNA/RNA: information flows one direction through the machinery.
     /// No shortcuts, no bypasses, everything is logged.
@@ -26,9 +31,14 @@ namespace KenshiOnline.Coordinates
         private readonly ConcurrentQueue<BusWrite> _writeQueue = new();
         private readonly List<IPipelineStage> _writePipeline = new();
 
-        // Read pipeline (inbound)
+        // Read pipeline (inbound) - legacy simple resolver
         private readonly ConcurrentQueue<BusRead> _readQueue = new();
         private readonly IRequestResolver _resolver;
+
+        // Semantic read system (preconditioning)
+        private readonly SemanticResolver _semanticResolver;
+        private readonly ResponseBus _responseBus;
+        private readonly ResolvedCache _resolvedCache;
 
         // Authority source
         private readonly AuthorityRing _authorityRing;
@@ -59,7 +69,14 @@ namespace KenshiOnline.Coordinates
             _attributeRing = attributeRing;
             _clock = clock;
             _config = config ?? new BusConfig();
+
+            // Legacy resolver (kept for simple lookups)
             _resolver = new AuthoritativeResolver(authorityRing, attributeRing, clock);
+
+            // Semantic read system with proper Request/Response tuples
+            _resolvedCache = new ResolvedCache(_config.ReadCacheTtlTicks);
+            _semanticResolver = new SemanticResolver(authorityRing, attributeRing, clock, _resolvedCache);
+            _responseBus = new ResponseBus(_semanticResolver, clock);
 
             // Initialize default pipeline stages
             InitializeDefaultPipeline();
@@ -194,11 +211,66 @@ namespace KenshiOnline.Coordinates
 
         #endregion
 
-        #region Read Path (Inbound)
+        #region Semantic Read Path (Preconditioning)
 
         /// <summary>
-        /// Resolve a read request from memory.
-        /// Returns authoritative data instead of potentially stale memory.
+        /// Get the semantic resolver for direct access to typed resolution.
+        /// </summary>
+        public SemanticResolver SemanticResolver => _semanticResolver;
+
+        /// <summary>
+        /// Get the response bus for preconditioning subsystem inputs.
+        /// </summary>
+        public ResponseBus ResponseBus => _responseBus;
+
+        /// <summary>
+        /// Precondition physics transforms before physics step.
+        /// This is the semantic choke point for physics.
+        /// </summary>
+        public Dictionary<NetId, ReadResponse> PreconditionPhysics(IEnumerable<NetId> entities)
+            => _responseBus.PreconditionPhysics(entities);
+
+        /// <summary>
+        /// Precondition render transforms before rendering.
+        /// Never blocks - always returns something drawable.
+        /// </summary>
+        public Dictionary<NetId, ReadResponse> PreconditionRender(IEnumerable<NetId> entities)
+            => _responseBus.PreconditionRender(entities);
+
+        /// <summary>
+        /// Precondition AI target data before AI decisions.
+        /// Returns confidence-ordered targets; "none" if too uncertain.
+        /// </summary>
+        public AITargetResolution PreconditionAI(NetId aiEntity, IEnumerable<NetId> targets)
+            => _responseBus.PreconditionAI(aiEntity, targets);
+
+        /// <summary>
+        /// Precondition animation states before animation update.
+        /// </summary>
+        public Dictionary<NetId, ReadResponse> PreconditionAnimation(
+            IEnumerable<(NetId entity, bool gameplayLinked)> requests)
+            => _responseBus.PreconditionAnimation(requests);
+
+        /// <summary>
+        /// Issue a typed read request with all dimensions.
+        /// This is the proper way to read - specify what you need and why.
+        /// </summary>
+        public ReadResponse Read(ReadRequest request)
+            => _semanticResolver.Resolve(request);
+
+        /// <summary>
+        /// Clear preconditioning snapshots at end of frame.
+        /// </summary>
+        public void ClearSnapshots()
+            => _responseBus.ClearSnapshots();
+
+        #endregion
+
+        #region Legacy Read Path (Simple Lookups)
+
+        /// <summary>
+        /// [LEGACY] Resolve a read request from memory.
+        /// Prefer using Read(ReadRequest) or PreconditionXxx() methods.
         /// </summary>
         public BusReadResult ResolveRead(NetId entityId, AttributeKind kind)
         {
@@ -330,6 +402,7 @@ namespace KenshiOnline.Coordinates
 
         public BusStats GetStats()
         {
+            var resolverStats = _semanticResolver.GetStats();
             return new BusStats
             {
                 WritesEnqueued = _writesEnqueued,
@@ -339,7 +412,8 @@ namespace KenshiOnline.Coordinates
                 ReadsMissed = _readsMissed,
                 ReadsCached = _readsCached,
                 PendingWrites = _writeQueue.Count,
-                PipelineStages = _writePipeline.Count
+                PipelineStages = _writePipeline.Count,
+                SemanticResolverStats = resolverStats
             };
         }
 
@@ -691,11 +765,17 @@ namespace KenshiOnline.Coordinates
         public int PendingWrites { get; set; }
         public int PipelineStages { get; set; }
 
+        /// <summary>Stats from the semantic resolver (Request/Response system).</summary>
+        public ResolverStats SemanticResolverStats { get; set; }
+
         public float WriteSuccessRate =>
             WritesEnqueued > 0 ? WritesFlushed / (float)WritesEnqueued : 0;
 
         public float ReadHitRate =>
             (ReadsResolved + ReadsMissed) > 0 ? ReadsResolved / (float)(ReadsResolved + ReadsMissed) : 0;
+
+        public float SemanticAllowRate => SemanticResolverStats.AllowRate;
+        public float SemanticCacheHitRate => SemanticResolverStats.CacheHitRate;
     }
 
     #endregion
