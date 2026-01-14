@@ -1,25 +1,34 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using KenshiMultiplayer.Data;
 using KenshiMultiplayer.Networking;
 using KenshiMultiplayer.Networking.Authority;
 using KenshiMultiplayer.Utility;
+using KenshiOnline.Coordinates;
+using KenshiOnline.Coordinates.Integration;
 
 namespace KenshiMultiplayer.Game
 {
     /// <summary>
     /// Central manager for game state synchronization between server and clients.
     ///
-    /// Architecture:
+    /// Architecture (Updated with Ring-Based Coordinates):
+    /// - RingCoordinator: 4-ring authority system for sync correctness
     /// - WorldSaveLoader: Handles persistence (server-owned saves)
     /// - KenshiGameBridge: Handles memory injection (game state)
-    /// - GameStateManager: Coordinates between saves, game, and network
+    /// - GameStateManager: Coordinates between saves, game, network, and rings
     ///
-    /// Flow: Network Request -> ServerContext validates -> GameStateManager executes ->
-    ///       KenshiGameBridge applies to game -> WorldSaveLoader persists to save
+    /// New Flow:
+    ///   Network Request → Ring2 (Info) observation →
+    ///   Ring3 (Authority) commit → Ring4 (Attribute) presentation →
+    ///   DataBus → KenshiGameBridge → Game Memory
+    ///
+    /// This ensures all state changes flow through proper authority validation
+    /// with staleness budgets and confidence scoring.
     /// </summary>
     public class GameStateManager : IDisposable
     {
@@ -30,6 +39,12 @@ namespace KenshiMultiplayer.Game
         private WorldSaveLoader worldSaveLoader;
         private ServerContext serverContext;
         private const string LOG_PREFIX = "[GameStateManager] ";
+
+        // Ring-based authority system
+        private RingCoordinator _ringCoordinator;
+        private KenshiMemoryActuator _memoryActuator;
+        private NetworkBroadcaster _networkBroadcaster;
+        private readonly Dictionary<string, NetId> _playerNetIds = new Dictionary<string, NetId>();
 
         private Timer updateTimer;
         private Timer autoSaveTimer;
@@ -51,6 +66,16 @@ namespace KenshiMultiplayer.Game
         public WorldSaveLoader WorldSave => worldSaveLoader;
         public ServerContext ServerContext => serverContext;
 
+        /// <summary>
+        /// Get the ring coordinator for direct access to the authority system.
+        /// </summary>
+        public RingCoordinator RingCoordinator => _ringCoordinator;
+
+        /// <summary>
+        /// Get the network broadcaster for authority commits.
+        /// </summary>
+        public NetworkBroadcaster NetworkBroadcaster => _networkBroadcaster;
+
         public GameStateManager(KenshiGameBridge gameBridge, StateSynchronizer stateSynchronizer = null)
         {
             this.gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
@@ -59,10 +84,54 @@ namespace KenshiMultiplayer.Game
             this.playerController = new PlayerController(gameBridge);
             this.spawnManager = new SpawnManager(gameBridge, playerController);
 
+            // Initialize ring-based authority system
+            InitializeCoordinateSystem();
+
             // Subscribe to events
             RegisterEventHandlers();
 
-            Logger.Log(LOG_PREFIX + "GameStateManager initialized");
+            Logger.Log(LOG_PREFIX + "GameStateManager initialized with Coordinate System");
+        }
+
+        /// <summary>
+        /// Initialize the ring-based coordinate system for authority management.
+        /// </summary>
+        private void InitializeCoordinateSystem()
+        {
+            var config = new CoordinatorConfig
+            {
+                TickRateHz = 20,
+                MaxInfosPerCycle = 1000,
+                AcceptThreshold = 0.8f,
+                RejectThreshold = 0.2f,
+                VerificationThreshold = 0.5f,
+                GateConfig = new GateConfig
+                {
+                    MaxVelocity = 15f,
+                    MaxAcceleration = 30f,
+                    BlendRate = 0.15f,
+                    SnapThreshold = 5f,
+                    AllowedHealthDelta = 0.5f
+                },
+                BusConfig = new BusConfig
+                {
+                    MaxQueuedWrites = 10000,
+                    EnableCoalescing = true,
+                    EnableReadCache = true,
+                    ReadCacheTtlTicks = 2
+                }
+            };
+
+            _ringCoordinator = new RingCoordinator(config);
+
+            // Create memory actuator for game memory operations
+            _memoryActuator = new KenshiMemoryActuator(gameBridge);
+            _ringCoordinator.SetMemoryActuator(_memoryActuator);
+
+            // Create network broadcaster for authority commits
+            _networkBroadcaster = new NetworkBroadcaster(_ringCoordinator, stateSynchronizer);
+
+            Logger.Log(LOG_PREFIX + "Coordinate system initialized");
         }
 
         /// <summary>
@@ -144,6 +213,11 @@ namespace KenshiMultiplayer.Game
 
                 isRunning = true;
 
+                // Start ring coordinator
+                _ringCoordinator?.Start();
+                _networkBroadcaster?.Start();
+                Logger.Log(LOG_PREFIX + "Ring coordinator started");
+
                 // Start update loop
                 updateTimer = new Timer(UpdateGameState, null, 0, UPDATE_RATE_MS);
 
@@ -198,6 +272,11 @@ namespace KenshiMultiplayer.Game
                 updateTimer = null;
                 autoSaveTimer?.Dispose();
                 autoSaveTimer = null;
+
+                // Stop ring coordinator
+                _networkBroadcaster?.Stop();
+                _ringCoordinator?.Stop();
+                Logger.Log(LOG_PREFIX + "Ring coordinator stopped");
 
                 // Unregister event handlers to prevent memory leaks
                 UnregisterEventHandlers();
@@ -697,6 +776,8 @@ namespace KenshiMultiplayer.Game
         public void Dispose()
         {
             Stop();
+            _networkBroadcaster?.Dispose();
+            _ringCoordinator?.Dispose();
             worldSaveLoader?.Dispose();
             gameBridge?.Dispose();
             Logger.Log(LOG_PREFIX + "GameStateManager disposed");
@@ -718,10 +799,32 @@ namespace KenshiMultiplayer.Game
         }
 
         /// <summary>
-        /// Sync player position to game (from network)
+        /// Sync player position to game (from network).
+        /// Routes through Ring2 → Ring3 → Ring4 → DataBus for proper authority handling.
         /// </summary>
         public bool SyncPlayerPositionToGame(string playerId, Position position)
         {
+            // Get or create NetId for this player
+            if (!_playerNetIds.TryGetValue(playerId, out var netId))
+            {
+                netId = NetId.Create(EntityKind.Player, playerId.GetHashCode());
+                _playerNetIds[playerId] = netId;
+                _ringCoordinator.RegisterEntity(netId, EntityKind.Player, IntPtr.Zero, FrameType.World);
+            }
+
+            // Submit as observation to Ring2 (the proper way)
+            var transform = new TransformPayload
+            {
+                Position = new Vector3(position.X, position.Y, position.Z),
+                Rotation = Quaternion.CreateFromYawPitchRoll(
+                    position.RotY * MathF.PI / 180f,
+                    position.RotX * MathF.PI / 180f,
+                    position.RotZ * MathF.PI / 180f)
+            };
+
+            _ringCoordinator.SubmitObservation(netId, netId, transform, _ringCoordinator.Clock.CurrentTick);
+
+            // Also update via legacy path for compatibility
             if (worldSaveLoader != null)
             {
                 return worldSaveLoader.SyncPlayerPositionToGame(playerId, position);
@@ -749,6 +852,116 @@ namespace KenshiMultiplayer.Game
         public void RecordWorldEvent(string eventType, Dictionary<string, object> data)
         {
             worldSaveLoader?.RecordWorldEvent(eventType, data);
+        }
+
+        #endregion
+
+        #region Ring-Based Coordinate System
+
+        /// <summary>
+        /// Submit a player observation to the coordinate system.
+        /// This is the proper way to update player state from network.
+        /// </summary>
+        public void SubmitPlayerObservation(string playerId, string sourcePlayerId, Position position, float? health = null)
+        {
+            if (!_playerNetIds.TryGetValue(playerId, out var subjectId))
+            {
+                subjectId = NetId.Create(EntityKind.Player, playerId.GetHashCode());
+                _playerNetIds[playerId] = subjectId;
+                _ringCoordinator.RegisterEntity(subjectId, EntityKind.Player, IntPtr.Zero, FrameType.World);
+            }
+
+            var sourceId = !string.IsNullOrEmpty(sourcePlayerId)
+                ? NetId.Create(EntityKind.Player, sourcePlayerId.GetHashCode())
+                : subjectId;
+
+            // Submit transform observation
+            var transform = new TransformPayload
+            {
+                Position = new Vector3(position.X, position.Y, position.Z),
+                Rotation = Quaternion.CreateFromYawPitchRoll(
+                    position.RotY * MathF.PI / 180f,
+                    position.RotX * MathF.PI / 180f,
+                    position.RotZ * MathF.PI / 180f)
+            };
+
+            _ringCoordinator.SubmitObservation(subjectId, sourceId, transform, _ringCoordinator.Clock.CurrentTick);
+
+            // Submit health observation if provided
+            if (health.HasValue)
+            {
+                var healthPayload = new HealthPayload
+                {
+                    Current = health.Value,
+                    Maximum = 100f
+                };
+                _ringCoordinator.SubmitObservation(subjectId, sourceId, healthPayload, _ringCoordinator.Clock.CurrentTick);
+            }
+        }
+
+        /// <summary>
+        /// Get player presentation state from Ring4 (interpolated/extrapolated).
+        /// </summary>
+        public PresentationState GetPlayerPresentationState(string playerId)
+        {
+            if (!_playerNetIds.TryGetValue(playerId, out var netId))
+                return null;
+
+            return _ringCoordinator.GetPresentationState(netId);
+        }
+
+        /// <summary>
+        /// Get player authority state from Ring3 (committed truth).
+        /// </summary>
+        public AuthorityEntityState GetPlayerAuthorityState(string playerId)
+        {
+            if (!_playerNetIds.TryGetValue(playerId, out var netId))
+                return null;
+
+            return _ringCoordinator.AuthorityRing.GetEntityState(netId);
+        }
+
+        /// <summary>
+        /// Register a player in the coordinate system.
+        /// </summary>
+        public void RegisterPlayerInCoordinates(string playerId)
+        {
+            if (_playerNetIds.ContainsKey(playerId))
+                return;
+
+            var netId = NetId.Create(EntityKind.Player, playerId.GetHashCode());
+            _playerNetIds[playerId] = netId;
+            _ringCoordinator.RegisterEntity(netId, EntityKind.Player, IntPtr.Zero, FrameType.World);
+            Logger.Log(LOG_PREFIX + $"Registered player {playerId} in coordinate system as {netId}");
+        }
+
+        /// <summary>
+        /// Unregister a player from the coordinate system.
+        /// </summary>
+        public void UnregisterPlayerFromCoordinates(string playerId)
+        {
+            if (_playerNetIds.TryGetValue(playerId, out var netId))
+            {
+                _ringCoordinator.UnregisterEntity(netId);
+                _playerNetIds.Remove(playerId);
+                Logger.Log(LOG_PREFIX + $"Unregistered player {playerId} from coordinate system");
+            }
+        }
+
+        /// <summary>
+        /// Set network callbacks for the broadcaster.
+        /// </summary>
+        public void SetNetworkCallbacks(Action<string, byte[]> sendToClient, Action<byte[]> broadcastToAll)
+        {
+            _networkBroadcaster?.SetNetworkCallbacks(sendToClient, broadcastToAll);
+        }
+
+        /// <summary>
+        /// Get coordinate system statistics.
+        /// </summary>
+        public CoordinatorStats GetCoordinateStats()
+        {
+            return _ringCoordinator?.GetStats() ?? default;
         }
 
         #endregion
