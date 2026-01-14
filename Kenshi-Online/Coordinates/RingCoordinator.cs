@@ -15,26 +15,29 @@ namespace KenshiOnline.Coordinates
     /// The authority cycle:
     ///   1. Observe memory reality (Ring2 candidates)
     ///   2. Normalize into canonical operations (Ring3)
-    ///   3. Apply back into memory (authoritative patch)
-    ///   4. Verify by re-observing (feedback loop)
-    ///   5. Seal commit once stable
+    ///   3. Gate through attribute ring for interpolation/extrapolation
+    ///   4. Apply back into memory (authoritative patch)
+    ///   5. Verify by re-observing (feedback loop)
+    ///   6. Seal commit once stable
     ///
     /// This is literally control theory: measure → decide → actuate → re-measure.
     ///
     /// If you skip the verification step, you'll "commit lies" that don't actually
     /// take in the game.
     ///
-    /// The coordinator ties the three rings together:
-    ///   - Ring1 (Container): What exists
-    ///   - Ring2 (Info): What was observed/proposed
-    ///   - Ring3 (Authority): What is true
+    /// The coordinator ties the four rings together:
+    ///   - Ring1 (Container): What exists - the ontology
+    ///   - Ring2 (Info): What was observed/proposed - not yet trusted
+    ///   - Ring3 (Authority): What is true - the WAL
+    ///   - Ring4 (Attribute): What to present - gated to game memory
     /// </summary>
     public class RingCoordinator : IDisposable
     {
-        // The three rings
+        // The four rings
         public ContainerRing ContainerRing { get; }
         public InfoRing InfoRing { get; }
         public AuthorityRing AuthorityRing { get; }
+        public AttributeRing AttributeRing { get; }
 
         // Core systems
         public NetIdRegistry NetIdRegistry { get; }
@@ -75,6 +78,7 @@ namespace KenshiOnline.Coordinates
             ContainerRing = new ContainerRing(NetIdRegistry, AuthorityTracker, _config.ContainerEventCapacity);
             InfoRing = new InfoRing(_config.InfoRingCapacity);
             AuthorityRing = new AuthorityRing(_config.AuthorityRingCapacity, _config.SnapshotInterval);
+            AttributeRing = new AttributeRing(AuthorityRing, Clock, _config.GateConfig);
 
             // Frame resolver - gets parent transforms from Container/Authority rings
             _frameResolver = new SimpleFrameResolver((parentId, boneIndex) =>
@@ -127,6 +131,9 @@ namespace KenshiOnline.Coordinates
 
                 // 3. Verify pending corrections
                 ProcessPendingVerifications(result);
+
+                // 4. Process attribute ring frame (gates writes, updates presentation state)
+                AttributeRing.ProcessFrame(Clock.Now.ContinuousTime);
 
                 Interlocked.Increment(ref _cyclesProcessed);
             }
@@ -231,6 +238,9 @@ namespace KenshiOnline.Coordinates
                 InfoRing.MarkProcessed(info.Id, InfoStatus.Accepted);
                 result.Committed++;
                 Interlocked.Increment(ref _commitsGenerated);
+
+                // Push to attribute ring for interpolation/presentation
+                AttributeRing.PushAuthority(info.SubjectId, commit.Value.Tick, commit.Value.Payload);
 
                 // Apply to memory if we have an actuator
                 if (_memoryActuator != null && container.MemoryHandle != IntPtr.Zero)
@@ -558,6 +568,48 @@ namespace KenshiOnline.Coordinates
             };
         }
 
+        /// <summary>
+        /// Get presentation state for rendering (interpolated/extrapolated).
+        /// This is what the game should display - gated through the attribute ring.
+        /// </summary>
+        public PresentationState? GetPresentationState(NetId entityId, double renderTime)
+        {
+            return AttributeRing.GetPresentationState(entityId, renderTime);
+        }
+
+        /// <summary>
+        /// Get presentation state at current render time.
+        /// </summary>
+        public PresentationState? GetPresentationState(NetId entityId)
+        {
+            return AttributeRing.GetPresentationState(entityId, Clock.Now.ContinuousTime);
+        }
+
+        /// <summary>
+        /// Gate a write to game memory through the attribute ring.
+        /// Returns decision on whether the write should proceed.
+        /// </summary>
+        public GateDecision GateWrite(NetId entityId, AttributeKind kind, object value)
+        {
+            return AttributeRing.GateWrite(entityId, kind, value, Clock.Now.ContinuousTime);
+        }
+
+        /// <summary>
+        /// Get interpolated position for smooth rendering.
+        /// </summary>
+        public Vector3? GetInterpolatedPosition(NetId entityId)
+        {
+            return AttributeRing.GetInterpolatedPosition(entityId, Clock.Now.ContinuousTime);
+        }
+
+        /// <summary>
+        /// Get interpolated rotation for smooth rendering.
+        /// </summary>
+        public Quaternion? GetInterpolatedRotation(NetId entityId)
+        {
+            return AttributeRing.GetInterpolatedRotation(entityId, Clock.Now.ContinuousTime);
+        }
+
         #endregion
 
         #region Statistics
@@ -566,6 +618,7 @@ namespace KenshiOnline.Coordinates
         {
             var (infoEnqueued, infoDropped, infoProcessed) = InfoRing.GetStats();
             var (commits, rejected, coalesced) = AuthorityRing.GetStats();
+            var attrStats = AttributeRing.GetStats();
 
             return new CoordinatorStats
             {
@@ -580,7 +633,11 @@ namespace KenshiOnline.Coordinates
                 InfoDropped = infoDropped,
                 AuthorityCommits = commits,
                 AuthorityRejected = rejected,
-                AuthorityCoalesced = coalesced
+                AuthorityCoalesced = coalesced,
+                AttributeInterpolations = attrStats.Interpolations,
+                AttributeExtrapolations = attrStats.Extrapolations,
+                AttributeGatedWrites = attrStats.GatedWrites,
+                AttributeBlockedWrites = attrStats.BlockedWrites
             };
         }
 
@@ -607,6 +664,7 @@ namespace KenshiOnline.Coordinates
         public float AcceptThreshold { get; set; } = 0.8f;
         public float RejectThreshold { get; set; } = 0.2f;
         public float VerificationThreshold { get; set; } = 0.1f; // Max distance for verification pass
+        public GateConfig GateConfig { get; set; } = new GateConfig(); // Attribute ring gating config
     }
 
     /// <summary>
@@ -643,6 +701,17 @@ namespace KenshiOnline.Coordinates
         public long AuthorityCommits { get; set; }
         public long AuthorityRejected { get; set; }
         public long AuthorityCoalesced { get; set; }
+
+        // Attribute ring stats (gating/interpolation)
+        public long AttributeInterpolations { get; set; }
+        public long AttributeExtrapolations { get; set; }
+        public long AttributeGatedWrites { get; set; }
+        public long AttributeBlockedWrites { get; set; }
+
+        public float ExtrapolationRatio =>
+            (AttributeInterpolations + AttributeExtrapolations) > 0
+                ? AttributeExtrapolations / (float)(AttributeInterpolations + AttributeExtrapolations)
+                : 0;
     }
 
     /// <summary>
