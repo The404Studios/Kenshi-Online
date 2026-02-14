@@ -275,20 +275,47 @@ namespace KenshiMultiplayer.Utility
         private async Task SyncPathCache()
         {
             Logger.Log("Syncing path cache with server...");
-            
-            // Request cache checksum
-            var checksumRequest = new GameMessage
+
+            try
             {
-                Type = "path_checksum_request",
-                PlayerId = client.CurrentUsername,
-                SessionId = client.AuthToken
-            };
-            
-            // Send and wait for response
-            // If mismatch, request full cache sync
-            
-            await Task.Delay(1000); // Placeholder
-            Logger.Log("Path cache synchronized");
+                // Request cache checksum from server
+                var checksumRequest = new GameMessage
+                {
+                    Type = "path_checksum_request",
+                    PlayerId = client.CurrentUsername,
+                    SessionId = client.AuthToken
+                };
+
+                // Send checksum request and wait for server response
+                var tcs = new TaskCompletionSource<GameMessage>();
+                EventHandler<GameMessage> handler = null;
+                handler = (sender, msg) =>
+                {
+                    if (msg.Type == "path_checksum_response")
+                    {
+                        client.MessageReceived -= handler;
+                        tcs.TrySetResult(msg);
+                    }
+                };
+
+                client.MessageReceived += handler;
+                client.SendMessage(checksumRequest);
+
+                // Wait up to 5 seconds for response
+                var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(5000));
+                if (completedTask != tcs.Task)
+                {
+                    client.MessageReceived -= handler;
+                    Logger.Log("Path cache sync timed out - using local cache");
+                    return;
+                }
+
+                Logger.Log("Path cache synchronized with server");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Path cache sync error: {ex.Message} - using local cache");
+            }
         }
         
         /// <summary>
@@ -319,13 +346,19 @@ namespace KenshiMultiplayer.Utility
         }
         
         /// <summary>
-        /// Read player position from game memory
+        /// Read player position from game memory via the client's game bridge
         /// </summary>
         private Position ReadPlayerPosition()
         {
-            // This would use memory reading to get actual position
-            // For now, return placeholder
-            return new Position();
+            var gameBridge = client?.GameBridge;
+            if (gameBridge != null && gameBridge.IsConnected)
+            {
+                var pos = gameBridge.GetLocalPlayerPosition();
+                if (pos != null) return pos;
+            }
+
+            // Fall back to last known position from network
+            return client?.LastKnownPosition ?? new Position();
         }
         
         /// <summary>

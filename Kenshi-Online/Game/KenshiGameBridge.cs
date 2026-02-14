@@ -587,6 +587,123 @@ namespace KenshiMultiplayer.Game
             return SpawnPlayer(playerId, playerData, spawnPosition);
         }
 
+        /// <summary>
+        /// Get local player's health from game memory.
+        /// Returns (current, max) or null if unable to read.
+        /// </summary>
+        public (float Current, float Max)? GetLocalPlayerHealth()
+        {
+            if (!isConnected || kenshiProcess == null)
+                return null;
+
+            try
+            {
+                long selectedCharOffset = RuntimeOffsets.SelectedCharacter;
+                int healthOffset = RuntimeOffsets.Character.Health;
+                int maxHealthOffset = RuntimeOffsets.Character.MaxHealth;
+
+                var mainModule = kenshiProcess.MainModule;
+                if (mainModule == null) return null;
+
+                IntPtr baseAddr = mainModule.BaseAddress;
+                IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
+
+                if (playerPtr == IntPtr.Zero)
+                {
+                    long squadListOffset = RuntimeOffsets.PlayerSquadList;
+                    IntPtr squadPtr = ReadPointer(baseAddr + (int)squadListOffset);
+                    if (squadPtr != IntPtr.Zero)
+                        playerPtr = ReadPointer(squadPtr);
+                }
+
+                if (playerPtr == IntPtr.Zero) return null;
+
+                float current = ReadFloat(playerPtr + healthOffset);
+                float max = ReadFloat(playerPtr + maxHealthOffset);
+
+                return (current, max);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"Error reading local player health: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Set local player's health in game memory.
+        /// </summary>
+        public bool SetLocalPlayerHealth(float health)
+        {
+            if (!isConnected || kenshiProcess == null)
+                return false;
+
+            try
+            {
+                long selectedCharOffset = RuntimeOffsets.SelectedCharacter;
+                int healthOffset = RuntimeOffsets.Character.Health;
+
+                var mainModule = kenshiProcess.MainModule;
+                if (mainModule == null) return false;
+
+                IntPtr baseAddr = mainModule.BaseAddress;
+                IntPtr playerPtr = ReadPointer(baseAddr + (int)selectedCharOffset);
+
+                if (playerPtr == IntPtr.Zero)
+                {
+                    long squadListOffset = RuntimeOffsets.PlayerSquadList;
+                    IntPtr squadPtr = ReadPointer(baseAddr + (int)squadListOffset);
+                    if (squadPtr != IntPtr.Zero)
+                        playerPtr = ReadPointer(squadPtr);
+                }
+
+                if (playerPtr == IntPtr.Zero) return false;
+
+                WriteFloat(playerPtr + healthOffset, health);
+                Logger.Log(LOG_PREFIX + $"Set local player health to {health:F1}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"Error setting local player health: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Get comprehensive local player data from game memory.
+        /// </summary>
+        public PlayerData GetLocalPlayerData()
+        {
+            if (!isConnected || kenshiProcess == null)
+                return null;
+
+            try
+            {
+                var position = GetLocalPlayerPosition();
+                var health = GetLocalPlayerHealth();
+
+                if (position == null && health == null)
+                    return null;
+
+                var data = new PlayerData
+                {
+                    PlayerId = "local",
+                    DisplayName = "Local Player",
+                    Position = position ?? new Position(),
+                    Health = (int)(health?.Current ?? 100),
+                    MaxHealth = (int)(health?.Max ?? 100)
+                };
+
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LOG_PREFIX + $"Error reading local player data: {ex.Message}");
+                return null;
+            }
+        }
+
         #endregion
 
         #region Game Commands

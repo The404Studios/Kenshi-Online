@@ -88,6 +88,7 @@ namespace KenshiMultiplayer
             // Step 3: Initialize game bridge
             Console.Write("Initializing game bridge... ");
             gameBridge = new KenshiGameBridge();
+            networkClient.GameBridge = gameBridge;
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("OK");
             Console.ResetColor();
@@ -138,7 +139,6 @@ namespace KenshiMultiplayer
                         await TrainerMenu();
                         break;
                     case "9":
-                    case "0":
                         await Disconnect();
                         return;
                     case "0":
@@ -947,11 +947,35 @@ namespace KenshiMultiplayer
 
             Console.Write($"Setting health to {health}... ");
 
-            // Note: This requires implementing SetLocalPlayerHealth in KenshiGameBridge
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("NOT IMPLEMENTED YET");
-            Console.ResetColor();
-            Console.WriteLine("Health modification requires additional memory offsets.");
+            if (gameBridge == null || !gameBridge.IsConnected)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("FAILED - Not connected to Kenshi");
+                Console.ResetColor();
+                return;
+            }
+
+            bool success = gameBridge.SetLocalPlayerHealth(health);
+            if (success)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("OK");
+                Console.ResetColor();
+
+                // Verify by reading back
+                var healthData = gameBridge.GetLocalPlayerHealth();
+                if (healthData.HasValue)
+                {
+                    Console.WriteLine($"Verified: Health = {healthData.Value.Current:F1} / {healthData.Value.Max:F1}");
+                }
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("FAILED");
+                Console.ResetColor();
+                Console.WriteLine("Could not write to player health memory. Character may not be loaded.");
+            }
         }
 
         private static void TrainerViewOffsets()

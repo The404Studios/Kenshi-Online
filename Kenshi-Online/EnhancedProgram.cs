@@ -539,6 +539,8 @@ namespace KenshiMultiplayer
             string cachePath = "./cache";
             Directory.CreateDirectory(cachePath);
             client = new EnhancedClient(cachePath);
+            if (gameBridge != null)
+                client.GameBridge = gameBridge;
 
             // Login
             Console.WriteLine("\nSTEP 4: Account");

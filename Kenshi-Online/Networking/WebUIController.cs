@@ -1427,36 +1427,24 @@ namespace KenshiMultiplayer.Networking
 
             try
             {
-                // This would need to be implemented in the EnhancedClient class
-                // For now, return dummy data
+                var inventory = client.TrackedInventory;
+                var items = new List<Dictionary<string, object>>();
+
+                foreach (var item in inventory)
+                {
+                    items.Add(new Dictionary<string, object>
+                    {
+                        { "itemId", item.ItemId ?? "" },
+                        { "itemName", item.ItemName ?? "Unknown" },
+                        { "quantity", item.Quantity },
+                        { "condition", item.Condition }
+                    });
+                }
+
                 return new Dictionary<string, object>
                 {
                     { "success", true },
-                    { "items", new List<Dictionary<string, object>>
-                        {
-                            new Dictionary<string, object>
-                            {
-                                { "itemId", "item1" },
-                                { "itemName", "Katana" },
-                                { "quantity", 1 },
-                                { "condition", 0.85 }
-                            },
-                            new Dictionary<string, object>
-                            {
-                                { "itemId", "item2" },
-                                { "itemName", "Dried Meat" },
-                                { "quantity", 5 },
-                                { "condition", 1.0 }
-                            },
-                            new Dictionary<string, object>
-                            {
-                                { "itemId", "item3" },
-                                { "itemName", "Iron Plates" },
-                                { "quantity", 15 },
-                                { "condition", 1.0 }
-                            }
-                        }
-                    }
+                    { "items", items }
                 };
             }
             catch (Exception ex)
@@ -1479,19 +1467,34 @@ namespace KenshiMultiplayer.Networking
 
             try
             {
-                // This would need to be implemented in the EnhancedClient class
-                // For now, return dummy data
+                var playerData = client.LastKnownPlayerData;
+                var gameBridge = client.GameBridge;
+
+                // Try to get live data from game memory first
+                int health = (int)(playerData?.Health ?? 0);
+                int maxHealth = (int)(playerData?.MaxHealth ?? 100);
+
+                if (gameBridge != null && gameBridge.IsConnected)
+                {
+                    var liveHealth = gameBridge.GetLocalPlayerHealth();
+                    if (liveHealth.HasValue)
+                    {
+                        health = (int)liveHealth.Value.Current;
+                        maxHealth = (int)liveHealth.Value.Max;
+                    }
+                }
+
                 return new Dictionary<string, object>
                 {
                     { "success", true },
                     { "player", new Dictionary<string, object>
                         {
-                            { "displayName", client.CurrentUsername },
-                            { "health", 85 },
-                            { "maxHealth", 100 },
-                            { "level", 12 },
-                            { "hunger", 80 },
-                            { "thirst", 75 }
+                            { "displayName", client.CurrentUsername ?? "Unknown" },
+                            { "health", health },
+                            { "maxHealth", maxHealth },
+                            { "level", playerData?.Level ?? 1 },
+                            { "hunger", playerData?.Hunger ?? 0 },
+                            { "thirst", playerData?.Thirst ?? 0 }
                         }
                     }
                 };
@@ -1516,16 +1519,45 @@ namespace KenshiMultiplayer.Networking
 
             try
             {
-                // This would require adding position tracking to the EnhancedClient
-                // For now, return dummy data
+                Position position = null;
+                var gameBridge = client.GameBridge;
+
+                // Try live game memory first
+                if (gameBridge != null && gameBridge.IsConnected)
+                {
+                    position = gameBridge.GetLocalPlayerPosition();
+                }
+
+                // Fall back to last known network position
+                if (position == null)
+                {
+                    position = client.LastKnownPosition;
+                }
+
+                if (position == null)
+                {
+                    return new Dictionary<string, object>
+                    {
+                        { "success", true },
+                        { "position", new Dictionary<string, object>
+                            {
+                                { "x", 0.0 },
+                                { "y", 0.0 },
+                                { "z", 0.0 }
+                            }
+                        },
+                        { "note", "Position not yet available" }
+                    };
+                }
+
                 return new Dictionary<string, object>
                 {
                     { "success", true },
                     { "position", new Dictionary<string, object>
                         {
-                            { "x", 123.45 },
-                            { "y", 67.89 },
-                            { "z", 0 }
+                            { "x", (double)position.X },
+                            { "y", (double)position.Y },
+                            { "z", (double)position.Z }
                         }
                     }
                 };
@@ -1571,33 +1603,42 @@ namespace KenshiMultiplayer.Networking
         {
             try
             {
-                // Implement mod detection - this would need access to the Kenshi game directory
-                // For now, return dummy data
+                var mods = new List<Dictionary<string, object>>();
+
+                // Try to detect mods from common Kenshi mod directories
+                string[] modSearchPaths = {
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                        "Steam", "steamapps", "common", "Kenshi", "mods"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                        "Steam", "steamapps", "workshop", "content", "233860"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "kenshi", "mods")
+                };
+
+                foreach (var modPath in modSearchPaths)
+                {
+                    if (!Directory.Exists(modPath)) continue;
+
+                    foreach (var modDir in Directory.GetDirectories(modPath))
+                    {
+                        var modName = Path.GetFileName(modDir);
+                        // Check for .mod files in the directory
+                        var modFiles = Directory.GetFiles(modDir, "*.mod", SearchOption.TopDirectoryOnly);
+                        bool hasMod = modFiles.Length > 0;
+
+                        mods.Add(new Dictionary<string, object>
+                        {
+                            { "name", modName },
+                            { "enabled", hasMod },
+                            { "path", modDir }
+                        });
+                    }
+                }
+
                 return new Dictionary<string, object>
                 {
                     { "success", true },
-                    { "mods", new List<Dictionary<string, object>>
-                        {
-                            new Dictionary<string, object>
-                            {
-                                { "name", "Reactive World" },
-                                { "enabled", true },
-                                { "path", "mods/reactive_world" }
-                            },
-                            new Dictionary<string, object>
-                            {
-                                { "name", "Kaizo" },
-                                { "enabled", true },
-                                { "path", "mods/kaizo" }
-                            },
-                            new Dictionary<string, object>
-                            {
-                                { "name", "Dark UI" },
-                                { "enabled", true },
-                                { "path", "mods/dark_ui" }
-                            }
-                        }
-                    }
+                    { "mods", mods }
                 };
             }
             catch (Exception ex)

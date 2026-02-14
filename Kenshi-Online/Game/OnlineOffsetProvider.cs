@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Text;
+using KenshiMultiplayer.Utility;
 
 namespace KenshiMultiplayer.Game
 {
@@ -25,11 +26,11 @@ namespace KenshiMultiplayer.Game
         public static OnlineOffsetProvider Instance => _instance ??= new OnlineOffsetProvider();
 
         // Default offset server URLs (can be configured)
+        // Falls back through sources in order: GitHub raw -> API -> local cache -> hardcoded
         private readonly List<string> _offsetServers = new()
         {
             "https://raw.githubusercontent.com/The404Studios/Kenshi-Online/main/offsets/kenshi_offsets.json",
-            "https://kenshi-online.the404studios.com/api/offsets",
-            "https://pastebin.com/raw/PLACEHOLDER" // Backup pastebin URL
+            "https://kenshi-online.the404studios.com/api/offsets"
         };
 
         private const string CACHE_FILE = "kenshi_offsets_cache.json";
@@ -295,6 +296,14 @@ namespace KenshiMultiplayer.Game
 
             // Return hardcoded defaults
             return GameOffsetsData.CreateHardcodedDefaults();
+        }
+
+        /// <summary>
+        /// Get current function offsets (from online database or null)
+        /// </summary>
+        public FunctionOffsetsData GetCurrentFunctionOffsets()
+        {
+            return _cachedOffsets?.FunctionOffsets;
         }
 
         /// <summary>
@@ -769,7 +778,7 @@ namespace KenshiMultiplayer.Game
             {
                 var db = provider.GetCurrentOffsets();
                 _offsets = db;
-                _functions = FunctionOffsetsData.CreateHardcodedDefaults(); // TODO: Load from online
+                _functions = provider.GetCurrentFunctionOffsets() ?? FunctionOffsetsData.CreateHardcodedDefaults();
                 _structures = new StructureOffsetsData
                 {
                     Character = new CharacterStructureOffsets()

@@ -47,6 +47,85 @@ namespace KenshiMultiplayer.Networking
             serverContext.OnPlayerSaveUpdated += OnPlayerSaveUpdated;
         }
 
+        // Game state manager integration
+        private KenshiMultiplayer.Game.GameStateManager gameStateManager;
+
+        /// <summary>
+        /// Integrate GameStateManager with the server's authority and save systems.
+        /// Called during startup to wire the game state into the server.
+        /// </summary>
+        public void SetGameStateManager(KenshiMultiplayer.Game.GameStateManager gsm, ServerContext context, string worldName)
+        {
+            gameStateManager = gsm ?? throw new ArgumentNullException(nameof(gsm));
+
+            // Initialize the save system via GameStateManager
+            gsm.InitializeWithSaveSystem(context, worldName);
+
+            // Wire up game state events to broadcast to clients
+            gsm.OnPlayerStateChanged += (playerId, playerData) =>
+            {
+                BroadcastPlayerState(playerId, playerData);
+            };
+
+            gsm.OnPlayerJoined += (playerId, playerData) =>
+            {
+                Logger.Log($"Player {playerId} ({playerData.DisplayName}) joined the game");
+            };
+
+            gsm.OnPlayerLeft += (playerId) =>
+            {
+                Logger.Log($"Player {playerId} left the game");
+            };
+
+            Logger.Log($"GameStateManager integrated with server (world: {worldName})");
+        }
+
+        /// <summary>
+        /// Get the game state manager (if set)
+        /// </summary>
+        public KenshiMultiplayer.Game.GameStateManager GameStateManager => gameStateManager;
+
+        private void BroadcastPlayerState(string playerId, Data.PlayerData playerData)
+        {
+            if (playerData?.Position == null) return;
+
+            var stateMsg = new GameMessage
+            {
+                Type = MessageType.Position,
+                PlayerId = playerId,
+                Data = new Dictionary<string, object>
+                {
+                    { "X", playerData.Position.X },
+                    { "Y", playerData.Position.Y },
+                    { "Z", playerData.Position.Z },
+                    { "RotY", playerData.Position.RotationY },
+                    { "Health", playerData.Health },
+                    { "State", playerData.CurrentState.ToString() }
+                }
+            };
+
+            BroadcastToAllExcept(stateMsg, playerId);
+        }
+
+        private void BroadcastToAllExcept(GameMessage message, string excludePlayerId)
+        {
+            string json = message.ToJson();
+            lock (clientsLock)
+            {
+                foreach (var kvp in playerClients)
+                {
+                    if (kvp.Key != excludePlayerId)
+                    {
+                        try
+                        {
+                            SendMessageToClient(kvp.Value, json);
+                        }
+                        catch { /* client may have disconnected */ }
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// Handle authority rejection - notify client
         /// </summary>

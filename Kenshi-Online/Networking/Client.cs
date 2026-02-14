@@ -34,6 +34,14 @@ namespace KenshiMultiplayer.Networking
         private string playerId;
         private string sessionId;
 
+        // Game bridge reference for real game data access
+        private KenshiMultiplayer.Game.KenshiGameBridge gameBridge;
+
+        // Tracked player state from server updates
+        private PlayerData lastKnownPlayerData;
+        private Position lastKnownPosition;
+        private readonly List<InventoryItem> trackedInventory = new List<InventoryItem>();
+
         // Client configuration
         public string ServerAddress { get; private set; }
         public int ServerPort { get; private set; }
@@ -44,6 +52,30 @@ namespace KenshiMultiplayer.Networking
         public bool IsLoggedIn => !string.IsNullOrEmpty(authToken);
         public bool IsWebInterfaceEnabled => isWebInterfaceEnabled;
         public bool IsConnected => client?.Connected ?? false;
+
+        /// <summary>
+        /// Get/set the game bridge for accessing real game memory data
+        /// </summary>
+        public KenshiMultiplayer.Game.KenshiGameBridge GameBridge
+        {
+            get => gameBridge;
+            set => gameBridge = value;
+        }
+
+        /// <summary>
+        /// Last known player data from game memory or server
+        /// </summary>
+        public PlayerData LastKnownPlayerData => lastKnownPlayerData;
+
+        /// <summary>
+        /// Last known player position
+        /// </summary>
+        public Position LastKnownPosition => lastKnownPosition;
+
+        /// <summary>
+        /// Current tracked inventory
+        /// </summary>
+        public IReadOnlyList<InventoryItem> TrackedInventory => trackedInventory;
 
         public event EventHandler<GameMessage> MessageReceived;
 

@@ -1164,10 +1164,10 @@ namespace KenshiMultiplayer.Game
     #region Network Sync Structures
 
     /// <summary>
-    /// Lightweight player state for network synchronization
+    /// Lightweight player state packet for network synchronization (binary memory layout)
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct PlayerState
+    public struct PlayerStatePacket
     {
         public uint CharacterId;
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]

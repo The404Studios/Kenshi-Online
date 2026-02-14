@@ -275,18 +275,61 @@ namespace KenshiMultiplayer.Managers
                     IsEnabled = false
                 };
 
-                // Try to extract metadata from the .mod file
-                // Kenshi mod files are typically binary files, but some might have a header with info
+                // Extract metadata from the .mod file
+                // Kenshi .mod files use a custom binary format with an FCS header.
+                // Structure: magic (4 bytes) + version (4 bytes) + data sections
                 try
                 {
+                    var fileInfo = new FileInfo(modFile);
+                    mod.FileSize = fileInfo.Length;
+                    mod.LastModified = fileInfo.LastWriteTime;
+
                     using (var stream = new FileStream(modFile, FileMode.Open, FileAccess.Read))
                     using (var reader = new BinaryReader(stream))
                     {
-                        // Read first bytes to try to identify the mod format
-                        byte[] header = reader.ReadBytes(16);
+                        if (stream.Length >= 8)
+                        {
+                        // Read header magic bytes
+                        byte[] magic = reader.ReadBytes(4);
+                        uint version = reader.ReadUInt32();
 
-                        // Implementation would depend on the actual format of .mod files
-                        // This is a placeholder that would need to be expanded based on the format
+                        // Check for known Kenshi mod format signatures
+                        string magicStr = System.Text.Encoding.ASCII.GetString(magic);
+                        if (magicStr == "FCS\0" || magicStr.StartsWith("FCS"))
+                        {
+                            mod.FormatVersion = (int)version;
+
+                            // FCS format: after header, there may be string table entries
+                            // Try to read mod description if present in the data section
+                            if (stream.Length > 32)
+                            {
+                                // Skip to potential description offset
+                                reader.ReadBytes(8); // Skip padding/counts
+                                uint stringTableOffset = reader.ReadUInt32();
+
+                                if (stringTableOffset > 0 && stringTableOffset < stream.Length)
+                                {
+                                    stream.Seek(stringTableOffset, SeekOrigin.Begin);
+                                    // Read null-terminated string for description
+                                    var descBytes = new List<byte>();
+                                    byte b;
+                                    while (stream.Position < stream.Length && (b = reader.ReadByte()) != 0 && descBytes.Count < 256)
+                                    {
+                                        descBytes.Add(b);
+                                    }
+                                    if (descBytes.Count > 0)
+                                    {
+                                        mod.Description = System.Text.Encoding.UTF8.GetString(descBytes.ToArray());
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Unknown format - still record what we can
+                            mod.Description = $"Unknown mod format (header: {BitConverter.ToString(magic)})";
+                        }
+                        } // end if (stream.Length >= 8)
                     }
                 }
                 catch (Exception ex)
@@ -488,6 +531,8 @@ namespace KenshiMultiplayer.Managers
         public bool IsEnabled { get; set; }
         public List<string> Dependencies { get; set; } = new List<string>();
         public DateTime? LastUpdated { get; set; }
+        public DateTime? LastModified { get; set; }
         public long FileSize { get; set; }
+        public int FormatVersion { get; set; }
     }
 }

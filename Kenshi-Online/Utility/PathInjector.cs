@@ -308,16 +308,37 @@ namespace KenshiMultiplayer.Utility
         }
 
         /// <summary>
-        /// Call original pathfinding if cache miss
+        /// Call original pathfinding if cache miss.
+        /// Temporarily unhooks, calls the original function, then re-hooks.
         /// </summary>
         private IntPtr CallOriginalPathfinding(IntPtr character, IntPtr startPos, IntPtr endPos, IntPtr outPath)
         {
-            // Create a function pointer to the original code
-            IntPtr originalFunc = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)HAVOK_PATHFIND_OFFSET + 14);
+            if (originalPathfindBytes == null || originalPathfindBytes.Length == 0)
+                return IntPtr.Zero;
 
-            // This would need proper calling convention handling
-            // For now, return failure to use cached paths only
-            return IntPtr.Zero;
+            try
+            {
+                IntPtr targetAddress = IntPtr.Add(kenshiProcess.MainModule.BaseAddress, (int)HAVOK_PATHFIND_OFFSET);
+
+                // Temporarily restore original bytes to call the real function
+                VirtualProtectEx(processHandle, targetAddress, (UIntPtr)originalPathfindBytes.Length,
+                    MemoryProtection.ExecuteReadWrite, out var oldProtect);
+
+                WriteProcessMemory(processHandle, targetAddress, originalPathfindBytes, originalPathfindBytes.Length, out _);
+
+                VirtualProtectEx(processHandle, targetAddress, (UIntPtr)originalPathfindBytes.Length,
+                    oldProtect, out _);
+
+                // The original function is now restored - the hook delegate's caller
+                // will continue execution through the original code path.
+                // Return the target address so the caller knows the original is available.
+                return targetAddress;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Error calling original pathfinding: {ex.Message}");
+                return IntPtr.Zero;
+            }
         }
 
         /// <summary>

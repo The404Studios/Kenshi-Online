@@ -150,9 +150,9 @@ namespace KenshiOnline.Coordinates
 
             var lastCommit = entityState.LastCommit;
             if (lastCommit == null) return false;
-            if (lastCommit.Tick != tick) return false;
-            if (lastCommit.Operation != CommitOp.Set) return false;
-            if (lastCommit.Payload is not TransformPayload) return false;
+            if (lastCommit.Value.Tick != tick) return false;
+            if (lastCommit.Value.Operation != CommitOp.Set) return false;
+            if (lastCommit.Value.Payload is not TransformPayload) return false;
 
             // Same tick, same type - coalesce by updating in place
             entityState.UpdateLastCommit(payload);
