@@ -1,0 +1,43 @@
+{
+  "struct_offsets": {
+    "health_chain_1": "0x2B8",
+    "health_chain_2": "0x5F8",
+    "health_base": "0x40",
+    "position": "0xA0",
+    "rotation": "0xB0",
+    "name": "0x10",
+    "faction": "0x50",
+    "inventory": "0x200",
+    "stats": "0x300",
+    "equipment": "0x380",
+    "scene_node": "0x100",
+    "ai_package": "0x1A0",
+    "current_task": "0x400",
+    "is_alive": "0x408",
+    "is_player_controlled": "0x410",
+    "squad_name": "0x10",
+    "squad_member_list": "0x28",
+    "squad_member_count": "0x30",
+    "squad_faction_id": "0x38",
+    "squad_is_player": "0x40",
+    "world_time_of_day": "0x48",
+    "world_game_speed": "0x50",
+    "world_weather": "0x58",
+    "world_character_list": "0x60",
+    "world_building_list": "0x68",
+    "world_zone_manager": "0x70"
+  },
+  "singletons": {
+    "GAME_VERSION": {
+      "rva": "0x21173C8",
+      "instr_rva": "0x123A3C",
+      "type": "MOV"
+    },
+    "SQUAD_MANAGER": {
+      "rva": "0x21173C8",
+      "instr_rva": "0x149E09D",
+      "type": "MOV"
+    }
+  },
+  "vtables": {}
+}
