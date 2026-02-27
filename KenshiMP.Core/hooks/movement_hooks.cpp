@@ -4,6 +4,7 @@
 #include "kmp/hook_manager.h"
 #include "kmp/protocol.h"
 #include "kmp/constants.h"
+#include "kmp/safe_hook.h"
 #include <spdlog/spdlog.h>
 #include <chrono>
 
@@ -16,14 +17,38 @@ using MoveToFn = void(__fastcall*)(void* character, float x, float y, float z, i
 static SetPositionFn s_origSetPosition = nullptr;
 static MoveToFn      s_origMoveTo      = nullptr;
 
+// ── Hook Health ──
+static HookHealth s_setPosHealth{"CharacterSetPosition"};
+static HookHealth s_moveToHealth{"CharacterMoveTo"};
+
+// ── Diagnostic Counters ──
+static std::atomic<int> s_setPosCount{0};
+static std::atomic<int> s_moveToCount{0};
+static std::atomic<int> s_posUpdatesSent{0};
+
 // Position send throttle
 static auto s_lastPositionSend = std::chrono::steady_clock::now();
 
 // ── Hooks ──
 
 static void __fastcall Hook_SetPosition(void* character, float x, float y, float z) {
-    // Call original first
-    s_origSetPosition(character, x, y, z);
+    int callNum = s_setPosCount.fetch_add(1) + 1;
+
+    // Log first 50 calls and then every 1000th call for diagnostics
+    if (callNum <= 50 || callNum % 1000 == 0) {
+        spdlog::debug("movement_hooks: SetPosition #{} ptr=0x{:X} pos=({:.1f},{:.1f},{:.1f})",
+                      callNum, reinterpret_cast<uintptr_t>(character), x, y, z);
+    }
+
+    // SEH-protected trampoline call
+    if (!SafeCall_Void_PtrFFF(reinterpret_cast<void*>(s_origSetPosition),
+                               character, x, y, z, &s_setPosHealth)) {
+        if (s_setPosHealth.trampolineFailed.load()) {
+            spdlog::error("movement_hooks: SetPosition trampoline CRASHED! Hook disabled. "
+                          "Total calls before crash: {}", callNum);
+        }
+        return;
+    }
 
     auto& core = Core::Get();
     if (!core.IsConnected()) return;
@@ -92,14 +117,32 @@ static void __fastcall Hook_SetPosition(void* character, float x, float y, float
 
     core.GetClient().SendUnreliable(writer.Data(), writer.Size());
 
+    int sent = s_posUpdatesSent.fetch_add(1) + 1;
+    if (sent <= 20 || sent % 100 == 0) {
+        spdlog::debug("movement_hooks: Sent position update #{} netId={} pos=({:.1f},{:.1f},{:.1f}) speed={:.1f}",
+                      sent, netId, x, y, z, moveSpeed);
+    }
+
     // Update local tracking
     registry.UpdatePosition(netId, newPos);
     registry.UpdateRotation(netId, rotation);
 }
 
 static void __fastcall Hook_MoveTo(void* character, float x, float y, float z, int moveType) {
-    // Call original
-    s_origMoveTo(character, x, y, z, moveType);
+    int callNum = s_moveToCount.fetch_add(1) + 1;
+    if (callNum <= 50 || callNum % 1000 == 0) {
+        spdlog::debug("movement_hooks: MoveTo #{} ptr=0x{:X} target=({:.1f},{:.1f},{:.1f}) type={}",
+                      callNum, reinterpret_cast<uintptr_t>(character), x, y, z, moveType);
+    }
+
+    // SEH-protected trampoline call
+    if (!SafeCall_Void_PtrFFFI(reinterpret_cast<void*>(s_origMoveTo),
+                                character, x, y, z, moveType, &s_moveToHealth)) {
+        if (s_moveToHealth.trampolineFailed.load()) {
+            spdlog::error("movement_hooks: MoveTo trampoline CRASHED! Hook disabled.");
+        }
+        return;
+    }
 
     auto& core = Core::Get();
     if (!core.IsConnected()) return;

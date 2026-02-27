@@ -33,11 +33,15 @@ public:
 
     bool IsConnected() const { return m_connected; }
     bool IsHost() const { return m_isHost; }
+    bool IsGameLoaded() const { return m_gameLoaded; }
     PlayerID GetLocalPlayerId() const { return m_localPlayerId; }
 
     void SetConnected(bool connected) { m_connected = connected; }
     void SetLocalPlayerId(PlayerID id) { m_localPlayerId = id; }
     void SetIsHost(bool host) { m_isHost = host; }
+
+    // Called once when the game world has loaded (factory captured by entity_hooks)
+    void OnGameLoaded();
 
     // Called from game thread hooks
     void OnGameTick(float deltaTime);
@@ -70,6 +74,7 @@ private:
 
     std::atomic<bool> m_running{false};
     std::atomic<bool> m_connected{false};
+    std::atomic<bool> m_gameLoaded{false};
     bool              m_isHost = false;
     bool              m_timeHookActive = false;
     PlayerID          m_localPlayerId = 0;

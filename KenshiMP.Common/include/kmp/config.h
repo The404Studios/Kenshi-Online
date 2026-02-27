@@ -9,7 +9,7 @@ struct ClientConfig {
     std::string playerName   = "Player";
     std::string lastServer   = "127.0.0.1";
     uint16_t    lastPort     = KMP_DEFAULT_PORT;
-    bool        autoConnect  = false;
+    bool        autoConnect  = true;
     float       overlayScale = 1.0f;
 
     bool Load(const std::string& path);

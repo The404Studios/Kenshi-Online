@@ -184,6 +184,11 @@ void GameServer::HandlePacket(ENetPeer* peer, const uint8_t* data, size_t size, 
         if (player) HandleEntityDespawnReq(*player, reader);
         break;
     }
+    case MessageType::C2S_EquipmentUpdate: {
+        auto* player = GetPlayer(peer);
+        if (player) HandleEquipmentUpdate(*player, reader);
+        break;
+    }
     case MessageType::C2S_ZoneRequest: {
         auto* player = GetPlayer(peer);
         if (player) HandleZoneRequest(*player, reader);
@@ -626,6 +631,31 @@ void GameServer::HandleEntityDespawnReq(ConnectedPlayer& player, PacketReader& r
     Broadcast(writer.Data(), writer.Size(), KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
 }
 
+void GameServer::HandleEquipmentUpdate(ConnectedPlayer& player, PacketReader& reader) {
+    MsgEquipmentUpdate msg;
+    if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+    // Validate entity exists and is owned by this player
+    auto it = m_entities.find(msg.entityId);
+    if (it == m_entities.end() || it->second.owner != player.id) return;
+
+    // Validate slot
+    if (msg.slot >= 14) return;
+
+    // Update server state
+    it->second.equipment[msg.slot] = msg.itemTemplateId;
+
+    spdlog::debug("GameServer: Equipment update from '{}': entity={} slot={} item={}",
+                  player.name, msg.entityId, msg.slot, msg.itemTemplateId);
+
+    // Broadcast to all other players
+    PacketWriter writer;
+    writer.WriteHeader(MessageType::S2C_EquipmentUpdate);
+    writer.WriteRaw(&msg, sizeof(msg));
+    BroadcastExcept(player.id, writer.Data(), writer.Size(),
+                   KMP_CHANNEL_RELIABLE_UNORDERED, ENET_PACKET_FLAG_RELIABLE);
+}
+
 void GameServer::HandleZoneRequest(ConnectedPlayer& player, PacketReader& reader) {
     int32_t zoneX, zoneY;
     if (!reader.ReadI32(zoneX) || !reader.ReadI32(zoneY)) return;
@@ -687,6 +717,22 @@ void GameServer::SendWorldSnapshot(ConnectedPlayer& player) {
 
         ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
         enet_peer_send(player.peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
+
+        // Send equipment for each non-zero slot
+        for (int slot = 0; slot < 14; slot++) {
+            if (entity.equipment[slot] != 0) {
+                PacketWriter equipWriter;
+                equipWriter.WriteHeader(MessageType::S2C_EquipmentUpdate);
+                MsgEquipmentUpdate equipMsg{};
+                equipMsg.entityId = entity.id;
+                equipMsg.slot = static_cast<uint8_t>(slot);
+                equipMsg.itemTemplateId = entity.equipment[slot];
+                equipWriter.WriteRaw(&equipMsg, sizeof(equipMsg));
+
+                ENetPacket* equipPkt = enet_packet_create(equipWriter.Data(), equipWriter.Size(), ENET_PACKET_FLAG_RELIABLE);
+                enet_peer_send(player.peer, KMP_CHANNEL_RELIABLE_UNORDERED, equipPkt);
+            }
+        }
     }
 
     spdlog::info("GameServer: Sent {} entities to player '{}'", m_entities.size(), player.name);

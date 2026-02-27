@@ -3,6 +3,7 @@ add_library(KenshiMP.Scanner STATIC
     src/patterns.cpp
     src/memory.cpp
     src/hook_manager.cpp
+    src/function_analyzer.cpp
 )
 
 target_include_directories(KenshiMP.Scanner PUBLIC include)

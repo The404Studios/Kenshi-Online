@@ -50,6 +50,7 @@ enum class MessageType : uint8_t {
     S2C_StatUpdate        = 0x50,
     S2C_HealthUpdate      = 0x51,
     S2C_EquipmentUpdate   = 0x52,
+    C2S_EquipmentUpdate   = 0x53,
 
     // Inventory (Channel 1)
     C2S_ItemPickup        = 0x60,

@@ -56,6 +56,9 @@ private:
     void RenderBrowserPage();
     void RenderSettingsPage();
 
+    // Pre-game: button on Kenshi's main menu
+    void RenderMultiplayerButton();
+
     // In-game panels
     void RenderHUD();
     void RenderChat();
@@ -102,12 +105,19 @@ private:
     bool m_refreshing = false;
 
     // Main menu
-    bool     m_mainMenuOpen = true;  // Shown on startup
+    bool     m_mainMenuOpen = false;  // Not shown until user clicks MULTIPLAYER
     bool     m_firstFrame = true;
     MenuPage m_menuPage = MenuPage::Main;
     char     m_settingsName[32] = "Player";
-    bool     m_settingsAutoConnect = false;
+    bool     m_settingsAutoConnect = true;
     char     m_statusMessage[256] = {};
+
+    // Auto-connect on game load
+    bool     m_autoConnectPending = false;  // True = connect when game loads
+    bool     m_autoConnectDone = false;     // True = already attempted
+
+    // Hosting
+    bool     m_hostingServer = false;       // True if we launched the server process
 
     // Debug
     bool m_debugOpen = false;

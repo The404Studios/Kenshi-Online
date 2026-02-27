@@ -302,4 +302,9 @@ class PatternScanner;
 // Resolve game function pointers using patterns + runtime string fallback
 bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs);
 
+// Re-run global pointer discovery after game has loaded.
+// Call this when PlayerBase/GameWorldSingleton are still 0 or invalid
+// after the game has had time to initialize its globals.
+bool RetryGlobalDiscovery(const PatternScanner& scanner, GameFunctions& funcs);
+
 } // namespace kmp

@@ -95,6 +95,53 @@ void EntityRegistry::UpdateRotation(EntityID netId, const Quat& rot) {
     }
 }
 
+void EntityRegistry::UpdateEquipment(EntityID netId, int slot, uint32_t itemTemplateId) {
+    std::unique_lock lock(m_mutex);
+    auto it = m_entities.find(netId);
+    if (it != m_entities.end() && slot >= 0 && slot < 14) {
+        it->second.lastEquipment[slot] = itemTemplateId;
+    }
+}
+
+bool EntityRegistry::RemapEntityId(EntityID oldId, EntityID newId) {
+    std::unique_lock lock(m_mutex);
+    auto it = m_entities.find(oldId);
+    if (it == m_entities.end()) return false;
+    if (m_entities.count(newId) > 0) return false; // newId already taken
+
+    EntityInfo info = it->second;
+    info.netId = newId;
+
+    // Update ptr→id mapping
+    if (info.gameObject) {
+        m_ptrToId[info.gameObject] = newId;
+    }
+
+    m_entities.erase(it);
+    m_entities[newId] = info;
+
+    // Keep our local ID counter ahead of server IDs
+    if (newId >= m_nextId) m_nextId = newId + 1;
+
+    return true;
+}
+
+EntityID EntityRegistry::FindLocalEntityNear(const Vec3& pos, PlayerID owner, float maxDist) const {
+    std::shared_lock lock(m_mutex);
+    EntityID bestId = INVALID_ENTITY;
+    float bestDist = maxDist;
+    for (auto& [id, info] : m_entities) {
+        if (info.isRemote) continue;
+        if (info.ownerPlayerId != owner) continue;
+        float d = info.lastPosition.DistanceTo(pos);
+        if (d < bestDist) {
+            bestDist = d;
+            bestId = id;
+        }
+    }
+    return bestId;
+}
+
 void EntityRegistry::Unregister(EntityID netId) {
     std::unique_lock lock(m_mutex);
     auto it = m_entities.find(netId);

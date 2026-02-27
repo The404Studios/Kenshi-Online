@@ -16,6 +16,7 @@ struct EntityInfo {
     Quat        lastRotation;
     uint64_t    lastUpdateTick = 0;
     bool        isRemote = false; // True = controlled by another player/server
+    uint32_t    lastEquipment[14] = {};  // Last-known equipment per slot for diff detection
 };
 
 class EntityRegistry {
@@ -41,6 +42,17 @@ public:
     // Update position tracking
     void UpdatePosition(EntityID netId, const Vec3& pos);
     void UpdateRotation(EntityID netId, const Quat& rot);
+
+    // Update equipment tracking for a single slot
+    void UpdateEquipment(EntityID netId, int slot, uint32_t itemTemplateId);
+
+    // Remap a local entity ID to a new server-assigned ID.
+    // Preserves the game object, owner, and all state.
+    bool RemapEntityId(EntityID oldId, EntityID newId);
+
+    // Find a local (non-remote) entity near a given position owned by a specific player.
+    // Returns INVALID_ENTITY if none found.
+    EntityID FindLocalEntityNear(const Vec3& pos, PlayerID owner, float maxDist = 5.0f) const;
 
     // Remove entity
     void Unregister(EntityID netId);

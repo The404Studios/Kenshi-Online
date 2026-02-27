@@ -1,5 +1,6 @@
 #include "overlay.h"
 #include "../core.h"
+#include "../hooks/entity_hooks.h"
 #include "../game/game_types.h"
 #include "kmp/protocol.h"
 #include "kmp/messages.h"
@@ -8,6 +9,7 @@
 #include <spdlog/spdlog.h>
 #include <chrono>
 #include <string>
+#include <Windows.h>
 
 namespace kmp {
 
@@ -38,19 +40,31 @@ void Overlay::Render() {
         strncpy(m_serverAddress, config.lastServer.c_str(), sizeof(m_serverAddress) - 1);
         snprintf(m_serverPort, sizeof(m_serverPort), "%d", config.lastPort);
         m_settingsAutoConnect = config.autoConnect;
+        m_autoConnectPending = config.autoConnect;
+    }
 
-        // Auto-connect if configured (one-shot: clear the flag after attempting)
-        if (config.autoConnect && !config.lastServer.empty()) {
-            auto& core = Core::Get();
-            if (core.GetClient().ConnectAsync(config.lastServer.c_str(), config.lastPort)) {
-                m_connecting = true;
-                snprintf(m_statusMessage, sizeof(m_statusMessage),
-                         "Auto-connecting to %s:%d...", config.lastServer.c_str(), config.lastPort);
-            }
-            // Clear auto-connect so future launches don't retry without the injector
-            config.autoConnect = false;
-            m_settingsAutoConnect = false;
-            config.Save(ClientConfig::GetDefaultPath());
+    bool gameLoaded = Core::Get().IsGameLoaded();
+
+    // ── Auto-connect on game load ──
+    // When the game world finishes loading and auto-connect is enabled, connect.
+    if (gameLoaded && m_autoConnectPending && !m_autoConnectDone && !m_connecting) {
+        m_autoConnectDone = true;
+        m_autoConnectPending = false;
+        auto& core = Core::Get();
+        uint16_t port = static_cast<uint16_t>(std::atoi(m_serverPort));
+        spdlog::info("Overlay: Auto-connecting to {}:{} (game loaded)", m_serverAddress, port);
+
+        // Re-enable entity hooks for network
+        entity_hooks::ResumeForNetwork();
+
+        if (core.GetClient().ConnectAsync(m_serverAddress, port)) {
+            m_connecting = true;
+            m_mainMenuOpen = false;
+            snprintf(m_statusMessage, sizeof(m_statusMessage),
+                     "Connecting to %s:%d...", m_serverAddress, port);
+        } else {
+            snprintf(m_statusMessage, sizeof(m_statusMessage),
+                     "Auto-connect failed. Press F1 to retry.");
         }
     }
 
@@ -59,10 +73,7 @@ void Overlay::Render() {
 
     if (ImGui::IsKeyPressed(ImGuiKey_F1, false)) {
         if (m_mainMenuOpen) {
-            // Close menu (only if connected, otherwise keep it open)
-            if (Core::Get().IsConnected() || Core::Get().GetClient().IsConnected()) {
-                m_mainMenuOpen = false;
-            }
+            m_mainMenuOpen = false;
         } else {
             m_mainMenuOpen = true;
             m_menuPage = MenuPage::Main;
@@ -73,9 +84,7 @@ void Overlay::Render() {
         if (m_mainMenuOpen && m_menuPage != MenuPage::Main) {
             m_menuPage = MenuPage::Main;
         } else if (m_mainMenuOpen) {
-            if (Core::Get().IsConnected() || Core::Get().GetClient().IsConnected()) {
-                m_mainMenuOpen = false;
-            }
+            m_mainMenuOpen = false;
         } else {
             CloseAll();
         }
@@ -111,23 +120,29 @@ void Overlay::Render() {
             m_mainMenuOpen = false;
             m_connectionOpen = false;
             m_statusMessage[0] = '\0';
+
+            AddSystemMessage("Connected to server!");
         } else if (!core.GetClient().IsConnecting()) {
-            // Connection failed — reopen main menu so user can retry
+            // Connection failed
             m_connecting = false;
             snprintf(m_statusMessage, sizeof(m_statusMessage), "Connection failed. Is the server running?");
             AddSystemMessage("Connection failed");
-            m_mainMenuOpen = true;
-            m_menuPage = MenuPage::Main;
+            if (!gameLoaded) {
+                m_mainMenuOpen = true;
+                m_menuPage = MenuPage::Main;
+            }
         }
     }
 
-    // Main menu (full-screen)
+    // ── Rendering based on state ──
     if (m_mainMenuOpen) {
+        // Full-screen multiplayer menu
         RenderMainMenu();
-    }
-
-    // In-game HUD and panels (only when not in main menu)
-    if (!m_mainMenuOpen) {
+    } else if (!gameLoaded) {
+        // On Kenshi's main menu: show MULTIPLAYER button
+        RenderMultiplayerButton();
+    } else {
+        // In-game
         RenderHUD();
         if (m_chatOpen) RenderChat();
         if (m_playerListOpen) RenderPlayerList();
@@ -209,11 +224,60 @@ void Overlay::RenderMainMenu() {
     ImGui::End();
 }
 
+// ── Detect clicks on the native MyGUI MULTIPLAYER button ──
+// The MULTIPLAYER button is added to Kenshi_MainMenu.layout at:
+//   position_real="0.260417 0.582407 0.15625 0.0638889"
+// We detect mouse clicks in that region and open our menu.
+void Overlay::RenderMultiplayerButton() {
+    auto& io = ImGui::GetIO();
+    auto* viewport = ImGui::GetMainViewport();
+    float screenW = viewport->WorkSize.x;
+    float screenH = viewport->WorkSize.y;
+
+    // MULTIPLAYER button rect (from layout position_real)
+    float btnLeft   = viewport->WorkPos.x + screenW * 0.260417f;
+    float btnTop    = viewport->WorkPos.y + screenH * 0.582407f;
+    float btnRight  = btnLeft + screenW * 0.15625f;
+    float btnBottom = btnTop  + screenH * 0.0638889f;
+
+    // Check if mouse clicked in the button area
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        float mx = io.MousePos.x;
+        float my = io.MousePos.y;
+        if (mx >= btnLeft && mx <= btnRight && my >= btnTop && my <= btnBottom) {
+            m_mainMenuOpen = true;
+            m_menuPage = MenuPage::Main;
+            spdlog::info("Overlay: MULTIPLAYER button clicked");
+        }
+    }
+
+    // Small status indicator near the button (non-intrusive)
+    if (m_autoConnectPending || m_hostingServer || m_connecting) {
+        float statusX = btnRight + 10.f;
+        float statusY = btnTop;
+
+        ImGui::SetNextWindowPos(ImVec2(statusX, statusY));
+        ImGui::SetNextWindowBgAlpha(0.f);
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
+                                 ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav;
+        if (ImGui::Begin("##MPStatus", nullptr, flags)) {
+            if (m_connecting) {
+                ImGui::TextColored(COL_YELLOW, "Connecting...");
+            } else if (m_autoConnectPending) {
+                ImGui::TextColored(COL_GREEN, "Ready");
+            } else if (m_hostingServer) {
+                ImGui::TextColored(COL_GREEN, "Server running");
+            }
+        }
+        ImGui::End();
+    }
+}
+
 void Overlay::RenderMainPage() {
     // Title
     ImGui::Dummy(ImVec2(0, 15));
 
-    // Centered title text
     const char* title = "KENSHI-ONLINE";
     float titleW = ImGui::CalcTextSize(title).x;
     ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - titleW) * 0.5f);
@@ -237,7 +301,7 @@ void Overlay::RenderMainPage() {
 
     ImGui::Dummy(ImVec2(0, 10));
 
-    // Status message (connection progress, errors)
+    // Status message
     if (m_connecting) {
         ImGui::TextColored(COL_YELLOW, "Connecting to %s:%s...", m_serverAddress, m_serverPort);
         ImGui::Spacing();
@@ -254,12 +318,82 @@ void Overlay::RenderMainPage() {
         ImGui::Spacing();
     }
 
-    // Buttons
+    // ── Host Game Button ──
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.55f, 0.15f, 0.90f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.40f, 0.10f, 1.0f));
+
+    if (!m_hostingServer) {
+        if (BigButton("Host Game", -1.f, 45.f)) {
+            // Launch KenshiMP.Server.exe
+            char dllPath[MAX_PATH] = {};
+            HMODULE hSelf = nullptr;
+            GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                               GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                               reinterpret_cast<LPCSTR>(&COL_ACCENT),
+                               &hSelf);
+            GetModuleFileNameA(hSelf, dllPath, MAX_PATH);
+
+            // Build path to server exe (try multiple locations)
+            std::string dllDir(dllPath);
+            size_t lastSlash = dllDir.find_last_of("\\/");
+            if (lastSlash != std::string::npos) dllDir = dllDir.substr(0, lastSlash);
+
+            std::string serverPaths[] = {
+                dllDir + "\\KenshiMP.Server.exe",
+                dllDir + "\\KenshiMP\\build\\bin\\Release\\KenshiMP.Server.exe",
+            };
+
+            std::string serverExe;
+            for (auto& path : serverPaths) {
+                DWORD attrs = GetFileAttributesA(path.c_str());
+                if (attrs != INVALID_FILE_ATTRIBUTES) {
+                    serverExe = path;
+                    break;
+                }
+            }
+
+            if (!serverExe.empty()) {
+                STARTUPINFOA si = {};
+                si.cb = sizeof(si);
+                PROCESS_INFORMATION pi = {};
+
+                if (CreateProcessA(serverExe.c_str(), nullptr, nullptr, nullptr,
+                                   FALSE, CREATE_NEW_CONSOLE, nullptr, nullptr, &si, &pi)) {
+                    CloseHandle(pi.hProcess);
+                    CloseHandle(pi.hThread);
+                    m_hostingServer = true;
+                    strncpy(m_serverAddress, "127.0.0.1", sizeof(m_serverAddress));
+                    snprintf(m_serverPort, sizeof(m_serverPort), "%d", KMP_DEFAULT_PORT);
+                    m_autoConnectPending = true;
+                    m_autoConnectDone = false;
+                    snprintf(m_statusMessage, sizeof(m_statusMessage),
+                             "Server started! Press New Game to play.");
+                    spdlog::info("Overlay: Launched server: {}", serverExe);
+                } else {
+                    snprintf(m_statusMessage, sizeof(m_statusMessage),
+                             "Failed to launch server (%lu)", GetLastError());
+                }
+            } else {
+                snprintf(m_statusMessage, sizeof(m_statusMessage),
+                         "Server exe not found. Copy KenshiMP.Server.exe to Kenshi folder.");
+            }
+        }
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 0.90f));
+        BigButton("Server Running", -1.f, 45.f);
+        ImGui::PopStyleColor();
+    }
+
+    ImGui::PopStyleColor(3);
+    ImGui::Spacing();
+
+    // ── Join Game Button ──
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.80f, 0.45f, 0.08f, 0.90f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.90f, 0.55f, 0.12f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.70f, 0.35f, 0.05f, 1.0f));
 
-    if (BigButton("Quick Connect", -1.f, 45.f)) {
+    if (BigButton("Join Game", -1.f, 45.f)) {
         m_menuPage = MenuPage::Connect;
     }
 
@@ -268,7 +402,6 @@ void Overlay::RenderMainPage() {
 
     if (BigButton("Server Browser", -1.f, 40.f)) {
         m_menuPage = MenuPage::ServerBrowser;
-        // Refresh server list
         m_serverList.clear();
         m_serverList.push_back({"Local Server", "127.0.0.1", KMP_DEFAULT_PORT, 0, 16, 0});
         auto& config = Core::Get().GetConfig();
@@ -300,19 +433,17 @@ void Overlay::RenderMainPage() {
     ImGui::Separator();
     ImGui::Dummy(ImVec2(0, 5));
 
-    auto& funcs = Core::Get().GetGameFunctions();
-    int resolved = funcs.CountResolved();
-    ImGui::TextColored(COL_DIM, "Engine: %d functions resolved", resolved);
-
     if (Core::Get().IsConnected()) {
-        ImGui::TextColored(COL_GREEN, "Status: Connected (%dms)",
+        ImGui::TextColored(COL_GREEN, "Connected (%dms)",
                           Core::Get().GetClient().GetPing());
+    } else if (m_autoConnectPending) {
+        ImGui::TextColored(COL_YELLOW, "Will auto-connect when game loads");
+        ImGui::TextColored(COL_DIM, "Press New Game in Kenshi to begin");
     } else {
-        ImGui::TextColored(COL_DIM, "Status: Not connected");
+        ImGui::TextColored(COL_DIM, "Not connected");
     }
 
-    ImGui::TextColored(COL_DIM, "Press F1 to toggle this menu");
-    ImGui::TextColored(COL_DIM, "Load a Kenshi save, then connect to play");
+    ImGui::TextColored(COL_DIM, "Press F1 or Escape to close");
 }
 
 void Overlay::RenderConnectPage() {
@@ -357,16 +488,28 @@ void Overlay::RenderConnectPage() {
         uint16_t port = static_cast<uint16_t>(std::atoi(m_serverPort));
         spdlog::info("Overlay: Connect clicked -> {}:{}", m_serverAddress, port);
 
-        if (client.ConnectAsync(m_serverAddress, port)) {
-            m_connecting = true;
-            m_menuPage = MenuPage::Main;
-            snprintf(m_statusMessage, sizeof(m_statusMessage),
-                     "Connecting to %s:%s...", m_serverAddress, m_serverPort);
+        if (core.IsGameLoaded()) {
+            // Game already loaded — connect immediately
+            entity_hooks::ResumeForNetwork();
+            if (client.ConnectAsync(m_serverAddress, port)) {
+                m_connecting = true;
+                m_menuPage = MenuPage::Main;
+                snprintf(m_statusMessage, sizeof(m_statusMessage),
+                         "Connecting to %s:%s...", m_serverAddress, m_serverPort);
+            } else {
+                spdlog::error("Overlay: ConnectAsync failed for {}:{}", m_serverAddress, port);
+                snprintf(m_statusMessage, sizeof(m_statusMessage),
+                         "Failed to connect. Check server address.");
+                m_menuPage = MenuPage::Main;
+            }
         } else {
-            spdlog::error("Overlay: ConnectAsync failed for {}:{}", m_serverAddress, port);
-            snprintf(m_statusMessage, sizeof(m_statusMessage),
-                     "Failed to connect. Check server address.");
+            // Game not loaded yet — set auto-connect for when it loads
+            m_autoConnectPending = true;
+            m_autoConnectDone = false;
             m_menuPage = MenuPage::Main;
+            snprintf(m_statusMessage, sizeof(m_statusMessage),
+                     "Will connect when game loads. Press New Game.");
+            spdlog::info("Overlay: Auto-connect set for {}:{}", m_serverAddress, port);
         }
     }
 

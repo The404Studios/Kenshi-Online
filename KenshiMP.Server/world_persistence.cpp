@@ -34,6 +34,12 @@ bool SaveWorldToFile(const std::string& path,
         for (int i = 0; i < 7; i++) healthArr.push_back(entity.health[i]);
         e["health"] = healthArr;
 
+        e["templateName"] = entity.templateName;
+
+        json equipArr = json::array();
+        for (int i = 0; i < 14; i++) equipArr.push_back(entity.equipment[i]);
+        e["equipment"] = equipArr;
+
         entityArray.push_back(e);
     }
     j["entities"] = entityArray;
@@ -85,6 +91,15 @@ bool LoadWorldFromFile(const std::string& path,
             auto& health = e["health"];
             for (int i = 0; i < 7 && i < static_cast<int>(health.size()); i++) {
                 entity.health[i] = health[i];
+            }
+
+            entity.templateName = e.value("templateName", std::string{});
+
+            if (e.contains("equipment")) {
+                auto& equip = e["equipment"];
+                for (int i = 0; i < 14 && i < static_cast<int>(equip.size()); i++) {
+                    entity.equipment[i] = equip[i];
+                }
             }
 
             entities[entity.id] = entity;

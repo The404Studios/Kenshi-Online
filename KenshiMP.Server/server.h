@@ -38,6 +38,7 @@ struct ServerEntity {
     uint8_t     moveSpeed = 0;  // 0-255 mapped to 0.0-15.0 m/s
     uint16_t    flags = 0;
     bool        alive = true;
+    uint32_t    equipment[14] = {};  // EquipSlot::Count = 14
 };
 
 class GameServer {
@@ -69,6 +70,7 @@ private:
     void HandleBuildRequest(ConnectedPlayer& player, PacketReader& reader);
     void HandleEntitySpawnReq(ConnectedPlayer& player, PacketReader& reader);
     void HandleEntityDespawnReq(ConnectedPlayer& player, PacketReader& reader);
+    void HandleEquipmentUpdate(ConnectedPlayer& player, PacketReader& reader);
     void HandleZoneRequest(ConnectedPlayer& player, PacketReader& reader);
 
     // Broadcasting

@@ -33,10 +33,20 @@ using ResizeBuffersFn = HRESULT(__stdcall*)(IDXGISwapChain*, UINT, UINT, UINT, D
 static PresentFn        s_originalPresent = nullptr;
 static ResizeBuffersFn  s_originalResizeBuffers = nullptr;
 
+// ── SEH wrapper for WndProc ImGui call ──
+static LRESULT SEH_ImGuiWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    __try {
+        ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // ImGui crashed — ignore silently
+    }
+    return 0;
+}
+
 // ── WndProc Hook ──
 static LRESULT CALLBACK HookWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     // Always let ImGui see input events for its internal state
-    ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam);
+    SEH_ImGuiWndProc(hWnd, uMsg, wParam, lParam);
 
     // Only block game input when our overlay is actively capturing
     if (ImGui::GetCurrentContext() && Core::Get().GetOverlay().IsInputCapture()) {
@@ -105,6 +115,36 @@ static void InitImGui(IDXGISwapChain* swapChain) {
 static std::chrono::steady_clock::time_point s_lastFrameTime{};
 static bool s_hasLastFrameTime = false;
 
+// ── SEH wrapper for ImGui render pass ──
+static void SEH_RenderImGui() {
+    __try {
+        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+        Core::Get().GetOverlay().Render();
+        ImGui::EndFrame();
+        ImGui::Render();
+        s_context->OMSetRenderTargets(1, &s_rtv, nullptr);
+        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // ImGui render crashed — log once and skip
+        static bool logged = false;
+        if (!logged) {
+            logged = true;
+            // Can't call spdlog here (C++ objects), but we survive
+        }
+    }
+}
+
+// ── SEH wrapper for OnGameTick ──
+static void SEH_OnGameTick(float dt) {
+    __try {
+        Core::Get().OnGameTick(dt);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // Game tick crashed — ignore silently to keep game running
+    }
+}
+
 static HRESULT __stdcall HookPresent(IDXGISwapChain* swapChain, UINT syncInterval, UINT flags) {
     std::lock_guard lock(s_renderMutex);
 
@@ -113,34 +153,20 @@ static HRESULT __stdcall HookPresent(IDXGISwapChain* swapChain, UINT syncInterva
     }
 
     if (s_initialized && s_rtv) {
-        ImGui_ImplDX11_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-
-        // Render our overlay
-        Core::Get().GetOverlay().Render();
-
-        ImGui::EndFrame();
-        ImGui::Render();
-
-        s_context->OMSetRenderTargets(1, &s_rtv, nullptr);
-        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+        SEH_RenderImGui();
     }
 
     // ── Guaranteed OnGameTick fallback ──
-    // time_hooks calls OnGameTick when installed, but TIME_UPDATE pattern may be
-    // null so the time hook may never install. Drive OnGameTick from the Present
-    // hook (which always installs) so position sync/spawning/interpolation work.
-    // Skip if time_hooks is active to avoid double-calling.
     auto& core = Core::Get();
     if (core.IsConnected() && !core.IsTimeHookActive()) {
         auto now = std::chrono::steady_clock::now();
         if (s_hasLastFrameTime) {
             float dt = std::chrono::duration<float>(now - s_lastFrameTime).count();
-            // Clamp delta to avoid huge jumps (e.g. after alt-tab)
             if (dt > 0.0f && dt < 0.5f) {
-                core.OnGameTick(dt);
+                SEH_OnGameTick(dt);
             }
+        } else {
+            spdlog::info("render_hooks: First Present frame — starting OnGameTick fallback");
         }
         s_lastFrameTime = now;
         s_hasLastFrameTime = true;

@@ -11,52 +11,41 @@ using LoadGameFn = void(__fastcall*)(void* saveManager, const char* saveName);
 
 static SaveGameFn s_origSave = nullptr;
 static LoadGameFn s_origLoad = nullptr;
+static std::atomic<bool> s_loading{false};
+
+bool IsLoading() { return s_loading.load(); }
 
 static void __fastcall Hook_SaveGame(void* saveManager, const char* saveName) {
     auto& core = Core::Get();
-    if (core.IsConnected() && !core.IsHost()) {
-        // Clients don't save in multiplayer - server owns the world state
-        spdlog::info("save_hooks: Blocked client save (server-authoritative)");
-        return;
-    }
 
-    // Host or single-player: allow save
+    // Always allow local saves. In multiplayer the local save acts as a
+    // checkpoint for the player's own characters; the server independently
+    // persists the authoritative world state.
     s_origSave(saveManager, saveName);
 
-    if (core.IsConnected() && core.IsHost()) {
-        spdlog::info("save_hooks: Host saved game as '{}'", saveName ? saveName : "unnamed");
+    if (core.IsConnected()) {
+        spdlog::info("save_hooks: Local save '{}' completed (server state is separate)",
+                     saveName ? saveName : "unnamed");
     }
 }
 
 static void __fastcall Hook_LoadGame(void* saveManager, const char* saveName) {
-    auto& core = Core::Get();
-    if (core.IsConnected() && !core.IsHost()) {
-        // Client: block local load in multiplayer.
-        // The server already sends a world snapshot on join (HandleHandshake),
-        // so there's no need to request one here.
-        spdlog::info("save_hooks: Blocked client load (server sends snapshot on join)");
-        return;
-    }
-
+    // Set loading flag so entity/combat hooks skip network operations
+    // during save load (characters aren't fully initialized yet).
+    s_loading = true;
+    spdlog::info("save_hooks: Loading local save (loading guard ON)");
     s_origLoad(saveManager, saveName);
+    s_loading = false;
+    spdlog::info("save_hooks: Save load complete (loading guard OFF)");
 }
 
 bool Install() {
-    auto& funcs = Core::Get().GetGameFunctions();
-    auto& hookMgr = HookManager::Get();
-
-    if (funcs.SaveGame) {
-        hookMgr.InstallAt("SaveGame",
-                          reinterpret_cast<uintptr_t>(funcs.SaveGame),
-                          &Hook_SaveGame, &s_origSave);
-    }
-    if (funcs.LoadGame) {
-        hookMgr.InstallAt("LoadGame",
-                          reinterpret_cast<uintptr_t>(funcs.LoadGame),
-                          &Hook_LoadGame, &s_origLoad);
-    }
-
-    spdlog::info("save_hooks: Installed");
+    // Save/Load hooks are disabled — the function signatures are not fully
+    // verified and calling through bad trampolines crashes during save load.
+    // Local saves and loads pass through unmodified, which is the desired
+    // behavior: players keep their own save files, multiplayer state is
+    // layered on top via the server snapshot.
+    spdlog::info("save_hooks: Skipped (pass-through mode)");
     return true;
 }
 

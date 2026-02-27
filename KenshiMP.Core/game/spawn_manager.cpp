@@ -1,6 +1,7 @@
 #include "spawn_manager.h"
 #include "game_types.h"
 #include "../core.h"
+#include "kmp/hook_manager.h"
 #include <spdlog/spdlog.h>
 #include <Windows.h>
 
@@ -149,8 +150,14 @@ void SpawnManager::ProcessSpawnQueue() {
                      reinterpret_cast<uintptr_t>(m_factory),
                      reinterpret_cast<uintptr_t>(templateData));
 
-        // Call the game's character creation function via SEH wrapper
-        void* character = SEH_CallFactory(m_origProcess, m_factory, templateData);
+        // Call the game's character creation function.
+        // Must disable the CharacterCreate hook first because the function starts
+        // with `mov rax, rsp` — trampoline would corrupt the stack.
+        void* character = nullptr;
+        {
+            HookBypass bypass("CharacterCreate");
+            character = SEH_CallFactory(m_origProcess, m_factory, templateData);
+        }
 
         if (character) {
             spdlog::info("SpawnManager: Character created at 0x{:X} for entity {}",

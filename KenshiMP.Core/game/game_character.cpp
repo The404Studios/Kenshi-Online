@@ -1,6 +1,7 @@
 #include "game_types.h"
 #include "kmp/memory.h"
 #include <spdlog/spdlog.h>
+#include <chrono>
 #include <cmath>
 
 namespace kmp::game {
@@ -268,7 +269,8 @@ uintptr_t CharacterAccessor::GetInventoryPtr() const {
 }
 
 // Function pointer for HavokCharacter::setPosition (resolved by patterns.cpp)
-using SetPositionFn = void(__fastcall*)(void* character, float x, float y, float z);
+// Prologue analysis confirms: params~2 (RCX=this, RDX=Vec3*), stack=288
+using SetPositionFn = void(__fastcall*)(void* character, const Vec3* pos);
 static SetPositionFn s_setPositionFn = nullptr;
 
 void SetGameSetPositionFn(void* fn) {
@@ -280,8 +282,9 @@ bool CharacterAccessor::WritePosition(const Vec3& pos) {
 
     // Method 1 (best): Call the game's own HavokCharacter::setPosition function.
     // This properly moves the character through the physics engine.
+    // Signature: void __fastcall setPosition(this, const Vec3* pos)
     if (s_setPositionFn) {
-        s_setPositionFn(reinterpret_cast<void*>(m_ptr), pos.x, pos.y, pos.z);
+        s_setPositionFn(reinterpret_cast<void*>(m_ptr), &pos);
         return true;
     }
 
@@ -346,16 +349,35 @@ void CharacterIterator::Reset() {
         return; // Player base not available yet (game still loading)
     }
 
+    // Validate: playerBase must be a valid user-mode pointer
+    if (playerBase < 0x10000 || playerBase > 0x00007FFFFFFFFFFF) {
+        // Throttle: log once, then every 30 seconds
+        static auto s_lastLog = std::chrono::steady_clock::time_point{};
+        static bool s_firstLog = true;
+        auto now = std::chrono::steady_clock::now();
+        if (s_firstLog || std::chrono::duration_cast<std::chrono::seconds>(now - s_lastLog).count() >= 30) {
+            spdlog::debug("CharacterIterator: PlayerBase value 0x{:X} is not a valid pointer — game still loading?", playerBase);
+            s_lastLog = now;
+            s_firstLog = false;
+        }
+        return;
+    }
+
     // The character list starts at the dereferenced playerBase
     m_listBase = playerBase;
 
     // Walk the pointer array to count valid entries
     // Each entry is a pointer to a character object, stride = sizeof(uintptr_t)
+    // Limit to reasonable count and validate each pointer
     int estimatedCount = 0;
     for (int j = 0; j < 10000; j++) {
         uintptr_t charPtr = 0;
         if (!Memory::Read(m_listBase + j * sizeof(uintptr_t), charPtr) || charPtr == 0) {
             break;
+        }
+        // Validate each character pointer
+        if (charPtr < 0x10000 || charPtr > 0x00007FFFFFFFFFFF) {
+            break; // Invalid pointer, end of valid list
         }
         estimatedCount++;
     }

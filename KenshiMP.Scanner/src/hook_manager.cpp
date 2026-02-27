@@ -153,6 +153,13 @@ bool HookManager::Disable(const std::string& name) {
     return true;
 }
 
+void* HookManager::GetTarget(const std::string& name) const {
+    std::lock_guard lock(m_mutex);
+    auto it = m_hooks.find(name);
+    if (it == m_hooks.end()) return nullptr;
+    return it->second.target;
+}
+
 bool HookManager::IsInstalled(const std::string& name) const {
     std::lock_guard lock(m_mutex);
     return m_hooks.count(name) > 0;

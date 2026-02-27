@@ -43,6 +43,9 @@ public:
     bool Enable(const std::string& name);
     bool Disable(const std::string& name);
 
+    // Get the original target address (NOT the trampoline) for direct calling
+    void* GetTarget(const std::string& name) const;
+
     // Check if a hook is installed
     bool IsInstalled(const std::string& name) const;
 
@@ -73,6 +76,24 @@ private:
     std::unordered_map<std::string, HookEntry> m_hooks;
     mutable std::mutex m_mutex;
     bool m_initialized = false;
+};
+
+// RAII guard: disables a hook on construction, re-enables on destruction.
+// Use this to call the original function directly (bypassing the trampoline)
+// for functions whose prologues start with `mov rax, rsp` which breaks
+// MinHook's trampoline mechanism.
+class HookBypass {
+public:
+    HookBypass(const std::string& name) : m_name(name) {
+        HookManager::Get().Disable(name);
+    }
+    ~HookBypass() {
+        HookManager::Get().Enable(m_name);
+    }
+    HookBypass(const HookBypass&) = delete;
+    HookBypass& operator=(const HookBypass&) = delete;
+private:
+    std::string m_name;
 };
 
 } // namespace kmp

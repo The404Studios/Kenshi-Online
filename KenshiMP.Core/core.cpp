@@ -8,10 +8,12 @@
 #include "hooks/save_hooks.h"
 #include "hooks/time_hooks.h"
 #include "game/game_types.h"
+#include "game/game_inventory.h"
 #include "kmp/protocol.h"
 #include "kmp/messages.h"
 #include "kmp/constants.h"
 #include "kmp/memory.h"
+#include "kmp/function_analyzer.h"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <chrono>
@@ -32,8 +34,8 @@ bool Core::Initialize() {
     try {
         auto logger = spdlog::basic_logger_mt("kenshi_online", "KenshiOnline.log", true);
         spdlog::set_default_logger(logger);
-        spdlog::set_level(spdlog::level::info);
-        spdlog::flush_on(spdlog::level::info);
+        spdlog::set_level(spdlog::level::debug);
+        spdlog::flush_on(spdlog::level::debug);
     } catch (...) {
         // Fallback: no file logging
     }
@@ -123,6 +125,48 @@ bool Core::InitScanner() {
         spdlog::warn("Game functions minimally resolved: false - some features may not work");
     }
 
+    // ── Function Signature Analysis ──
+    // Analyze prologues of all hooked functions to validate our signatures.
+    {
+        std::vector<FunctionSignature> sigs;
+
+        struct HookSigCheck {
+            const char* name;
+            void* address;
+            int hookParamCount; // params in our hook typedef
+        };
+
+        HookSigCheck checks[] = {
+            {"CharacterSpawn",       m_gameFuncs.CharacterSpawn,       2}, // factory, templateData
+            {"CharacterDestroy",     m_gameFuncs.CharacterDestroy,     1}, // character
+            {"CharacterSetPosition", m_gameFuncs.CharacterSetPosition, 2}, // character, Vec3*
+            {"CharacterMoveTo",      m_gameFuncs.CharacterMoveTo,      0}, // MID-FUNCTION — do not hook/call
+            {"ApplyDamage",          m_gameFuncs.ApplyDamage,          6}, // target, attacker, bodyPart, cut, blunt, pierce
+            {"CharacterDeath",       m_gameFuncs.CharacterDeath,       2}, // character, killer
+            {"ZoneLoad",             m_gameFuncs.ZoneLoad,             3}, // zoneMgr, zoneX, zoneY
+            {"ZoneUnload",           m_gameFuncs.ZoneUnload,           3}, // zoneMgr, zoneX, zoneY
+            {"BuildingPlace",        m_gameFuncs.BuildingPlace,        5}, // world, building, x, y, z
+            {"SaveGame",             m_gameFuncs.SaveGame,             2}, // saveManager, saveName
+            {"LoadGame",             m_gameFuncs.LoadGame,             2}, // saveManager, saveName
+        };
+
+        for (auto& check : checks) {
+            if (!check.address) continue;
+            auto sig = FunctionAnalyzer::Analyze(
+                reinterpret_cast<uintptr_t>(check.address), check.name);
+            if (sig.IsValid()) {
+                bool ok = FunctionAnalyzer::ValidateSignature(sig, check.hookParamCount);
+                if (!ok) {
+                    spdlog::warn("Core: SIGNATURE MISMATCH for '{}' — hook expects {} params, analysis suggests ~{}",
+                                 check.name, check.hookParamCount, sig.estimatedParams);
+                }
+                sigs.push_back(std::move(sig));
+            }
+        }
+
+        FunctionAnalyzer::LogAnalysis(sigs);
+    }
+
     // Bridge PlayerBase to the game_character module
     if (m_gameFuncs.PlayerBase != 0) {
         game::SetResolvedPlayerBase(m_gameFuncs.PlayerBase);
@@ -153,25 +197,29 @@ bool Core::InitHooks() {
         spdlog::warn("Failed to install input hooks");
     }
 
-    // Game function hooks (only if we found the functions)
+    // ── Entity hooks: ENABLED with disable-call-reenable pattern ──
+    // CharacterSpawn starts with `mov rax, rsp` which breaks MinHook trampolines.
+    // The hook temporarily disables itself, calls the original directly, then re-enables.
     if (m_gameFuncs.CharacterSpawn) {
         entity_hooks::Install();
     }
-    if (m_gameFuncs.CharacterSetPosition || m_gameFuncs.CharacterMoveTo) {
-        movement_hooks::Install();
-    }
-    if (m_gameFuncs.ApplyDamage) {
-        combat_hooks::Install();
-    }
-    if (m_gameFuncs.ZoneLoad) {
-        world_hooks::Install();
-    }
+
+    // ── Movement hooks: DISABLED ──
+    // SetPosition: signature is (void*, Vec3*) not (void*, f, f, f) — hook signature wrong
+    // MoveTo: pattern scanner found MID-FUNCTION address (0x...E3) — cannot hook
+    spdlog::info("InitHooks: movement_hooks SKIPPED (SetPosition sig mismatch + MoveTo mid-function)");
+
+    // ── Combat hooks: DISABLED (signatures unverified, not critical for MVP) ──
+    spdlog::info("InitHooks: combat_hooks SKIPPED (signatures unverified)");
+
+    // ── World hooks: DISABLED (ZoneLoad sig mismatch, BuildingPlace fires during load) ──
+    spdlog::info("InitHooks: world_hooks SKIPPED (signatures unverified)");
+
+    // ── Save/Time hooks: DISABLED ──
     if (m_gameFuncs.SaveGame) {
-        save_hooks::Install();
+        save_hooks::Install();  // Already a no-op pass-through
     }
-    if (m_gameFuncs.TimeUpdate) {
-        time_hooks::Install();
-    }
+    spdlog::info("InitHooks: time_hooks SKIPPED (no pattern found)");
 
     return allOk;
 }
@@ -184,6 +232,34 @@ bool Core::InitUI() {
     // Overlay is initialized lazily when the D3D11 device is available
     // (happens in the Present hook)
     return true;
+}
+
+void Core::OnGameLoaded() {
+    if (m_gameLoaded.exchange(true)) return; // Only run once
+
+    spdlog::info("=== Core: Game world loaded ===");
+
+    // Run deferred PlayerBase discovery
+    bool needsRetry = (m_gameFuncs.PlayerBase == 0);
+    if (!needsRetry && m_gameFuncs.PlayerBase != 0) {
+        uintptr_t val = 0;
+        needsRetry = !Memory::Read(m_gameFuncs.PlayerBase, val) || val == 0 ||
+                     val < 0x10000 || val > 0x00007FFFFFFFFFFF;
+    }
+
+    if (needsRetry) {
+        spdlog::info("Core: Running deferred global discovery (PlayerBase=0x{:X})...",
+                     m_gameFuncs.PlayerBase);
+        if (RetryGlobalDiscovery(m_scanner, m_gameFuncs)) {
+            game::SetResolvedPlayerBase(m_gameFuncs.PlayerBase);
+            spdlog::info("Core: Deferred discovery SUCCESS — PlayerBase=0x{:X}",
+                         m_gameFuncs.PlayerBase);
+        } else {
+            spdlog::warn("Core: Deferred discovery failed — PlayerBase still unresolved");
+        }
+    } else {
+        spdlog::info("Core: PlayerBase already valid at 0x{:X}", m_gameFuncs.PlayerBase);
+    }
 }
 
 void Core::NetworkThreadFunc() {
@@ -200,6 +276,20 @@ void Core::NetworkThreadFunc() {
 
 void Core::OnGameTick(float deltaTime) {
     if (!m_connected) return;
+
+    // ── Diagnostic: log tick periodically ──
+    static int s_tickCount = 0;
+    static auto s_lastTickLog = std::chrono::steady_clock::now();
+    s_tickCount++;
+    auto tickNow = std::chrono::steady_clock::now();
+    auto tickElapsed = std::chrono::duration_cast<std::chrono::seconds>(tickNow - s_lastTickLog);
+    if (tickElapsed.count() >= 5) {
+        spdlog::debug("Core::OnGameTick: {} ticks in last {}s (dt={:.4f}), entities={}",
+                      s_tickCount, tickElapsed.count(), deltaTime,
+                      m_entityRegistry.GetEntityCount());
+        s_tickCount = 0;
+        s_lastTickLog = tickNow;
+    }
 
     // Process any pending spawn requests (must happen on game thread)
     m_spawnManager.ProcessSpawnQueue();
@@ -222,6 +312,17 @@ void Core::OnGameTick(float deltaTime) {
     // Only send if we have the player base pointer resolved
     if (m_gameFuncs.PlayerBase != 0) {
         game::CharacterIterator iter;
+
+        // Log character iterator state on first tick and periodically
+        static bool s_firstIterLog = true;
+        if (s_firstIterLog) {
+            int iterCount = 0;
+            game::CharacterIterator countIter;
+            while (countIter.HasNext()) { countIter.Next(); iterCount++; }
+            spdlog::info("Core: CharacterIterator found {} characters on first tick", iterCount);
+            s_firstIterLog = false;
+        }
+
         PacketWriter batchWriter;
         bool hasBatchData = false;
         uint8_t batchCount = 0;
@@ -236,9 +337,61 @@ void Core::OnGameTick(float deltaTime) {
             if (netId == INVALID_ENTITY) {
                 // All characters from the player's CharacterIterator are player-controlled.
                 // Register with our local player ID as owner.
+                Vec3 regPos = character.GetPosition();
+                std::string regName = character.GetName();
                 netId = m_entityRegistry.Register(
                     charPtr, EntityType::PlayerCharacter, m_localPlayerId);
-                spdlog::debug("Core: Auto-registered local character netId={}", netId);
+                spdlog::info("Core: AUTO-REGISTERED local character netId={} name='{}' pos=({:.1f},{:.1f},{:.1f}) ptr=0x{:X}",
+                             netId, regName, regPos.x, regPos.y, regPos.z,
+                             reinterpret_cast<uintptr_t>(charPtr));
+
+                // Notify server about this character so it gets a server entity ID
+                {
+                    Vec3 pos = character.GetPosition();
+                    Quat rot = character.GetRotation();
+                    uint32_t compQuat = rot.Compress();
+
+                    // Store position so FindLocalEntityNear can match when
+                    // the server confirms with S2C_EntitySpawn.
+                    m_entityRegistry.UpdatePosition(netId, pos);
+
+                    uintptr_t factionPtr = character.GetFactionPtr();
+                    uint32_t factionId = 0;
+                    if (factionPtr != 0) {
+                        Memory::Read(factionPtr + 0x08, factionId);
+                    }
+
+                    // Try to read template name from GameData pointer at +0x28
+                    std::string templateName;
+                    uint32_t templateId = 0;
+                    uintptr_t charAddr = character.GetPtr();
+                    uintptr_t gdPtr = 0;
+                    if (Memory::Read(charAddr + 0x28, gdPtr) && gdPtr != 0) {
+                        templateName = SpawnManager::ReadKenshiString(gdPtr + 0x28);
+                        Memory::Read(gdPtr + 0x08, templateId);
+                    }
+
+                    PacketWriter writer;
+                    writer.WriteHeader(MessageType::C2S_EntitySpawnReq);
+                    writer.WriteU32(netId);
+                    writer.WriteU8(static_cast<uint8_t>(EntityType::PlayerCharacter));
+                    writer.WriteU32(m_localPlayerId);
+                    writer.WriteU32(templateId);
+                    writer.WriteF32(pos.x);
+                    writer.WriteF32(pos.y);
+                    writer.WriteF32(pos.z);
+                    writer.WriteU32(compQuat);
+                    writer.WriteU32(factionId);
+                    uint16_t nameLen = static_cast<uint16_t>(
+                        std::min<size_t>(templateName.size(), 255));
+                    writer.WriteU16(nameLen);
+                    if (nameLen > 0) {
+                        writer.WriteRaw(templateName.data(), nameLen);
+                    }
+
+                    m_client.SendReliable(writer.Data(), writer.Size());
+                    spdlog::info("Core: Sent C2S_EntitySpawnReq for auto-registered entity netId={}", netId);
+                }
             }
 
             // Copy entity info under lock to avoid dangling pointer (audit fix #7)
@@ -247,6 +400,29 @@ void Core::OnGameTick(float deltaTime) {
                 auto* info = m_entityRegistry.GetInfo(netId);
                 if (!info || info->ownerPlayerId != m_localPlayerId) continue;
                 infoCopy = *info;
+            }
+
+            // ── Equipment diff/send ──
+            uintptr_t invPtr = character.GetInventoryPtr();
+            if (invPtr != 0) {
+                game::InventoryAccessor inventory(invPtr);
+                for (int slot = 0; slot < static_cast<int>(EquipSlot::Count); slot++) {
+                    uint32_t current = inventory.GetEquipment(static_cast<EquipSlot>(slot));
+                    if (current != infoCopy.lastEquipment[slot]) {
+                        // Send equipment change to server
+                        PacketWriter equipWriter;
+                        equipWriter.WriteHeader(MessageType::C2S_EquipmentUpdate);
+                        MsgEquipmentUpdate equipMsg{};
+                        equipMsg.entityId = netId;
+                        equipMsg.slot = static_cast<uint8_t>(slot);
+                        equipMsg.itemTemplateId = current;
+                        equipWriter.WriteRaw(&equipMsg, sizeof(equipMsg));
+                        m_client.SendReliable(equipWriter.Data(), equipWriter.Size());
+
+                        // Update tracking
+                        m_entityRegistry.UpdateEquipment(netId, slot, current);
+                    }
+                }
             }
 
             // Read current position/rotation
@@ -329,10 +505,8 @@ void Core::OnGameTick(float deltaTime) {
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
 
-    // Cache MoveTo function pointer for use in the loop
-    using MoveToFn = void(__fastcall*)(void*, float, float, float, int);
-    MoveToFn moveToFn = m_gameFuncs.CharacterMoveTo
-        ? reinterpret_cast<MoveToFn>(m_gameFuncs.CharacterMoveTo) : nullptr;
+    // NOTE: MoveTo is NOT safe to call — pattern scanner found a mid-function address
+    // (0x...E3, not aligned). Using WritePosition (SetPosition with Vec3*) instead.
 
     for (EntityID remoteId : remoteEntities) {
         Vec3 interpPos;
@@ -347,17 +521,7 @@ void Core::OnGameTick(float deltaTime) {
             if (gameObj) {
                 game::CharacterAccessor accessor(gameObj);
 
-                // If the remote character is moving and we have the MoveTo function,
-                // use it so the game engine plays the correct walk/run animation.
-                // Otherwise fall back to direct position write.
-                float speedMs = (moveSpeed / 255.f) * 15.f;
-                if (moveToFn && speedMs > 0.5f) {
-                    // MoveTo triggers pathfinding + animation. Use run (1) for fast, walk (0) for slow.
-                    int moveType = (speedMs > 5.0f) ? 1 : 0;
-                    moveToFn(gameObj, interpPos.x, interpPos.y, interpPos.z, moveType);
-                }
-
-                // Always write position for accuracy (MoveTo is async, this ensures correctness)
+                // Write position via the corrected SetPosition(this, Vec3*) function
                 accessor.WritePosition(interpPos);
 
                 // Write rotation to cached rotation offset
@@ -378,7 +542,8 @@ void Core::OnGameTick(float deltaTime) {
     // Use the first local player's position for zone tracking
     if (m_gameFuncs.PlayerBase != 0) {
         uintptr_t playerPtr = 0;
-        if (Memory::Read(m_gameFuncs.PlayerBase, playerPtr) && playerPtr != 0) {
+        if (Memory::Read(m_gameFuncs.PlayerBase, playerPtr) && playerPtr != 0 &&
+            playerPtr > 0x10000 && playerPtr < 0x00007FFFFFFFFFFF) {
             game::CharacterAccessor firstChar(reinterpret_cast<void*>(playerPtr));
             if (firstChar.IsValid()) {
                 Vec3 playerPos = firstChar.GetPosition();

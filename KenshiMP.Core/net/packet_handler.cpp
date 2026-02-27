@@ -1,6 +1,8 @@
 #include "../core.h"
 #include "../game/game_types.h"
+#include "../game/game_inventory.h"
 #include "../game/spawn_manager.h"
+#include "../hooks/entity_hooks.h"
 #include "../hooks/time_hooks.h"
 #include "kmp/protocol.h"
 #include "kmp/messages.h"
@@ -10,7 +12,7 @@
 namespace kmp {
 
 // Forward declarations for game function call types
-using CharacterMoveToFn = void(__fastcall*)(void* character, float x, float y, float z, int moveType);
+// NOTE: CharacterMoveTo removed — pattern scanner found mid-function address, not safe to call
 using ApplyDamageFn = void(__fastcall*)(void* target, void* attacker,
                                          int bodyPart, float cut, float blunt, float pierce);
 using CharacterDeathFn = void(__fastcall*)(void* character, void* killer);
@@ -116,6 +118,9 @@ private:
         core.SetLocalPlayerId(msg.playerId);
         core.SetConnected(true);
 
+        // Re-enable entity hooks that were suspended during game loading
+        entity_hooks::ResumeForNetwork();
+
         spdlog::info("PacketHandler: Handshake accepted! Player ID: {}, Players: {}/{}",
                      msg.playerId, msg.currentPlayers, msg.maxPlayers);
 
@@ -182,26 +187,46 @@ private:
             }
         }
 
+        auto& core = Core::Get();
+        auto& registry = core.GetEntityRegistry();
+        Vec3 spawnPos(px, py, pz);
+        Quat rot = Quat::Decompress(compQuat);
+
+        // If this is our own entity being confirmed by the server, remap the
+        // local entity ID to the server-assigned ID instead of spawning a duplicate.
+        if (ownerId == core.GetLocalPlayerId()) {
+            EntityID localId = registry.FindLocalEntityNear(spawnPos, ownerId);
+            if (localId != INVALID_ENTITY && localId != entityId) {
+                if (registry.RemapEntityId(localId, entityId)) {
+                    spdlog::info("PacketHandler: Remapped own entity {} -> server ID {}",
+                                 localId, entityId);
+                } else {
+                    spdlog::warn("PacketHandler: Failed to remap own entity {} -> {}",
+                                 localId, entityId);
+                }
+            } else if (localId == entityId) {
+                // Already has the correct ID (unlikely but possible)
+                spdlog::debug("PacketHandler: Own entity {} already has correct server ID", entityId);
+            } else {
+                spdlog::warn("PacketHandler: No local entity found near ({:.1f},{:.1f},{:.1f}) to remap for server ID {}",
+                             px, py, pz, entityId);
+            }
+            return; // Don't spawn — we already have the character in-game
+        }
+
         spdlog::info("PacketHandler: Entity spawn id={} type={} template='{}' at ({:.1f}, {:.1f}, {:.1f})",
                      entityId, type, templateName, px, py, pz);
 
-        auto& core = Core::Get();
-        auto& registry = core.GetEntityRegistry();
-
         // Register in entity registry as remote (gameObject=nullptr until spawned)
-        registry.RegisterRemote(entityId, static_cast<EntityType>(type), ownerId, Vec3(px, py, pz));
+        registry.RegisterRemote(entityId, static_cast<EntityType>(type), ownerId, spawnPos);
 
         // Add initial interpolation snapshot
         float now = static_cast<float>(
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
-        Quat rot = Quat::Decompress(compQuat);
-        core.GetInterpolation().AddSnapshot(entityId, now, Vec3(px, py, pz), rot);
+        core.GetInterpolation().AddSnapshot(entityId, now, spawnPos, rot);
 
         // Queue a real character spawn via SpawnManager.
-        // This will create an actual in-game character using the game's factory
-        // function. The SpawnManager's callback will link the game object to the
-        // registry entry above.
         auto& spawnMgr = core.GetSpawnManager();
         if (spawnMgr.IsReady() || !templateName.empty()) {
             SpawnRequest req;
@@ -209,7 +234,7 @@ private:
             req.owner        = ownerId;
             req.type         = static_cast<EntityType>(type);
             req.templateName = templateName;
-            req.position     = Vec3(px, py, pz);
+            req.position     = spawnPos;
             req.rotation     = rot;
             req.templateId   = templateId;
             req.factionId    = factionId;
@@ -269,15 +294,9 @@ private:
         auto& registry = core.GetEntityRegistry();
         auto& funcs = core.GetGameFunctions();
 
-        // Look up the entity's game object
-        void* gameObj = registry.GetGameObject(msg.entityId);
-        if (gameObj && funcs.CharacterMoveTo) {
-            // Call the game's MoveTo function to make the character walk to the target
-            auto moveToFn = reinterpret_cast<CharacterMoveToFn>(funcs.CharacterMoveTo);
-            moveToFn(gameObj, msg.targetX, msg.targetY, msg.targetZ, msg.moveType);
-        } else {
-            // No game object or no MoveTo function — just update position tracking
-            // The interpolation system will handle smooth movement
+        // MoveTo function address is mid-function (not safe to call).
+        // Use interpolation system to handle smooth movement instead.
+        {
             float now = static_cast<float>(
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
@@ -419,9 +438,21 @@ private:
                 }
             }
 
-            // Register as remote entity
             Vec3 pos(px, py, pz);
             Quat rot = Quat::Decompress(compQuat);
+
+            // Skip our own entities — they already exist in-game.
+            // Remap local ID to server ID if needed.
+            if (ownerId == core.GetLocalPlayerId()) {
+                EntityID localId = registry.FindLocalEntityNear(pos, ownerId);
+                if (localId != INVALID_ENTITY && localId != entityId) {
+                    registry.RemapEntityId(localId, entityId);
+                    spdlog::debug("PacketHandler: World snapshot remapped own entity {} -> {}", localId, entityId);
+                }
+                continue;
+            }
+
+            // Register as remote entity
             registry.RegisterRemote(entityId, static_cast<EntityType>(type), ownerId, pos);
             core.GetInterpolation().AddSnapshot(entityId, now, pos, rot);
 
@@ -496,10 +527,21 @@ private:
         MsgEquipmentUpdate msg;
         reader.ReadRaw(&msg, sizeof(msg));
 
-        // Equipment offsets are unverified — writing to wrong memory could crash.
-        // Log only until proper offsets are discovered via RE.
         spdlog::debug("PacketHandler: Equipment update entity={} slot={} item={}",
                       msg.entityId, msg.slot, msg.itemTemplateId);
+
+        auto& core = Core::Get();
+        void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
+        if (!gameObj) return;
+
+        game::CharacterAccessor accessor(gameObj);
+        uintptr_t invPtr = accessor.GetInventoryPtr();
+        if (invPtr == 0) return;
+
+        game::InventoryAccessor inventory(invPtr);
+        if (msg.slot < static_cast<uint8_t>(EquipSlot::Count)) {
+            inventory.SetEquipment(static_cast<EquipSlot>(msg.slot), msg.itemTemplateId);
+        }
     }
 
     // ── Chat ──
