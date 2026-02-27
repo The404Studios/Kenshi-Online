@@ -1,5 +1,6 @@
 #include "../core.h"
 #include "../game/game_types.h"
+#include "../game/spawn_manager.h"
 #include "../hooks/time_hooks.h"
 #include "kmp/protocol.h"
 #include "kmp/messages.h"
@@ -9,12 +10,10 @@
 namespace kmp {
 
 // Forward declarations for game function call types
-using CharacterSpawnFn = void*(__fastcall*)(void* factory, void* templateData);
 using CharacterMoveToFn = void(__fastcall*)(void* character, float x, float y, float z, int moveType);
 using ApplyDamageFn = void(__fastcall*)(void* target, void* attacker,
                                          int bodyPart, float cut, float blunt, float pierce);
 using CharacterDeathFn = void(__fastcall*)(void* character, void* killer);
-using BuildingPlaceFn = void(__fastcall*)(void* world, void* building, float x, float y, float z);
 
 // Handles incoming packets from the server and dispatches to appropriate systems.
 class PacketHandler {
@@ -172,53 +171,25 @@ private:
         reader.ReadU32(compQuat);
         reader.ReadU32(factionId);
 
-        spdlog::debug("PacketHandler: Entity spawn id={} type={} at ({:.1f}, {:.1f}, {:.1f})",
-                      entityId, type, px, py, pz);
-
-        auto& core = Core::Get();
-        auto& registry = core.GetEntityRegistry();
-        auto& funcs = core.GetGameFunctions();
-
-        // Try to create the character using the game's spawn function
-        void* gameObject = nullptr;
-        if (funcs.CharacterSpawn && static_cast<EntityType>(type) != EntityType::Building) {
-            // Call the game's character factory
-            // Note: we pass nullptr for templateData since we don't have the full
-            // game template structure. The character will spawn as a default entity.
-            auto spawnFn = reinterpret_cast<CharacterSpawnFn>(funcs.CharacterSpawn);
-            gameObject = spawnFn(nullptr, nullptr);
-
-            if (gameObject) {
-                // Set the spawned character's position
-                game::CharacterAccessor accessor(gameObject);
-                auto& offsets = game::GetOffsets();
-                if (offsets.character.position >= 0) {
-                    uintptr_t ptr = reinterpret_cast<uintptr_t>(gameObject);
-                    Memory::Write(ptr + offsets.character.position, px);
-                    Memory::Write(ptr + offsets.character.position + 4, py);
-                    Memory::Write(ptr + offsets.character.position + 8, pz);
-                }
-
-                // Set rotation
-                Quat rot = Quat::Decompress(compQuat);
-                if (offsets.character.rotation >= 0) {
-                    uintptr_t ptr = reinterpret_cast<uintptr_t>(gameObject);
-                    Memory::Write(ptr + offsets.character.rotation, rot);
-                }
-
-                spdlog::info("PacketHandler: Spawned remote entity {} via game function", entityId);
+        // Read optional template name (length-prefixed string appended after fixed fields)
+        std::string templateName;
+        uint16_t nameLen = 0;
+        if (reader.Remaining() >= 2) {
+            reader.ReadU16(nameLen);
+            if (nameLen > 0 && nameLen <= 255 && reader.Remaining() >= nameLen) {
+                templateName.resize(nameLen);
+                reader.ReadRaw(templateName.data(), nameLen);
             }
         }
 
-        // Register in entity registry as a remote entity
-        registry.RegisterRemote(entityId, static_cast<EntityType>(type), ownerId, Vec3(px, py, pz));
+        spdlog::info("PacketHandler: Entity spawn id={} type={} template='{}' at ({:.1f}, {:.1f}, {:.1f})",
+                     entityId, type, templateName, px, py, pz);
 
-        // If we got a game object, link it to the registry entry
-        if (gameObject) {
-            // The registry's RegisterRemote already added the entry.
-            // We need to update the gameObject pointer.
-            // For now, the entity is tracked as a "ghost" for position interpolation.
-        }
+        auto& core = Core::Get();
+        auto& registry = core.GetEntityRegistry();
+
+        // Register in entity registry as remote (gameObject=nullptr until spawned)
+        registry.RegisterRemote(entityId, static_cast<EntityType>(type), ownerId, Vec3(px, py, pz));
 
         // Add initial interpolation snapshot
         float now = static_cast<float>(
@@ -226,6 +197,27 @@ private:
                 std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
         Quat rot = Quat::Decompress(compQuat);
         core.GetInterpolation().AddSnapshot(entityId, now, Vec3(px, py, pz), rot);
+
+        // Queue a real character spawn via SpawnManager.
+        // This will create an actual in-game character using the game's factory
+        // function. The SpawnManager's callback will link the game object to the
+        // registry entry above.
+        auto& spawnMgr = core.GetSpawnManager();
+        if (spawnMgr.IsReady() || !templateName.empty()) {
+            SpawnRequest req;
+            req.netId        = entityId;
+            req.owner        = ownerId;
+            req.type         = static_cast<EntityType>(type);
+            req.templateName = templateName;
+            req.position     = Vec3(px, py, pz);
+            req.rotation     = rot;
+            req.templateId   = templateId;
+            req.factionId    = factionId;
+            spawnMgr.QueueSpawn(req);
+        } else {
+            spdlog::warn("PacketHandler: SpawnManager not ready and no template name — "
+                         "entity {} will remain a ghost until factory is captured", entityId);
+        }
     }
 
     static void HandleEntityDespawn(PacketReader& reader) {
@@ -260,7 +252,8 @@ private:
             Vec3 position(pos.posX, pos.posY, pos.posZ);
             Quat rotation = Quat::Decompress(pos.compressedQuat);
 
-            interp.AddSnapshot(pos.entityId, now, position, rotation);
+            interp.AddSnapshot(pos.entityId, now, position, rotation,
+                               pos.moveSpeed, pos.animStateId);
         }
     }
 
@@ -397,7 +390,10 @@ private:
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
 
-        for (uint32_t i = 0; i < entityCount && reader.Remaining() >= 28; i++) {
+        auto& spawnMgr = core.GetSpawnManager();
+
+        // Fixed fields per entity: u32+u8+u32+u32+f32*3+u32+u32 = 33 bytes (+ variable name)
+        for (uint32_t i = 0; i < entityCount && reader.Remaining() >= 33; i++) {
             uint32_t entityId, templateId, factionId;
             uint8_t type;
             uint32_t ownerId;
@@ -412,12 +408,36 @@ private:
             reader.ReadU32(compQuat);
             reader.ReadU32(factionId);
 
-            // Register as remote entity
-            registry.RegisterRemote(entityId, static_cast<EntityType>(type), ownerId, Vec3(px, py, pz));
+            // Read optional template name
+            std::string templateName;
+            uint16_t nameLen = 0;
+            if (reader.Remaining() >= 2) {
+                reader.ReadU16(nameLen);
+                if (nameLen > 0 && nameLen <= 255 && reader.Remaining() >= nameLen) {
+                    templateName.resize(nameLen);
+                    reader.ReadRaw(templateName.data(), nameLen);
+                }
+            }
 
-            // Add initial position snapshot for interpolation
+            // Register as remote entity
+            Vec3 pos(px, py, pz);
             Quat rot = Quat::Decompress(compQuat);
-            core.GetInterpolation().AddSnapshot(entityId, now, Vec3(px, py, pz), rot);
+            registry.RegisterRemote(entityId, static_cast<EntityType>(type), ownerId, pos);
+            core.GetInterpolation().AddSnapshot(entityId, now, pos, rot);
+
+            // Queue real spawn
+            if (spawnMgr.IsReady() || !templateName.empty()) {
+                SpawnRequest req;
+                req.netId        = entityId;
+                req.owner        = ownerId;
+                req.type         = static_cast<EntityType>(type);
+                req.templateName = templateName;
+                req.position     = pos;
+                req.rotation     = rot;
+                req.templateId   = templateId;
+                req.factionId    = factionId;
+                spawnMgr.QueueSpawn(req);
+            }
         }
 
         spdlog::info("PacketHandler: World snapshot processed");
@@ -439,12 +459,9 @@ private:
         Vec3 pos(msg.posX, msg.posY, msg.posZ);
         registry.RegisterRemote(msg.entityId, EntityType::Building, msg.builderId, pos);
 
-        // Try to create the building in the local game world
-        if (funcs.BuildingPlace) {
-            auto buildFn = reinterpret_cast<BuildingPlaceFn>(funcs.BuildingPlace);
-            // We pass nullptr for building object since we're creating from network data
-            buildFn(nullptr, nullptr, msg.posX, msg.posY, msg.posZ);
-        }
+        // Note: We do NOT call the game's BuildingPlace function here because it
+        // requires valid world and building template pointers we cannot construct
+        // from network data alone. The building is tracked as a ghost entity.
     }
 
     // ── Health Update ──
@@ -479,28 +496,10 @@ private:
         MsgEquipmentUpdate msg;
         reader.ReadRaw(&msg, sizeof(msg));
 
-        auto& core = Core::Get();
-        void* entityObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
-        if (!entityObj) return;
-
-        // Write equipment template ID to the character's equipment slot
-        auto& offsets = game::GetOffsets().character;
-        uintptr_t charPtr = reinterpret_cast<uintptr_t>(entityObj);
-
-        if (offsets.inventory >= 0) {
-            uintptr_t invPtr = 0;
-            Memory::Read(charPtr + offsets.inventory, invPtr);
-            if (invPtr != 0) {
-                // Equipment array at inventory+0x40, each entry is a pointer to item
-                uintptr_t equipArray = invPtr + 0x40;
-                int slot = static_cast<int>(msg.slot);
-                uintptr_t itemPtr = 0;
-                Memory::Read(equipArray + slot * sizeof(uintptr_t), itemPtr);
-                if (itemPtr != 0) {
-                    Memory::Write(itemPtr + 0x08, msg.itemTemplateId);
-                }
-            }
-        }
+        // Equipment offsets are unverified — writing to wrong memory could crash.
+        // Log only until proper offsets are discovered via RE.
+        spdlog::debug("PacketHandler: Equipment update entity={} slot={} item={}",
+                      msg.entityId, msg.slot, msg.itemTemplateId);
     }
 
     // ── Chat ──

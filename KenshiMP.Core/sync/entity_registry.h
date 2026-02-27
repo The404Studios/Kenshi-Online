@@ -20,8 +20,8 @@ struct EntityInfo {
 
 class EntityRegistry {
 public:
-    // Register a local game object
-    EntityID Register(void* gameObject, EntityType type);
+    // Register a local game object (optionally with owner)
+    EntityID Register(void* gameObject, EntityType type, PlayerID owner = 0);
 
     // Register a remote entity (spawned by network)
     EntityID RegisterRemote(EntityID netId, EntityType type, PlayerID owner, const Vec3& pos);
@@ -34,6 +34,9 @@ public:
 
     // Get entity info
     const EntityInfo* GetInfo(EntityID netId) const;
+
+    // Associate a real game object with a remote entity after spawning
+    void SetGameObject(EntityID netId, void* gameObject);
 
     // Update position tracking
     void UpdatePosition(EntityID netId, const Vec3& pos);

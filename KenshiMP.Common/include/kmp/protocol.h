@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+#include <string>
 #include <cstring>
 
 namespace kmp {
@@ -26,6 +27,10 @@ enum class MessageType : uint8_t {
     S2C_EntitySpawn       = 0x20,
     S2C_EntityDespawn     = 0x21,
     C2S_EntitySpawnReq    = 0x22,
+    C2S_EntityDespawnReq  = 0x23,
+
+    // World State requests (Channel 0)
+    C2S_ZoneRequest       = 0x13,
 
     // Movement (Channel 2 - Unreliable Sequenced)
     C2S_PositionUpdate    = 0x30,

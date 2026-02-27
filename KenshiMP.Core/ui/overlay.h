@@ -7,6 +7,14 @@
 
 namespace kmp {
 
+// Main menu sub-pages
+enum class MenuPage {
+    Main,
+    Connect,
+    ServerBrowser,
+    Settings,
+};
+
 class Overlay {
 public:
     void Render(); // Called every frame from Present hook
@@ -22,21 +30,33 @@ public:
     void UpdatePlayerPing(PlayerID id, uint32_t ping);
 
     // Input capture state
-    bool IsInputCapture() const { return m_chatOpen || m_connectionOpen || m_serverBrowserOpen; }
+    bool IsInputCapture() const {
+        return m_chatOpen || m_connectionOpen || m_serverBrowserOpen || m_mainMenuOpen;
+    }
 
     // Show/hide
     void ToggleChat() { m_chatOpen = !m_chatOpen; }
     void TogglePlayerList() { m_playerListOpen = !m_playerListOpen; }
     void ToggleConnectionUI() { m_connectionOpen = !m_connectionOpen; }
     void ToggleServerBrowser() { m_serverBrowserOpen = !m_serverBrowserOpen; }
+    void ToggleMainMenu() { m_mainMenuOpen = !m_mainMenuOpen; }
     void CloseAll() {
         m_chatOpen = false;
         m_playerListOpen = false;
         m_connectionOpen = false;
         m_serverBrowserOpen = false;
+        m_mainMenuOpen = false;
     }
 
 private:
+    // Main menu (full-screen overlay)
+    void RenderMainMenu();
+    void RenderMainPage();
+    void RenderConnectPage();
+    void RenderBrowserPage();
+    void RenderSettingsPage();
+
+    // In-game panels
     void RenderHUD();
     void RenderChat();
     void RenderPlayerList();
@@ -80,6 +100,14 @@ private:
     std::vector<ServerEntry> m_serverList;
     bool m_serverBrowserOpen = false;
     bool m_refreshing = false;
+
+    // Main menu
+    bool     m_mainMenuOpen = true;  // Shown on startup
+    bool     m_firstFrame = true;
+    MenuPage m_menuPage = MenuPage::Main;
+    char     m_settingsName[32] = "Player";
+    bool     m_settingsAutoConnect = false;
+    char     m_statusMessage[256] = {};
 
     // Debug
     bool m_debugOpen = false;

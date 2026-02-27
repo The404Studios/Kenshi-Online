@@ -31,13 +31,10 @@ static void __fastcall Hook_SaveGame(void* saveManager, const char* saveName) {
 static void __fastcall Hook_LoadGame(void* saveManager, const char* saveName) {
     auto& core = Core::Get();
     if (core.IsConnected() && !core.IsHost()) {
-        // Client: request world snapshot from server instead of loading local save
-        spdlog::info("save_hooks: Client load redirected to server snapshot request");
-
-        PacketWriter writer;
-        writer.WriteHeader(MessageType::S2C_WorldSnapshot);
-        // Empty body signals a request for the current world state
-        core.GetClient().SendReliable(writer.Data(), writer.Size());
+        // Client: block local load in multiplayer.
+        // The server already sends a world snapshot on join (HandleHandshake),
+        // so there's no need to request one here.
+        spdlog::info("save_hooks: Blocked client load (server sends snapshot on join)");
         return;
     }
 

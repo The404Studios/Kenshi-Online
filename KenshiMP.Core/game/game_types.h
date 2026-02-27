@@ -46,6 +46,17 @@ struct CharacterOffsets {
     int healthChain2  = -1;    // Second pointer dereference offset (0x5F8)
     int healthBase    = -1;    // Final offset to health float (0x40)
     int healthStride  = 8;     // Stride between body parts (health+stun = 2 floats)
+
+    // Writable position chain (from KServerMod RE):
+    // character → AnimationClassHuman ptr (+animClassOffset)
+    //   → CharMovement ptr (+charMovementOffset from AnimClass)
+    //     → writable Vec3 (+writablePosOffset from CharMovement)
+    //       → x,y,z floats (+writablePosVecOffset within Vec3 struct)
+    // Writing here actually moves the character in the physics engine.
+    int animClassOffset      = -1;    // Offset to AnimationClassHuman* on character
+    int charMovementOffset   = 0xC0;  // AnimClass → CharMovement* (KServerMod verified)
+    int writablePosOffset    = 0x320; // CharMovement → writable position struct (KServerMod verified)
+    int writablePosVecOffset = 0x20;  // position struct → x float (KServerMod verified)
 };
 
 struct SquadOffsets {
@@ -85,6 +96,14 @@ GameOffsets& GetOffsets();
 // Initialize offsets from scanner results (call early in startup)
 void InitOffsetsFromScanner();
 
+// PlayerBase bridge: set by Core after pattern resolution, read by CharacterIterator.
+// This avoids circular includes between game_character.cpp and core.h.
+uintptr_t GetResolvedPlayerBase();
+void SetResolvedPlayerBase(uintptr_t addr);
+
+// SetPosition bridge: set by Core with the resolved CharacterSetPosition function ptr.
+void SetGameSetPositionFn(void* fn);
+
 // ── Character Accessor ──
 // Safe accessor that reads game memory using the offset table.
 class CharacterAccessor {
@@ -110,6 +129,11 @@ public:
 
     // Get the faction pointer
     uintptr_t GetFactionPtr() const;
+
+    // Write the character's writable (physics) position.
+    // Uses the AnimationClassHuman → CharMovement → Vector3 chain.
+    // Also writes to the cached read-only position at +0x48 as fallback.
+    bool WritePosition(const Vec3& pos);
 
     // Get raw pointer for comparison
     uintptr_t GetPtr() const { return m_ptr; }

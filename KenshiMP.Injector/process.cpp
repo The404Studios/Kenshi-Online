@@ -1,12 +1,44 @@
 #include "process.h"
 #include <Windows.h>
 #include <Shlwapi.h>
+#include <shellapi.h>
 #include <TlHelp32.h>
 #include <string>
 
 #pragma comment(lib, "shlwapi.lib")
 
 namespace kmp {
+
+bool CopyPluginDll(const std::wstring& gamePath) {
+    // Get the directory where the injector exe is running from
+    wchar_t exePath[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+
+    // Strip filename to get directory
+    std::wstring exeDir(exePath);
+    size_t lastSlash = exeDir.find_last_of(L"\\/");
+    if (lastSlash != std::wstring::npos) {
+        exeDir = exeDir.substr(0, lastSlash);
+    }
+
+    std::wstring srcDll = exeDir + L"\\KenshiMP.Core.dll";
+    std::wstring dstDll = gamePath + L"\\KenshiMP.Core.dll";
+
+    // Check source exists
+    if (!PathFileExistsW(srcDll.c_str())) {
+        // Try one directory up (in case injector is in a subfolder)
+        srcDll = exeDir + L"\\..\\KenshiMP.Core.dll";
+        if (!PathFileExistsW(srcDll.c_str())) {
+            // Try the build output directory relative to KenshiMP project
+            srcDll = gamePath + L"\\KenshiMP\\build\\bin\\Release\\KenshiMP.Core.dll";
+            if (!PathFileExistsW(srcDll.c_str())) {
+                return false;
+            }
+        }
+    }
+
+    return CopyFileW(srcDll.c_str(), dstDll.c_str(), FALSE) != 0;
+}
 
 std::wstring FindKenshiPath() {
     // Try Steam registry

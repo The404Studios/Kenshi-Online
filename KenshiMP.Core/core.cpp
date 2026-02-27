@@ -8,9 +8,14 @@
 #include "hooks/save_hooks.h"
 #include "hooks/time_hooks.h"
 #include "game/game_types.h"
+#include "kmp/protocol.h"
+#include "kmp/messages.h"
+#include "kmp/constants.h"
+#include "kmp/memory.h"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <chrono>
+#include <algorithm>
 
 namespace kmp {
 
@@ -65,6 +70,15 @@ bool Core::Initialize() {
     // Initialize packet handler
     InitPacketHandler();
 
+    // Set up SpawnManager callback: when a character is spawned by SpawnManager,
+    // link the real game object to the entity registry.
+    m_spawnManager.SetOnSpawnedCallback(
+        [this](EntityID netId, void* gameObject) {
+            m_entityRegistry.SetGameObject(netId, gameObject);
+            spdlog::info("Core: SpawnManager linked entity {} to game object 0x{:X}",
+                         netId, reinterpret_cast<uintptr_t>(gameObject));
+        });
+
     if (!InitUI()) {
         spdlog::error("UI initialization failed");
     }
@@ -108,6 +122,20 @@ bool Core::InitScanner() {
     if (!resolved) {
         spdlog::warn("Game functions minimally resolved: false - some features may not work");
     }
+
+    // Bridge PlayerBase to the game_character module
+    if (m_gameFuncs.PlayerBase != 0) {
+        game::SetResolvedPlayerBase(m_gameFuncs.PlayerBase);
+        spdlog::info("Core: PlayerBase bridged to game_character at 0x{:X}", m_gameFuncs.PlayerBase);
+    }
+
+    // Bridge CharacterSetPosition function to game_character module
+    if (m_gameFuncs.CharacterSetPosition) {
+        game::SetGameSetPositionFn(m_gameFuncs.CharacterSetPosition);
+        spdlog::info("Core: SetPosition function bridged at 0x{:X}",
+                     reinterpret_cast<uintptr_t>(m_gameFuncs.CharacterSetPosition));
+    }
+
     return resolved;
 }
 
@@ -162,9 +190,8 @@ void Core::NetworkThreadFunc() {
     spdlog::info("Network thread started");
 
     while (m_running) {
-        if (m_connected) {
-            m_client.Update();
-        }
+        // Always pump ENet events — handles async connect, receive, and disconnect
+        m_client.Update();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
@@ -173,6 +200,20 @@ void Core::NetworkThreadFunc() {
 
 void Core::OnGameTick(float deltaTime) {
     if (!m_connected) return;
+
+    // Process any pending spawn requests (must happen on game thread)
+    m_spawnManager.ProcessSpawnQueue();
+
+    // One-shot heap scan: once the factory is captured but we have few templates,
+    // run a heap scan to discover all GameData entries.
+    static bool heapScanned = false;
+    if (!heapScanned && m_spawnManager.IsReady() && m_spawnManager.GetTemplateCount() < 10) {
+        spdlog::info("Core: Triggering GameData heap scan...");
+        m_spawnManager.ScanGameDataHeap();
+        heapScanned = true;
+        spdlog::info("Core: Heap scan complete, {} templates available",
+                     m_spawnManager.GetTemplateCount());
+    }
 
     // Update interpolation for remote entities
     m_interpolation.Update(deltaTime);
@@ -193,24 +234,50 @@ void Core::OnGameTick(float deltaTime) {
             void* charPtr = reinterpret_cast<void*>(character.GetPtr());
             EntityID netId = m_entityRegistry.GetNetId(charPtr);
             if (netId == INVALID_ENTITY) {
-                // Not yet registered — register local player characters
-                if (character.IsPlayerControlled()) {
-                    netId = m_entityRegistry.Register(charPtr, EntityType::PlayerCharacter);
-                    spdlog::debug("Core: Auto-registered local character netId={}", netId);
-                } else {
-                    continue; // Skip non-player NPCs for auto-registration
-                }
+                // All characters from the player's CharacterIterator are player-controlled.
+                // Register with our local player ID as owner.
+                netId = m_entityRegistry.Register(
+                    charPtr, EntityType::PlayerCharacter, m_localPlayerId);
+                spdlog::debug("Core: Auto-registered local character netId={}", netId);
             }
 
-            auto* info = m_entityRegistry.GetInfo(netId);
-            if (!info || info->ownerPlayerId != m_localPlayerId) continue;
+            // Copy entity info under lock to avoid dangling pointer (audit fix #7)
+            EntityInfo infoCopy;
+            {
+                auto* info = m_entityRegistry.GetInfo(netId);
+                if (!info || info->ownerPlayerId != m_localPlayerId) continue;
+                infoCopy = *info;
+            }
 
             // Read current position/rotation
             Vec3 pos = character.GetPosition();
             Quat rot = character.GetRotation();
 
             // Check if position changed beyond threshold
-            if (pos.DistanceTo(info->lastPosition) < KMP_POS_CHANGE_THRESHOLD) continue;
+            float dist = pos.DistanceTo(infoCopy.lastPosition);
+            if (dist < KMP_POS_CHANGE_THRESHOLD) continue;
+
+            // Compute moveSpeed from position delta (reliable, no offset needed)
+            float computedSpeed = 0.f;
+            float timeSinceLast = (infoCopy.lastUpdateTick > 0)
+                ? deltaTime  // Approximate: we send once per tick
+                : 0.f;
+            if (timeSinceLast > 0.001f) {
+                computedSpeed = dist / timeSinceLast;
+            }
+
+            // Try reading from memory first; if offset unavailable, use computed
+            float speed = character.GetMoveSpeed();
+            if (speed <= 0.f && computedSpeed > 0.f) {
+                speed = computedSpeed;
+            }
+
+            // Derive animation state from speed when offset is unavailable
+            uint8_t animState = character.GetAnimState();
+            if (animState == 0 && speed > 0.5f) {
+                // 1 = walking, 2 = running (synthetic states for remote display)
+                animState = (speed > 5.0f) ? 2 : 1;
+            }
 
             // Start batch if needed
             if (!hasBatchData) {
@@ -226,8 +293,7 @@ void Core::OnGameTick(float deltaTime) {
             cp.posY = pos.y;
             cp.posZ = pos.z;
             cp.compressedQuat = rot.Compress();
-            cp.animStateId = character.GetAnimState();
-            float speed = character.GetMoveSpeed();
+            cp.animStateId = animState;
             cp.moveSpeed = static_cast<uint8_t>(std::min(255.f, speed / 15.f * 255.f));
             cp.flags = (speed > 3.0f) ? 0x01 : 0x00;
 
@@ -253,6 +319,7 @@ void Core::OnGameTick(float deltaTime) {
                                      batchWriter.Size() - headerSize);
             }
             m_client.SendUnreliable(finalWriter.Data(), finalWriter.Size());
+            spdlog::trace("Core: Sent {} position updates", batchCount);
         }
     }
 
@@ -262,24 +329,41 @@ void Core::OnGameTick(float deltaTime) {
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
 
+    // Cache MoveTo function pointer for use in the loop
+    using MoveToFn = void(__fastcall*)(void*, float, float, float, int);
+    MoveToFn moveToFn = m_gameFuncs.CharacterMoveTo
+        ? reinterpret_cast<MoveToFn>(m_gameFuncs.CharacterMoveTo) : nullptr;
+
     for (EntityID remoteId : remoteEntities) {
         Vec3 interpPos;
         Quat interpRot;
+        uint8_t moveSpeed = 0;
+        uint8_t animState = 0;
 
-        if (m_interpolation.GetInterpolated(remoteId, now, interpPos, interpRot)) {
+        if (m_interpolation.GetInterpolated(remoteId, now, interpPos, interpRot,
+                                             moveSpeed, animState)) {
             // Get the game object for this remote entity
             void* gameObj = m_entityRegistry.GetGameObject(remoteId);
             if (gameObj) {
-                // Write interpolated position/rotation directly to game memory
-                auto& offsets = game::GetOffsets().character;
-                uintptr_t charPtr = reinterpret_cast<uintptr_t>(gameObj);
+                game::CharacterAccessor accessor(gameObj);
 
-                if (offsets.position >= 0) {
-                    Memory::Write(charPtr + offsets.position, interpPos.x);
-                    Memory::Write(charPtr + offsets.position + 4, interpPos.y);
-                    Memory::Write(charPtr + offsets.position + 8, interpPos.z);
+                // If the remote character is moving and we have the MoveTo function,
+                // use it so the game engine plays the correct walk/run animation.
+                // Otherwise fall back to direct position write.
+                float speedMs = (moveSpeed / 255.f) * 15.f;
+                if (moveToFn && speedMs > 0.5f) {
+                    // MoveTo triggers pathfinding + animation. Use run (1) for fast, walk (0) for slow.
+                    int moveType = (speedMs > 5.0f) ? 1 : 0;
+                    moveToFn(gameObj, interpPos.x, interpPos.y, interpPos.z, moveType);
                 }
+
+                // Always write position for accuracy (MoveTo is async, this ensures correctness)
+                accessor.WritePosition(interpPos);
+
+                // Write rotation to cached rotation offset
+                auto& offsets = game::GetOffsets().character;
                 if (offsets.rotation >= 0) {
+                    uintptr_t charPtr = reinterpret_cast<uintptr_t>(gameObj);
                     Memory::Write(charPtr + offsets.rotation, interpRot);
                 }
             }

@@ -23,7 +23,7 @@ struct ServerConfig {
     uint16_t    port         = KMP_DEFAULT_PORT;
     int         maxPlayers   = KMP_MAX_PLAYERS;
     std::string password;
-    std::string savePath     = "world.kmpsvave";
+    std::string savePath     = "world.kmpsave";
     int         tickRate     = KMP_TICK_RATE;
     bool        pvpEnabled   = true;
     float       gameSpeed    = 1.0f;

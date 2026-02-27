@@ -3,7 +3,7 @@
 
 namespace kmp {
 
-EntityID EntityRegistry::Register(void* gameObject, EntityType type) {
+EntityID EntityRegistry::Register(void* gameObject, EntityType type, PlayerID owner) {
     std::unique_lock lock(m_mutex);
 
     // Check if already registered
@@ -15,6 +15,7 @@ EntityID EntityRegistry::Register(void* gameObject, EntityType type) {
     info.netId = id;
     info.gameObject = gameObject;
     info.type = type;
+    info.ownerPlayerId = owner;
     info.isRemote = false;
 
     m_entities[id] = info;
@@ -60,6 +61,21 @@ const EntityInfo* EntityRegistry::GetInfo(EntityID netId) const {
     std::shared_lock lock(m_mutex);
     auto it = m_entities.find(netId);
     return it != m_entities.end() ? &it->second : nullptr;
+}
+
+void EntityRegistry::SetGameObject(EntityID netId, void* gameObject) {
+    std::unique_lock lock(m_mutex);
+    auto it = m_entities.find(netId);
+    if (it != m_entities.end()) {
+        // Remove old pointer mapping if any
+        if (it->second.gameObject) {
+            m_ptrToId.erase(it->second.gameObject);
+        }
+        it->second.gameObject = gameObject;
+        if (gameObject) {
+            m_ptrToId[gameObject] = netId;
+        }
+    }
 }
 
 void EntityRegistry::UpdatePosition(EntityID netId, const Vec3& pos) {

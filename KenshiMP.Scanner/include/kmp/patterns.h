@@ -296,4 +296,10 @@ struct GameFunctions {
     }
 };
 
+// Forward declaration for PatternScanner (defined in scanner.h)
+class PatternScanner;
+
+// Resolve game function pointers using patterns + runtime string fallback
+bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs);
+
 } // namespace kmp

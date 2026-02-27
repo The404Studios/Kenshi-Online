@@ -2,8 +2,13 @@
 #include "process.h"
 #include <Windows.h>
 #include <CommCtrl.h>
+#include <shlobj.h>
+#include <shellapi.h>
+#include <Shlwapi.h>
 #include <string>
 #include <sstream>
+
+#pragma comment(lib, "shlwapi.lib")
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(linker, "\"/manifestdependency:type='win32' \
@@ -43,30 +48,47 @@ void OnPlay() {
 
     std::wstring gameDir(gamePath);
 
-    UpdateStatus(L"Preparing injection...");
+    // Validate game path
+    std::wstring exeCheck = gameDir + L"\\kenshi_x64.exe";
+    if (!PathFileExistsW(exeCheck.c_str())) {
+        UpdateStatus(L"Error: kenshi_x64.exe not found at the specified path");
+        return;
+    }
 
-    // 1. Install the plugin line in Plugins_x64.cfg
+    // 1. Copy KenshiMP.Core.dll to the Kenshi directory
+    UpdateStatus(L"Copying KenshiMP.Core.dll...");
+    if (!kmp::CopyPluginDll(gameDir)) {
+        // Check if it already exists (maybe from a previous install)
+        std::wstring existingDll = gameDir + L"\\KenshiMP.Core.dll";
+        if (!PathFileExistsW(existingDll.c_str())) {
+            UpdateStatus(L"Error: KenshiMP.Core.dll not found. Place it next to the injector.");
+            return;
+        }
+        // DLL already exists, continue
+    }
+
+    // 2. Install the plugin line in Plugins_x64.cfg
+    UpdateStatus(L"Installing Ogre plugin...");
     if (!kmp::InstallOgrePlugin(gameDir)) {
         UpdateStatus(L"Failed to modify Plugins_x64.cfg");
         return;
     }
 
-    // 2. Write connection config
+    // 3. Write connection config (writes to %APPDATA%/KenshiMP/client.json)
     char addrA[128], portA[8], nameA[32];
     WideCharToMultiByte(CP_UTF8, 0, serverAddr, -1, addrA, sizeof(addrA), nullptr, nullptr);
     WideCharToMultiByte(CP_UTF8, 0, serverPort, -1, portA, sizeof(portA), nullptr, nullptr);
     WideCharToMultiByte(CP_UTF8, 0, playerName, -1, nameA, sizeof(nameA), nullptr, nullptr);
     kmp::WriteConnectConfig(addrA, portA, nameA);
 
+    // 4. Launch the game
     UpdateStatus(L"Launching Kenshi via Steam...");
-
-    // 3. Launch the game
     if (!kmp::LaunchKenshi(gameDir)) {
         UpdateStatus(L"Failed to launch Kenshi");
         return;
     }
 
-    UpdateStatus(L"Kenshi launched! Kenshi-Online will connect automatically.");
+    UpdateStatus(L"Kenshi launched! Click OK in Kenshi's settings, then the mod loads automatically.");
 }
 
 void OnBrowse() {

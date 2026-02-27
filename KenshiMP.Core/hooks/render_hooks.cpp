@@ -8,6 +8,7 @@
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 #include <mutex>
+#include <chrono>
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -34,18 +35,15 @@ static ResizeBuffersFn  s_originalResizeBuffers = nullptr;
 
 // ── WndProc Hook ──
 static LRESULT CALLBACK HookWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam)) {
-        return true;
-    }
+    // Always let ImGui see input events for its internal state
+    ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam);
 
-    // Pass input to ImGui - if ImGui wants to capture, block game input
-    if (ImGui::GetCurrentContext()) {
-        auto& io = ImGui::GetIO();
-        if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
-            // Only block when overlay UI is actively focused
-            if (Core::Get().GetOverlay().IsInputCapture()) {
-                return true;
-            }
+    // Only block game input when our overlay is actively capturing
+    if (ImGui::GetCurrentContext() && Core::Get().GetOverlay().IsInputCapture()) {
+        // Block keyboard and mouse input from reaching the game
+        if ((uMsg >= WM_KEYFIRST && uMsg <= WM_KEYLAST) ||
+            (uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST)) {
+            return true;
         }
     }
 
@@ -103,6 +101,10 @@ static void InitImGui(IDXGISwapChain* swapChain) {
 }
 
 // ── Present Hook ──
+// Used as a guaranteed OnGameTick fallback when time_hooks doesn't install.
+static std::chrono::steady_clock::time_point s_lastFrameTime{};
+static bool s_hasLastFrameTime = false;
+
 static HRESULT __stdcall HookPresent(IDXGISwapChain* swapChain, UINT syncInterval, UINT flags) {
     std::lock_guard lock(s_renderMutex);
 
@@ -123,6 +125,25 @@ static HRESULT __stdcall HookPresent(IDXGISwapChain* swapChain, UINT syncInterva
 
         s_context->OMSetRenderTargets(1, &s_rtv, nullptr);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+    }
+
+    // ── Guaranteed OnGameTick fallback ──
+    // time_hooks calls OnGameTick when installed, but TIME_UPDATE pattern may be
+    // null so the time hook may never install. Drive OnGameTick from the Present
+    // hook (which always installs) so position sync/spawning/interpolation work.
+    // Skip if time_hooks is active to avoid double-calling.
+    auto& core = Core::Get();
+    if (core.IsConnected() && !core.IsTimeHookActive()) {
+        auto now = std::chrono::steady_clock::now();
+        if (s_hasLastFrameTime) {
+            float dt = std::chrono::duration<float>(now - s_lastFrameTime).count();
+            // Clamp delta to avoid huge jumps (e.g. after alt-tab)
+            if (dt > 0.0f && dt < 0.5f) {
+                core.OnGameTick(dt);
+            }
+        }
+        s_lastFrameTime = now;
+        s_hasLastFrameTime = true;
     }
 
     return s_originalPresent(swapChain, syncInterval, flags);
@@ -158,11 +179,11 @@ static HRESULT __stdcall HookResizeBuffers(IDXGISwapChain* swapChain, UINT buffe
 // Create a temporary D3D11 device + swap chain to read the vtable
 static bool GetDXGIVTable(void**& vtable) {
     // Create a temporary hidden window
-    WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, DefWindowProc, 0, 0,
-                     GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr,
-                     L"KMP_TEMP", nullptr};
-    RegisterClassEx(&wc);
-    HWND tempHwnd = CreateWindow(wc.lpszClassName, L"", WS_OVERLAPPEDWINDOW,
+    WNDCLASSEXA wc = {sizeof(WNDCLASSEXA), CS_CLASSDC, DefWindowProcA, 0, 0,
+                     GetModuleHandleA(nullptr), nullptr, nullptr, nullptr, nullptr,
+                     "KMP_TEMP", nullptr};
+    RegisterClassExA(&wc);
+    HWND tempHwnd = CreateWindowA(wc.lpszClassName, "", WS_OVERLAPPEDWINDOW,
                                  0, 0, 100, 100, nullptr, nullptr, wc.hInstance, nullptr);
 
     DXGI_SWAP_CHAIN_DESC scd = {};

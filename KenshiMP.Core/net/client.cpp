@@ -37,6 +37,7 @@ void NetworkClient::Shutdown() {
 }
 
 bool NetworkClient::Connect(const std::string& address, uint16_t port) {
+    // Blocking connect — kept for compatibility but prefer ConnectAsync()
     if (!m_initialized || m_connected) return false;
 
     ENetAddress addr;
@@ -66,30 +67,58 @@ bool NetworkClient::Connect(const std::string& address, uint16_t port) {
     return false;
 }
 
-void NetworkClient::Disconnect() {
-    if (!m_connected || !m_serverPeer) return;
+bool NetworkClient::ConnectAsync(const std::string& address, uint16_t port) {
+    if (!m_initialized || m_connected || m_connecting) return false;
 
-    enet_peer_disconnect(m_serverPeer, 0);
+    ENetAddress addr;
+    enet_address_set_host(&addr, address.c_str());
+    addr.port = port;
 
-    // Wait for disconnect acknowledgment
-    ENetEvent event;
-    bool disconnected = false;
-    while (enet_host_service(m_host, &event, 3000) > 0) {
-        if (event.type == ENET_EVENT_TYPE_RECEIVE) {
-            enet_packet_destroy(event.packet);
-        } else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
-            disconnected = true;
-            break;
-        }
+    m_serverPeer = enet_host_connect(m_host, &addr, KMP_CHANNEL_COUNT, 0);
+    if (!m_serverPeer) {
+        spdlog::error("NetworkClient: Failed to initiate async connection to {}:{}", address, port);
+        return false;
     }
 
-    if (!disconnected) {
-        enet_peer_reset(m_serverPeer);
+    // Set a reasonable connect timeout (5 seconds)
+    enet_peer_timeout(m_serverPeer, 0, KMP_CONNECT_TIMEOUT_MS, KMP_CONNECT_TIMEOUT_MS);
+
+    m_connecting = true;
+    m_serverAddr = address;
+    m_serverPort = port;
+    spdlog::info("NetworkClient: Async connecting to {}:{}...", address, port);
+    return true;
+}
+
+void NetworkClient::Disconnect() {
+    if (m_serverPeer) {
+        if (m_connected) {
+            enet_peer_disconnect(m_serverPeer, 0);
+
+            // Wait briefly for disconnect acknowledgment
+            ENetEvent event;
+            bool disconnected = false;
+            while (enet_host_service(m_host, &event, 1000) > 0) {
+                if (event.type == ENET_EVENT_TYPE_RECEIVE) {
+                    enet_packet_destroy(event.packet);
+                } else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
+                    disconnected = true;
+                    break;
+                }
+            }
+
+            if (!disconnected) {
+                enet_peer_reset(m_serverPeer);
+            }
+        } else {
+            enet_peer_reset(m_serverPeer);
+        }
     }
 
     m_serverPeer = nullptr;
     m_connected = false;
-    spdlog::info("NetworkClient: Disconnected");
+    m_connecting = false;
+    spdlog::info("NetworkClient: Disconnected (state reset)");
 }
 
 void NetworkClient::Update() {
@@ -98,6 +127,13 @@ void NetworkClient::Update() {
     ENetEvent event;
     while (enet_host_service(m_host, &event, 0) > 0) {
         switch (event.type) {
+        case ENET_EVENT_TYPE_CONNECT:
+            // Async connection succeeded
+            m_connected = true;
+            m_connecting = false;
+            spdlog::info("NetworkClient: Connected to {}:{}", m_serverAddr, m_serverPort);
+            break;
+
         case ENET_EVENT_TYPE_RECEIVE:
             if (m_callback) {
                 m_callback(event.packet->data, event.packet->dataLength,
@@ -110,6 +146,7 @@ void NetworkClient::Update() {
             spdlog::warn("NetworkClient: Disconnected from server (reason: {})",
                          event.data);
             m_connected = false;
+            m_connecting = false;
             m_serverPeer = nullptr;
             break;
 

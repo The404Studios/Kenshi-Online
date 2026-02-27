@@ -100,10 +100,31 @@ bool HookManager::Remove(const std::string& name) {
 }
 
 void HookManager::RemoveAll() {
-    // Copy keys to avoid iterator invalidation
+    // NOTE: Caller must already hold m_mutex (called from Shutdown).
+    // We do the removal inline to avoid re-locking the non-recursive mutex.
     std::vector<std::string> names;
     for (auto& [name, _] : m_hooks) names.push_back(name);
-    for (auto& name : names) Remove(name);
+
+    for (auto& name : names) {
+        auto it = m_hooks.find(name);
+        if (it == m_hooks.end()) continue;
+
+        auto& entry = it->second;
+        if (entry.isVtable) {
+            DWORD oldProtect;
+            VirtualProtect(entry.vtableAddr + entry.vtableIndex, sizeof(void*),
+                          PAGE_EXECUTE_READWRITE, &oldProtect);
+            entry.vtableAddr[entry.vtableIndex] = entry.original;
+            VirtualProtect(entry.vtableAddr + entry.vtableIndex, sizeof(void*),
+                          oldProtect, &oldProtect);
+        } else {
+            MH_DisableHook(entry.target);
+            MH_RemoveHook(entry.target);
+        }
+
+        spdlog::info("HookManager: Removed hook '{}'", name);
+        m_hooks.erase(it);
+    }
 }
 
 bool HookManager::Enable(const std::string& name) {

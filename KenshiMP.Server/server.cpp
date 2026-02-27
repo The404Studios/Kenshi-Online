@@ -174,6 +174,21 @@ void GameServer::HandlePacket(ENetPeer* peer, const uint8_t* data, size_t size, 
         if (player) HandleBuildRequest(*player, reader);
         break;
     }
+    case MessageType::C2S_EntitySpawnReq: {
+        auto* player = GetPlayer(peer);
+        if (player) HandleEntitySpawnReq(*player, reader);
+        break;
+    }
+    case MessageType::C2S_EntityDespawnReq: {
+        auto* player = GetPlayer(peer);
+        if (player) HandleEntityDespawnReq(*player, reader);
+        break;
+    }
+    case MessageType::C2S_ZoneRequest: {
+        auto* player = GetPlayer(peer);
+        if (player) HandleZoneRequest(*player, reader);
+        break;
+    }
     default:
         spdlog::debug("GameServer: Unknown message type 0x{:02X}", static_cast<uint8_t>(header.type));
         break;
@@ -279,6 +294,8 @@ void GameServer::HandlePositionUpdate(ConnectedPlayer& player, PacketReader& rea
             it->second.rotation = Quat::Decompress(pos.compressedQuat);
             it->second.zone = ZoneCoord::FromWorldPos(it->second.position);
             it->second.animState = pos.animStateId;
+            it->second.moveSpeed = pos.moveSpeed;
+            it->second.flags = pos.flags;
         }
 
         // Update player's position for zone tracking
@@ -494,8 +511,8 @@ void GameServer::BroadcastPositions() {
             pos.posZ = entity->position.z;
             pos.compressedQuat = entity->rotation.Compress();
             pos.animStateId = entity->animState;
-            pos.moveSpeed = 0;
-            pos.flags = 0;
+            pos.moveSpeed = entity->moveSpeed;
+            pos.flags = entity->flags;
             writer.WriteRaw(&pos, sizeof(pos));
         }
 
@@ -516,6 +533,136 @@ void GameServer::BroadcastTimeSync() {
     Broadcast(writer.Data(), writer.Size(), KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
 }
 
+void GameServer::HandleEntitySpawnReq(ConnectedPlayer& player, PacketReader& reader) {
+    // Host client reports a character was created in-game. Server assigns a server
+    // entity ID, stores it, and broadcasts S2C_EntitySpawn to all clients.
+    uint32_t clientEntityId, templateId, factionId;
+    uint8_t type;
+    uint32_t ownerId;
+    float px, py, pz;
+    uint32_t compQuat;
+
+    reader.ReadU32(clientEntityId);
+    reader.ReadU8(type);
+    reader.ReadU32(ownerId);
+    reader.ReadU32(templateId);
+    reader.ReadVec3(px, py, pz);
+    reader.ReadU32(compQuat);
+    reader.ReadU32(factionId);
+
+    // Read optional template name
+    std::string templateName;
+    uint16_t nameLen = 0;
+    if (reader.Remaining() >= 2) {
+        reader.ReadU16(nameLen);
+        if (nameLen > 0 && nameLen <= 255 && reader.Remaining() >= nameLen) {
+            templateName.resize(nameLen);
+            reader.ReadRaw(templateName.data(), nameLen);
+        }
+    }
+
+    // Assign server entity ID
+    EntityID serverId = m_nextEntityId++;
+
+    // Store in server entity list
+    ServerEntity entity;
+    entity.id = serverId;
+    entity.type = static_cast<EntityType>(type);
+    entity.owner = player.id;
+    entity.position = Vec3(px, py, pz);
+    entity.rotation = Quat::Decompress(compQuat);
+    entity.templateId = templateId;
+    entity.factionId = factionId;
+    entity.templateName = templateName;
+    m_entities[serverId] = entity;
+
+    spdlog::info("GameServer: Entity spawn req from '{}': serverID={} template='{}' at ({:.1f},{:.1f},{:.1f})",
+                 player.name, serverId, templateName, px, py, pz);
+
+    // Broadcast S2C_EntitySpawn to ALL clients (including the host, so they get the server ID)
+    PacketWriter writer;
+    writer.WriteHeader(MessageType::S2C_EntitySpawn);
+    writer.WriteU32(serverId);
+    writer.WriteU8(type);
+    writer.WriteU32(player.id);
+    writer.WriteU32(templateId);
+    writer.WriteF32(px);
+    writer.WriteF32(py);
+    writer.WriteF32(pz);
+    writer.WriteU32(compQuat);
+    writer.WriteU32(factionId);
+    writer.WriteU16(nameLen);
+    if (nameLen > 0) {
+        writer.WriteRaw(templateName.data(), nameLen);
+    }
+
+    Broadcast(writer.Data(), writer.Size(), KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+}
+
+void GameServer::HandleEntityDespawnReq(ConnectedPlayer& player, PacketReader& reader) {
+    uint32_t entityId;
+    uint8_t reason;
+    if (!reader.ReadU32(entityId)) return;
+    reader.ReadU8(reason); // optional
+
+    // Validate: entity must exist and be owned by this player
+    auto it = m_entities.find(entityId);
+    if (it == m_entities.end()) return;
+    if (it->second.owner != player.id) {
+        spdlog::warn("GameServer: Player '{}' tried to despawn entity {} they don't own", player.name, entityId);
+        return;
+    }
+
+    spdlog::info("GameServer: Entity {} despawned by '{}' (reason={})", entityId, player.name, reason);
+
+    // Remove from server
+    m_entities.erase(it);
+
+    // Broadcast despawn to all clients
+    PacketWriter writer;
+    writer.WriteHeader(MessageType::S2C_EntityDespawn);
+    writer.WriteU32(entityId);
+    writer.WriteU8(reason);
+    Broadcast(writer.Data(), writer.Size(), KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+}
+
+void GameServer::HandleZoneRequest(ConnectedPlayer& player, PacketReader& reader) {
+    int32_t zoneX, zoneY;
+    if (!reader.ReadI32(zoneX) || !reader.ReadI32(zoneY)) return;
+
+    spdlog::debug("GameServer: Player '{}' requested zone ({}, {})", player.name, zoneX, zoneY);
+
+    ZoneCoord requestedZone(zoneX, zoneY);
+
+    // Send all entities in the requested zone (and adjacent zones) to this player
+    for (auto& [entityId, entity] : m_entities) {
+        if (entity.owner == player.id) continue; // Don't send own entities
+        if (!requestedZone.IsAdjacent(entity.zone) && !(entity.zone.x == zoneX && entity.zone.y == zoneY))
+            continue;
+
+        PacketWriter writer;
+        writer.WriteHeader(MessageType::S2C_EntitySpawn);
+        writer.WriteU32(entity.id);
+        writer.WriteU8(static_cast<uint8_t>(entity.type));
+        writer.WriteU32(entity.owner);
+        writer.WriteU32(entity.templateId);
+        writer.WriteF32(entity.position.x);
+        writer.WriteF32(entity.position.y);
+        writer.WriteF32(entity.position.z);
+        writer.WriteU32(entity.rotation.Compress());
+        writer.WriteU32(entity.factionId);
+        uint16_t nameLen = static_cast<uint16_t>(
+            std::min<size_t>(entity.templateName.size(), 255));
+        writer.WriteU16(nameLen);
+        if (nameLen > 0) {
+            writer.WriteRaw(entity.templateName.data(), nameLen);
+        }
+
+        ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
+        enet_peer_send(player.peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
+    }
+}
+
 void GameServer::SendWorldSnapshot(ConnectedPlayer& player) {
     // Send all entities to the newly joined player
     for (auto& [entityId, entity] : m_entities) {
@@ -530,6 +677,13 @@ void GameServer::SendWorldSnapshot(ConnectedPlayer& player) {
         writer.WriteF32(entity.position.z);
         writer.WriteU32(entity.rotation.Compress());
         writer.WriteU32(entity.factionId);
+        // Append template name so the client can spawn via SpawnManager
+        uint16_t nameLen = static_cast<uint16_t>(
+            std::min<size_t>(entity.templateName.size(), 255));
+        writer.WriteU16(nameLen);
+        if (nameLen > 0) {
+            writer.WriteRaw(entity.templateName.data(), nameLen);
+        }
 
         ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
         enet_peer_send(player.peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
@@ -602,6 +756,25 @@ void GameServer::BroadcastSystemMessage(const std::string& message) {
     writer.WriteU32(0); // system
     writer.WriteString(message);
     Broadcast(writer.Data(), writer.Size(), KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+}
+
+void GameServer::LoadWorld() {
+    std::string savePath = m_config.savePath.empty()
+        ? "kenshi_mp_world.json" : m_config.savePath;
+
+    float loadedTime = m_timeOfDay;
+    int loadedWeather = m_weatherState;
+    EntityID loadedNextId = m_nextEntityId;
+
+    if (LoadWorldFromFile(savePath, m_entities, loadedTime, loadedWeather, loadedNextId)) {
+        m_timeOfDay = loadedTime;
+        m_weatherState = loadedWeather;
+        m_nextEntityId = loadedNextId;
+        spdlog::info("GameServer: Loaded world from '{}' ({} entities, time={:.2f})",
+                     savePath, m_entities.size(), m_timeOfDay);
+    } else {
+        spdlog::info("GameServer: No saved world at '{}', starting fresh", savePath);
+    }
 }
 
 void GameServer::SaveWorld() {

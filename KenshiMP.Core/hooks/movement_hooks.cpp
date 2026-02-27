@@ -51,8 +51,23 @@ static void __fastcall Hook_SetPosition(void* character, float x, float y, float
     game::CharacterAccessor accessor(character);
     Quat rotation = accessor.GetRotation();
     uint32_t compQuat = rotation.Compress();
-    uint8_t animState = accessor.GetAnimState();
+
+    // Compute moveSpeed from position delta (reliable fallback when offset = -1)
+    float dist = newPos.DistanceTo(info->lastPosition);
+    float elapsedSec = elapsed.count() / 1000.f;
+    float computedSpeed = (elapsedSec > 0.001f) ? dist / elapsedSec : 0.f;
+
+    // Try memory read first; fall back to computed speed
     float moveSpeed = accessor.GetMoveSpeed();
+    if (moveSpeed <= 0.f && computedSpeed > 0.f) {
+        moveSpeed = computedSpeed;
+    }
+
+    // Derive animation state from speed when offset is unavailable
+    uint8_t animState = accessor.GetAnimState();
+    if (animState == 0 && moveSpeed > 0.5f) {
+        animState = (moveSpeed > 5.0f) ? 2 : 1; // 1=walking, 2=running
+    }
 
     // Map move speed (0..15 m/s) to uint8 (0..255)
     uint8_t moveSpeedU8 = static_cast<uint8_t>(
@@ -61,8 +76,6 @@ static void __fastcall Hook_SetPosition(void* character, float x, float y, float
     // Determine flags
     uint16_t flags = 0;
     if (moveSpeed > 3.0f) flags |= 0x01; // running
-    // Bit 1: sneaking (would need to check task type)
-    // Bit 2: in combat (would need to check combat state)
 
     // Send position update
     PacketWriter writer;

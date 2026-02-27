@@ -1,5 +1,6 @@
 #include "game_types.h"
 #include "kmp/memory.h"
+#include "kmp/constants.h"
 #include <spdlog/spdlog.h>
 
 namespace kmp::game {

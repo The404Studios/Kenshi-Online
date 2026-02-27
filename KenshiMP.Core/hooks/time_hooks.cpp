@@ -59,12 +59,16 @@ bool Install() {
     auto& hookMgr = HookManager::Get();
 
     if (funcs.TimeUpdate) {
-        hookMgr.InstallAt("TimeUpdate",
-                          reinterpret_cast<uintptr_t>(funcs.TimeUpdate),
-                          &Hook_TimeUpdate, &s_origTimeUpdate);
+        if (hookMgr.InstallAt("TimeUpdate",
+                              reinterpret_cast<uintptr_t>(funcs.TimeUpdate),
+                              &Hook_TimeUpdate, &s_origTimeUpdate)) {
+            // Tell Core that we're driving OnGameTick so render_hooks doesn't double-call it
+            Core::Get().SetTimeHookActive(true);
+            spdlog::info("time_hooks: TimeUpdate hook active — driving OnGameTick");
+        }
     }
 
-    spdlog::info("time_hooks: Installed");
+    spdlog::info("time_hooks: Installed (TimeUpdate={})", funcs.TimeUpdate != nullptr);
     return true;
 }
 

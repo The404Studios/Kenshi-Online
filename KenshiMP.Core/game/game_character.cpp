@@ -1,6 +1,7 @@
 #include "game_types.h"
 #include "kmp/memory.h"
 #include <spdlog/spdlog.h>
+#include <cmath>
 
 namespace kmp::game {
 
@@ -13,21 +14,23 @@ GameOffsets& GetOffsets() {
         // These are based on Kenshi v1.0.59+ Cheat Engine tables.
         // The scanner may override these with discovered values later.
 
+        // ── KServerMod / KenshiLib verified offsets (v1.0.68) ──
         auto& c = s_offsets.character;
-        c.name              = 0x10;    // MSVC std::string
-        c.faction           = 0x50;    // Faction pointer
-        c.position          = 0x0A0;   // Vec3 (3 floats)
-        c.rotation          = 0x0B0;   // Quat (4 floats, w,x,y,z)
-        c.sceneNode         = 0x100;   // Ogre::SceneNode*
-        c.aiPackage         = 0x1A0;   // AI package pointer
-        c.inventory         = 0x200;   // Inventory pointer
-        c.stats             = 0x300;   // Stats object pointer
-        c.equipment         = 0x380;   // Equipment array
-        c.currentTask       = 0x400;   // Current task type
-        c.isAlive           = 0x408;   // Alive flag (bool)
-        c.isPlayerControlled = 0x410;  // Player-controlled flag
-        c.moveSpeed         = 0x0C0;   // Move speed float
-        c.animState         = 0x0C8;   // Animation state index
+        // CharacterHuman struct (from KServerMod structs.h)
+        c.faction           = 0x10;    // Faction* (verified KServerMod)
+        c.name              = 0x18;    // Kenshi std::string (verified KServerMod)
+        c.position          = 0x48;    // Vec3 read-only cached position (verified KServerMod)
+        c.rotation          = 0x58;    // Quat rotation (after position: 3 floats + pad = 0x10)
+        c.sceneNode         = -1;      // Not yet verified
+        c.aiPackage         = -1;      // Not yet verified
+        c.inventory         = 0x2E8;   // Inventory* (verified KServerMod)
+        c.stats             = 0x450;   // Stats base (verified KServerMod)
+        c.equipment         = -1;      // Not yet verified
+        c.currentTask       = -1;      // Not yet verified
+        c.isAlive           = -1;      // Use health check fallback
+        c.isPlayerControlled = -1;     // Use squad check fallback
+        c.moveSpeed         = -1;      // Not yet verified
+        c.animState         = -1;      // Not yet verified
 
         // CE-verified health chain: char+2B8 -> +5F8 -> +40
         c.healthChain1      = 0x2B8;
@@ -38,19 +41,20 @@ GameOffsets& GetOffsets() {
 
         auto& sq = s_offsets.squad;
         sq.name             = 0x10;
-        sq.memberList       = 0x28;
-        sq.memberCount      = 0x30;
-        sq.factionId        = 0x38;
-        sq.isPlayerSquad    = 0x40;
+        sq.memberList       = -1;      // Not yet verified
+        sq.memberCount      = -1;      // Not yet verified
+        sq.factionId        = -1;      // Not yet verified
+        sq.isPlayerSquad    = -1;      // Not yet verified
 
+        // GameWorld offsets (from KenshiLib GameWorld.h)
         auto& w = s_offsets.world;
-        w.timeOfDay         = 0x48;
-        w.gameSpeed         = 0x50;
-        w.weatherState      = 0x58;
-        w.zoneManager       = 0x70;
-        w.characterList     = 0x60;
-        w.buildingList      = 0x68;
-        w.characterCount    = -1;      // Derived from list
+        w.timeOfDay         = -1;      // Discovered at runtime via GameWorld singleton
+        w.gameSpeed         = 0x700;   // GameWorld+0x700 (verified KenshiLib)
+        w.weatherState      = -1;      // Not yet verified
+        w.zoneManager       = 0x08B0;  // GameWorld+0x08B0 (verified KenshiLib)
+        w.characterList     = 0x0888;  // GameWorld+0x0888 characterArray (verified KenshiLib)
+        w.buildingList      = -1;      // Not yet verified
+        w.characterCount    = -1;      // Derived from list (lektor length at +0x00)
 
         s_offsetsInitialized = true;
         spdlog::info("GameOffsets: Initialized with CE fallback values");
@@ -65,6 +69,65 @@ void InitOffsetsFromScanner() {
     // When the scanner provides JSON, we can parse it here.
     s_offsets.discoveredByScanner = false;
     spdlog::debug("InitOffsetsFromScanner: Using CE fallback offsets");
+}
+
+// ── Runtime Offset Discovery ──
+
+// Probe the character struct to find animClassOffset by searching for
+// a pointer chain that leads to a position matching the character's cached position.
+// Chain: character+X → AnimClass → +charMovementOffset → +writablePosOffset+writablePosVecOffset → Vec3
+// This is called lazily on the first WritePosition attempt for a character.
+static bool s_animClassProbed = false;
+static int  s_discoveredAnimClassOffset = -1;
+
+static void ProbeAnimClassOffset(uintptr_t charPtr) {
+    if (s_animClassProbed) return;
+    s_animClassProbed = true;
+
+    auto& offsets = GetOffsets().character;
+
+    // Read the character's known cached position for validation
+    Vec3 cachedPos;
+    if (offsets.position < 0) return;
+    Memory::ReadVec3(charPtr + offsets.position, cachedPos.x, cachedPos.y, cachedPos.z);
+    if (cachedPos.x == 0.f && cachedPos.y == 0.f && cachedPos.z == 0.f) return;
+
+    // Scan offsets 0x60 through 0x200 in 8-byte steps (pointer alignment)
+    // looking for a pointer that leads through the known chain to a matching position.
+    for (int probe = 0x60; probe <= 0x200; probe += 8) {
+        uintptr_t candidate = 0;
+        if (!Memory::Read(charPtr + probe, candidate) || candidate == 0) continue;
+
+        // Validate: candidate should be a valid heap pointer (above 0x10000, below user limit)
+        if (candidate < 0x10000 || candidate > 0x00007FFFFFFFFFFF) continue;
+
+        // Follow the chain: candidate → +charMovementOffset → CharMovement
+        uintptr_t charMovement = 0;
+        if (!Memory::Read(candidate + offsets.charMovementOffset, charMovement) ||
+            charMovement == 0) continue;
+        if (charMovement < 0x10000 || charMovement > 0x00007FFFFFFFFFFF) continue;
+
+        // Read position at the known writable offset
+        uintptr_t posAddr = charMovement + offsets.writablePosOffset + offsets.writablePosVecOffset;
+        float px = 0.f, py = 0.f, pz = 0.f;
+        if (!Memory::Read(posAddr, px)) continue;
+        if (!Memory::Read(posAddr + 4, py)) continue;
+        if (!Memory::Read(posAddr + 8, pz)) continue;
+
+        // Check if the position matches the cached position (within tolerance)
+        float dx = std::abs(px - cachedPos.x);
+        float dy = std::abs(py - cachedPos.y);
+        float dz = std::abs(pz - cachedPos.z);
+
+        if (dx < 1.0f && dy < 1.0f && dz < 1.0f) {
+            s_discoveredAnimClassOffset = probe;
+            offsets.animClassOffset = probe;
+            spdlog::info("GameOffsets: Discovered animClassOffset = 0x{:X} via runtime probe", probe);
+            return;
+        }
+    }
+
+    spdlog::debug("GameOffsets: animClassOffset probe failed — Method 2 unavailable");
 }
 
 // ── CharacterAccessor ──
@@ -204,6 +267,54 @@ uintptr_t CharacterAccessor::GetInventoryPtr() const {
     return ptr;
 }
 
+// Function pointer for HavokCharacter::setPosition (resolved by patterns.cpp)
+using SetPositionFn = void(__fastcall*)(void* character, float x, float y, float z);
+static SetPositionFn s_setPositionFn = nullptr;
+
+void SetGameSetPositionFn(void* fn) {
+    s_setPositionFn = reinterpret_cast<SetPositionFn>(fn);
+}
+
+bool CharacterAccessor::WritePosition(const Vec3& pos) {
+    auto& offsets = GetOffsets().character;
+
+    // Method 1 (best): Call the game's own HavokCharacter::setPosition function.
+    // This properly moves the character through the physics engine.
+    if (s_setPositionFn) {
+        s_setPositionFn(reinterpret_cast<void*>(m_ptr), pos.x, pos.y, pos.z);
+        return true;
+    }
+
+    // Method 2: Try the writable physics position chain.
+    // If animClassOffset hasn't been found yet, probe for it at runtime.
+    if (offsets.animClassOffset < 0 && !s_animClassProbed) {
+        ProbeAnimClassOffset(m_ptr);
+    }
+    if (offsets.animClassOffset >= 0) {
+        uintptr_t animClass = 0;
+        if (Memory::Read(m_ptr + offsets.animClassOffset, animClass) && animClass != 0) {
+            uintptr_t charMovement = 0;
+            if (Memory::Read(animClass + offsets.charMovementOffset, charMovement) && charMovement != 0) {
+                uintptr_t posAddr = charMovement + offsets.writablePosOffset + offsets.writablePosVecOffset;
+                Memory::Write(posAddr, pos.x);
+                Memory::Write(posAddr + 4, pos.y);
+                Memory::Write(posAddr + 8, pos.z);
+                return true;
+            }
+        }
+    }
+
+    // Method 3 (fallback): Write to the cached read-only position.
+    // This may be overwritten by the physics engine next frame.
+    if (offsets.position >= 0) {
+        Memory::Write(m_ptr + offsets.position, pos.x);
+        Memory::Write(m_ptr + offsets.position + 4, pos.y);
+        Memory::Write(m_ptr + offsets.position + 8, pos.z);
+    }
+
+    return offsets.position >= 0;
+}
+
 uintptr_t CharacterAccessor::GetFactionPtr() const {
     int offset = GetOffsets().character.faction;
     if (offset < 0) return 0;
@@ -224,42 +335,31 @@ void CharacterIterator::Reset() {
     m_count = 0;
     m_listBase = 0;
 
-    uintptr_t base = Memory::GetModuleBase();
-    auto& offsets = GetOffsets();
+    // Read PlayerBase from the runtime-resolved address (found by patterns.cpp).
+    // This works on both Steam and GOG versions since the address is discovered
+    // at runtime via string xref scanning, not hardcoded.
+    uintptr_t playerBaseAddr = GetResolvedPlayerBase();
+    if (playerBaseAddr == 0) return; // Not resolved yet (scanner hasn't run)
 
-    if (offsets.world.characterList >= 0) {
-        uintptr_t listPtr = 0;
-        // The character list pointer is typically in the GameWorld singleton
-        // at a known offset from the player base
-        if (Memory::Read(base + offsets.world.characterList, listPtr) && listPtr != 0) {
-            m_listBase = listPtr;
-
-            // Try to read count from adjacent memory
-            if (offsets.world.characterCount >= 0) {
-                Memory::Read(base + offsets.world.characterCount, m_count);
-            } else {
-                // Heuristic: count is often stored 8 bytes before the array pointer
-                // or we can walk the array until we hit a null
-                int estimatedCount = 0;
-                Memory::Read(listPtr - 8, estimatedCount);
-                if (estimatedCount >= 0 && estimatedCount < 10000) {
-                    m_count = estimatedCount;
-                } else {
-                    // Walk array to count non-null entries (expensive but safe)
-                    for (int j = 0; j < 10000; j++) {
-                        uintptr_t charPtr = 0;
-                        if (!Memory::Read(listPtr + j * sizeof(uintptr_t), charPtr) || charPtr == 0) {
-                            break;
-                        }
-                        estimatedCount++;
-                    }
-                    m_count = estimatedCount;
-                }
-            }
-
-            if (m_count < 0 || m_count > 10000) m_count = 0;
-        }
+    uintptr_t playerBase = 0;
+    if (!Memory::Read(playerBaseAddr, playerBase) || playerBase == 0) {
+        return; // Player base not available yet (game still loading)
     }
+
+    // The character list starts at the dereferenced playerBase
+    m_listBase = playerBase;
+
+    // Walk the pointer array to count valid entries
+    // Each entry is a pointer to a character object, stride = sizeof(uintptr_t)
+    int estimatedCount = 0;
+    for (int j = 0; j < 10000; j++) {
+        uintptr_t charPtr = 0;
+        if (!Memory::Read(m_listBase + j * sizeof(uintptr_t), charPtr) || charPtr == 0) {
+            break;
+        }
+        estimatedCount++;
+    }
+    m_count = estimatedCount;
 }
 
 bool CharacterIterator::HasNext() const {
@@ -274,6 +374,28 @@ CharacterAccessor CharacterIterator::Next() {
     m_index++;
 
     return CharacterAccessor(reinterpret_cast<void*>(charPtr));
+}
+
+} // namespace kmp::game
+
+// ── Bridge function to get PlayerBase without circular Core include ──
+// Core sets this via the game functions resolver. game_character.cpp reads it.
+static uintptr_t s_resolvedPlayerBase = 0;
+
+namespace kmp::game {
+
+uintptr_t GetResolvedPlayerBase() {
+    if (s_resolvedPlayerBase != 0) return s_resolvedPlayerBase;
+
+    // Lazy init: read from Core's GameFunctions (only need to do this once)
+    // We avoid including core.h by using a one-time read from the patterns resolver.
+    // The patterns resolver stores PlayerBase as an address (pointer TO the pointer).
+    // Since we can't include core.h here, we use an init function called from core.cpp.
+    return s_resolvedPlayerBase;
+}
+
+void SetResolvedPlayerBase(uintptr_t addr) {
+    s_resolvedPlayerBase = addr;
 }
 
 } // namespace kmp::game

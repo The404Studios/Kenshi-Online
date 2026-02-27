@@ -24,33 +24,19 @@ static void __fastcall Hook_ApplyDamage(void* target, void* attacker,
     auto& core = Core::Get();
 
     if (core.IsConnected() && core.IsHost()) {
-        // Server-authoritative: apply damage and broadcast result
+        // Host: apply damage locally and send attack intent to server.
+        // The server does its own combat resolution and broadcasts results.
         s_origApplyDamage(target, attacker, bodyPart, cut, blunt, pierce);
 
         EntityID targetId = core.GetEntityRegistry().GetNetId(target);
         EntityID attackerId = attacker ? core.GetEntityRegistry().GetNetId(attacker) : INVALID_ENTITY;
 
-        if (targetId != INVALID_ENTITY) {
-            // Read result health from the character after damage was applied
-            game::CharacterAccessor accessor(target);
-            BodyPart hitPart = static_cast<BodyPart>(bodyPart);
-            float resultHealth = accessor.GetHealth(hitPart);
-            bool isAlive = accessor.IsAlive();
-
-            // Check KO threshold: in Kenshi, KO occurs at -50 to -100 on any part
-            bool wasKO = !isAlive && resultHealth > -100.f;
-
+        if (targetId != INVALID_ENTITY && attackerId != INVALID_ENTITY) {
             PacketWriter writer;
-            writer.WriteHeader(MessageType::S2C_CombatHit);
+            writer.WriteHeader(MessageType::C2S_AttackIntent);
             writer.WriteU32(attackerId);
             writer.WriteU32(targetId);
-            writer.WriteU8(static_cast<uint8_t>(bodyPart));
-            writer.WriteF32(cut);
-            writer.WriteF32(blunt);
-            writer.WriteF32(pierce);
-            writer.WriteF32(resultHealth);
-            writer.WriteU8(0);    // wasBlocked
-            writer.WriteU8(wasKO ? 1 : 0);
+            writer.WriteU8(0); // melee
 
             core.GetClient().SendReliable(writer.Data(), writer.Size());
         }
@@ -90,13 +76,10 @@ static void __fastcall Hook_CharacterDeath(void* character, void* killer) {
         EntityID entityId = core.GetEntityRegistry().GetNetId(character);
         EntityID killerId = killer ? core.GetEntityRegistry().GetNetId(killer) : INVALID_ENTITY;
 
-        if (entityId != INVALID_ENTITY && core.IsHost()) {
-            PacketWriter writer;
-            writer.WriteHeader(MessageType::S2C_CombatDeath);
-            writer.WriteU32(entityId);
-            writer.WriteU32(killerId);
-
-            core.GetClient().SendReliable(writer.Data(), writer.Size());
+        // Death is handled server-side via combat resolution.
+        // Just log it locally for debugging.
+        if (entityId != INVALID_ENTITY) {
+            spdlog::debug("combat_hooks: Character death netId={}, killer={}", entityId, killerId);
         }
     }
 

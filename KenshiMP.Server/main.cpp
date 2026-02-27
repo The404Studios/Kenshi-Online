@@ -6,6 +6,8 @@
 #include <csignal>
 #include <iostream>
 #include <atomic>
+#include <thread>
+#include <chrono>
 
 static std::atomic<bool> g_running{true};
 
@@ -53,12 +55,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Try to load saved world state
-    {
-        std::string savePath = config.savePath.empty() ? "kenshi_mp_world.json" : config.savePath;
-        // LoadWorldFromFile is called internally if the file exists
-        // The server will populate entities from the save file
-        spdlog::info("Looking for saved world at: {}", savePath);
-    }
+    server.LoadWorld();
 
     spdlog::info("Server '{}' started on port {} (max {} players)",
                  config.serverName, config.port, config.maxPlayers);
@@ -67,10 +64,11 @@ int main(int argc, char* argv[]) {
                  config.gameSpeed, config.tickRate);
     spdlog::info("Type 'help' for commands, 'stop' to shutdown");
 
-    // Console command thread
+    // Console command thread — checks g_running before every server access
     std::thread consoleThread([&server]() {
         std::string line;
         while (g_running && std::getline(std::cin, line)) {
+            if (!g_running) break; // Re-check after blocking getline returns
             if (line == "stop" || line == "quit" || line == "exit") {
                 g_running = false;
                 break;
@@ -105,7 +103,7 @@ int main(int argc, char* argv[]) {
 
     // Main server loop
     auto lastTick = std::chrono::steady_clock::now();
-    int tickIntervalMs = 1000 / config.tickRate;
+    int tickIntervalMs = (config.tickRate > 0) ? (1000 / config.tickRate) : 50;
 
     while (g_running) {
         auto now = std::chrono::steady_clock::now();
@@ -126,10 +124,14 @@ int main(int argc, char* argv[]) {
     server.SaveWorld();
     server.Stop();
 
+    // Console thread blocks on stdin. Detach it so we don't hang.
+    // The thread checks g_running, so it will exit on next input or EOF.
+    // We've already called Stop() so there's nothing left to access.
     if (consoleThread.joinable()) {
-        consoleThread.detach(); // Detach since stdin::getline blocks
+        consoleThread.detach();
     }
 
     spdlog::info("Server stopped.");
+    spdlog::shutdown();
     return 0;
 }

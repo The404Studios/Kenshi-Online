@@ -24,17 +24,20 @@ struct ConnectedPlayer {
 };
 
 struct ServerEntity {
-    EntityID    id;
-    EntityType  type;
-    PlayerID    owner;
+    EntityID    id = 0;
+    EntityType  type = EntityType::NPC;
+    PlayerID    owner = 0;
     Vec3        position;
     Quat        rotation;
     ZoneCoord   zone;
-    uint32_t    templateId;
-    uint32_t    factionId;
-    float       health[7]; // Per body part
-    uint8_t     animState;
-    bool        alive;
+    uint32_t    templateId = 0;
+    uint32_t    factionId = 0;
+    std::string templateName;   // GameData template name for spawning (e.g. "Greenlander")
+    float       health[7] = {100.f, 100.f, 100.f, 100.f, 100.f, 100.f, 100.f};
+    uint8_t     animState = 0;
+    uint8_t     moveSpeed = 0;  // 0-255 mapped to 0.0-15.0 m/s
+    uint16_t    flags = 0;
+    bool        alive = true;
 };
 
 class GameServer {
@@ -47,6 +50,7 @@ public:
     void KickPlayer(PlayerID id, const std::string& reason);
     void BroadcastSystemMessage(const std::string& message);
     void SaveWorld();
+    void LoadWorld();
     void PrintStatus();
     void PrintPlayers();
 
@@ -63,6 +67,9 @@ private:
     void HandleAttackIntent(ConnectedPlayer& player, PacketReader& reader);
     void HandleChatMessage(ConnectedPlayer& player, PacketReader& reader);
     void HandleBuildRequest(ConnectedPlayer& player, PacketReader& reader);
+    void HandleEntitySpawnReq(ConnectedPlayer& player, PacketReader& reader);
+    void HandleEntityDespawnReq(ConnectedPlayer& player, PacketReader& reader);
+    void HandleZoneRequest(ConnectedPlayer& player, PacketReader& reader);
 
     // Broadcasting
     void Broadcast(const uint8_t* data, size_t len, int channel, uint32_t flags);

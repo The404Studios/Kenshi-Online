@@ -1,6 +1,7 @@
 #include "entity_hooks.h"
 #include "../core.h"
 #include "../game/game_types.h"
+#include "../game/spawn_manager.h"
 #include "kmp/hook_manager.h"
 #include "kmp/protocol.h"
 #include "kmp/memory.h"
@@ -25,6 +26,11 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
 
     if (character) {
         auto& core = Core::Get();
+
+        // Always feed SpawnManager — captures factory pointer and template database
+        // regardless of connection state, so we're ready when we connect.
+        core.GetSpawnManager().OnGameCharacterCreated(factory, templateData, character);
+
         if (core.IsConnected()) {
             // Register new entity with the network
             EntityID netId = core.GetEntityRegistry().Register(
@@ -45,20 +51,26 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
                 uintptr_t factionPtr = accessor.GetFactionPtr();
                 uint32_t factionId = 0;
                 if (factionPtr != 0) {
-                    // Faction ID is typically at offset +0x08 in the faction object
                     Memory::Read(factionPtr + 0x08, factionId);
+                }
+
+                // Read template name from GameData (Kenshi std::string at +0x28)
+                std::string templateName;
+                if (templateData) {
+                    uintptr_t gdPtr = reinterpret_cast<uintptr_t>(templateData);
+                    templateName = SpawnManager::ReadKenshiString(gdPtr + 0x28);
                 }
 
                 // Try to extract template ID from the templateData parameter
                 uint32_t templateId = 0;
                 if (templateData) {
-                    // Template ID is typically at offset +0x00 or +0x08
                     Memory::Read(reinterpret_cast<uintptr_t>(templateData) + 0x08, templateId);
                 }
 
-                // Build spawn message
+                // Build spawn request for the server.
+                // The server creates the entity and broadcasts S2C_EntitySpawn to all clients.
                 PacketWriter writer;
-                writer.WriteHeader(MessageType::S2C_EntitySpawn);
+                writer.WriteHeader(MessageType::C2S_EntitySpawnReq);
                 writer.WriteU32(netId);
                 writer.WriteU8(static_cast<uint8_t>(EntityType::NPC));
                 writer.WriteU32(0); // server-owned
@@ -68,6 +80,13 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
                 writer.WriteF32(pos.z);
                 writer.WriteU32(compQuat);
                 writer.WriteU32(factionId);
+                // Append template name (length-prefixed string)
+                uint16_t nameLen = static_cast<uint16_t>(
+                    std::min<size_t>(templateName.size(), 255));
+                writer.WriteU16(nameLen);
+                if (nameLen > 0) {
+                    writer.WriteRaw(templateName.data(), nameLen);
+                }
 
                 core.GetClient().SendReliable(writer.Data(), writer.Size());
             }
@@ -84,10 +103,10 @@ static void __fastcall Hook_CharacterDestroy(void* character) {
         if (netId != INVALID_ENTITY) {
             spdlog::debug("entity_hooks: Character destroyed, netId={}", netId);
 
-            // Notify network
+            // Notify server so it can remove the entity and broadcast despawn
             if (core.IsHost()) {
                 PacketWriter writer;
-                writer.WriteHeader(MessageType::S2C_EntityDespawn);
+                writer.WriteHeader(MessageType::C2S_EntityDespawnReq);
                 writer.WriteU32(netId);
                 writer.WriteU8(0); // reason: normal
 
@@ -116,6 +135,12 @@ bool Install() {
                                &Hook_CharacterCreate, &s_origCreate)) {
             spdlog::error("entity_hooks: Failed to hook CharacterCreate");
             success = false;
+        } else {
+            // Give SpawnManager the trampoline so it can call the original function
+            // to spawn remote player characters.
+            core.GetSpawnManager().SetOrigProcess(
+                reinterpret_cast<FactoryProcessFn>(s_origCreate));
+            spdlog::info("entity_hooks: SpawnManager trampoline set");
         }
     }
 

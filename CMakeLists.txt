@@ -17,8 +17,9 @@ add_definitions(-DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS)
 
 # ── Third-party dependencies ──
 
-# ENet
+# ENet (upstream doesn't export include dirs to consumers)
 add_subdirectory(lib/enet)
+target_include_directories(enet PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib/enet/include)
 
 # MinHook
 add_subdirectory(lib/minhook)

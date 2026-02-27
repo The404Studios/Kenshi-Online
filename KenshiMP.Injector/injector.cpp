@@ -80,6 +80,7 @@ bool RemoveOgrePlugin(const std::wstring& gamePath) {
 }
 
 bool WriteConnectConfig(const char* address, const char* port, const char* playerName) {
+    // Write to client.json — the same file that KenshiMP.Core reads via ClientConfig
     char appData[MAX_PATH];
     if (FAILED(SHGetFolderPathA(nullptr, CSIDL_APPDATA, nullptr, 0, appData))) {
         return false;
@@ -88,14 +89,21 @@ bool WriteConnectConfig(const char* address, const char* port, const char* playe
     std::string dir = std::string(appData) + "\\KenshiMP";
     CreateDirectoryA(dir.c_str(), nullptr);
 
-    std::string path = dir + "\\connect.json";
+    std::string path = dir + "\\client.json";
+
+    // Parse port as integer
+    int portNum = 27800;
+    try { portNum = std::stoi(port); } catch (...) {}
+
     std::ofstream file(path);
     if (!file.is_open()) return false;
 
     file << "{\n";
-    file << "  \"address\": \"" << address << "\",\n";
-    file << "  \"port\": " << port << ",\n";
-    file << "  \"playerName\": \"" << playerName << "\"\n";
+    file << "  \"playerName\": \"" << playerName << "\",\n";
+    file << "  \"lastServer\": \"" << address << "\",\n";
+    file << "  \"lastPort\": " << portNum << ",\n";
+    file << "  \"autoConnect\": true,\n";
+    file << "  \"overlayScale\": 1.0\n";
     file << "}\n";
 
     return true;

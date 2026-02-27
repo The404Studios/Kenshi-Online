@@ -3,6 +3,7 @@
 #include "../game/game_types.h"
 #include "kmp/hook_manager.h"
 #include "kmp/protocol.h"
+#include "kmp/memory.h"
 #include <spdlog/spdlog.h>
 
 namespace kmp::world_hooks {
@@ -23,7 +24,7 @@ static void __fastcall Hook_ZoneLoad(void* zoneMgr, int zoneX, int zoneY) {
         spdlog::debug("world_hooks: Zone loaded ({}, {})", zoneX, zoneY);
         // Request entity data for this zone from server
         PacketWriter writer;
-        writer.WriteHeader(MessageType::S2C_ZoneData);
+        writer.WriteHeader(MessageType::C2S_ZoneRequest);
         writer.WriteI32(zoneX);
         writer.WriteI32(zoneY);
         core.GetClient().SendReliable(writer.Data(), writer.Size());
