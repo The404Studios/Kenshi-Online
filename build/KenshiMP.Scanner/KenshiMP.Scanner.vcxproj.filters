@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\scanner.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\patterns.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\memory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\hook_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\function_analyzer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\nlohmann_json.natvis" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{6AF3163D-06F1-3047-A919-D8A01DBE09E4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

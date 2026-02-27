@@ -1,0 +1,2384 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineSystem.cmake:212 (message)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      The system is: Windows - 10.0.26200 - AMD64
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:462 (find_file)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:500 (CMAKE_DETERMINE_COMPILER_ID_WRITE)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:8 (CMAKE_DETERMINE_COMPILER_ID_BUILD)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCXXCompiler.cmake:125 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "file"
+    variable: "src_in"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "CMakeCXXCompilerId.cpp.in"
+    candidate_directories:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/"
+    found: "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeCXXCompilerId.cpp.in"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files\\Git\\mingw64\\bin"
+        - "C:\\Program Files\\Git\\usr\\bin"
+        - "C:\\Users\\wilde\\bin"
+        - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+        - "C:\\Windows\\System32\\OpenSSH"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\Microsoft SQL Server\\170\\Tools\\Binn"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn"
+        - "C:\\Program Files\\dotnet"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\wilde\\.dotnet\\tools"
+        - "C:\\ProgramData\\wilde\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\wilde\\go\\bin"
+        - "C:\\Users\\wilde\\AppData\\Roaming\\npm"
+        - "C:\\Users\\Wilde\\.local\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCXXCompiler.cmake:125 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler:  
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      MSBuild version 17.14.23+b0019275e for .NET Framework
+      Build started 2/26/2026 11:21:02 PM.
+      
+      Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
+      PrepareForBuild:
+        Creating directory "Debug\\".
+        Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+        Creating directory "Debug\\CompilerIdCXX.tlog\\".
+      InitializeBuildStatus:
+        Creating "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+        Touching "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
+      ClCompile:
+        C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\vc143.pdb" /external:W0 /Gd /TP /FC /errorReport:queue CMakeCXXCompilerId.cpp
+        CMakeCXXCompilerId.cpp
+      Link:
+        C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdCXX.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdCXX.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdCXX.lib" /MACHINE:X64 Debug\\CMakeCXXCompilerId.obj
+        CompilerIdCXX.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.exe
+      PostBuildEvent:
+        for %%i in (cl.exe) do @echo CMAKE_CXX_COMPILER=%%~$PATH:i
+        :VCEnd
+        CMAKE_CXX_COMPILER=C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe
+      FinalizeBuildStatus:
+        Deleting file "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
+        Touching "Debug\\CompilerIdCXX.tlog\\CompilerIdCXX.lastbuildstate".
+      Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (default targets).
+      
+      Build succeeded.
+          0 Warning(s)
+          0 Error(s)
+      
+      Time Elapsed 00:00:00.48
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.vcxproj"
+      
+      The CXX compiler identification is MSVC, found in:
+        C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/4.2.0/CompilerIdCXX/CompilerIdCXX.exe
+      
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:37 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:65 (__resolve_tool_path)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:103 (__resolve_linker_path)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "_CMAKE_TOOL_WITH_PATH"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "link"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Program Files/Git/mingw64/bin/"
+      - "C:/Program Files/Git/usr/bin/"
+      - "C:/Users/wilde/bin/"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/cursor/resources/app/bin/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/"
+      - "C:/Users/wilde/.dotnet/tools/"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/"
+      - "C:/Users/wilde/go/bin/"
+      - "C:/Users/wilde/AppData/Roaming/npm/"
+      - "C:/Users/wilde/.local/bin/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
+    found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files\\Git\\mingw64\\bin"
+        - "C:\\Program Files\\Git\\usr\\bin"
+        - "C:\\Users\\wilde\\bin"
+        - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+        - "C:\\Windows\\System32\\OpenSSH"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\Microsoft SQL Server\\170\\Tools\\Binn"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn"
+        - "C:\\Program Files\\dotnet"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\wilde\\.dotnet\\tools"
+        - "C:\\ProgramData\\wilde\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\wilde\\go\\bin"
+        - "C:\\Users\\wilde\\AppData\\Roaming\\npm"
+        - "C:\\Users\\Wilde\\.local\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:37 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:65 (__resolve_tool_path)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:104 (__resolve_linker_path)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "_CMAKE_TOOL_WITH_PATH"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "lld-link"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Program Files/Git/mingw64/bin/"
+      - "C:/Program Files/Git/usr/bin/"
+      - "C:/Users/wilde/bin/"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/cursor/resources/app/bin/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/"
+      - "C:/Users/wilde/.dotnet/tools/"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/"
+      - "C:/Users/wilde/go/bin/"
+      - "C:/Users/wilde/AppData/Roaming/npm/"
+      - "C:/Users/wilde/.local/bin/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.com"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.exe"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link"
+      - "C:/Program Files/Git/mingw64/bin/lld-link.com"
+      - "C:/Program Files/Git/mingw64/bin/lld-link.exe"
+      - "C:/Program Files/Git/mingw64/bin/lld-link"
+      - "C:/Program Files/Git/usr/bin/lld-link.com"
+      - "C:/Program Files/Git/usr/bin/lld-link.exe"
+      - "C:/Program Files/Git/usr/bin/lld-link"
+      - "C:/Users/wilde/bin/lld-link.com"
+      - "C:/Users/wilde/bin/lld-link.exe"
+      - "C:/Users/wilde/bin/lld-link"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/lld-link.com"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/lld-link.exe"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/lld-link"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/lld-link.com"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/lld-link.exe"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/lld-link"
+      - "C:/Windows/System32/lld-link.com"
+      - "C:/Windows/System32/lld-link.exe"
+      - "C:/Windows/System32/lld-link"
+      - "C:/Windows/lld-link.com"
+      - "C:/Windows/lld-link.exe"
+      - "C:/Windows/lld-link"
+      - "C:/Windows/System32/wbem/lld-link.com"
+      - "C:/Windows/System32/wbem/lld-link.exe"
+      - "C:/Windows/System32/wbem/lld-link"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/lld-link.com"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/lld-link.exe"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/lld-link"
+      - "C:/Windows/System32/OpenSSH/lld-link.com"
+      - "C:/Windows/System32/OpenSSH/lld-link.exe"
+      - "C:/Windows/System32/OpenSSH/lld-link"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/lld-link.com"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/lld-link.exe"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/lld-link"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.com"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.exe"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/lld-link.com"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/lld-link.exe"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/lld-link"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/lld-link.com"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/lld-link.exe"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/lld-link"
+      - "C:/Program Files/dotnet/lld-link.com"
+      - "C:/Program Files/dotnet/lld-link.exe"
+      - "C:/Program Files/dotnet/lld-link"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link"
+      - "C:/Program Files/CMake/bin/lld-link.com"
+      - "C:/Program Files/CMake/bin/lld-link.exe"
+      - "C:/Program Files/CMake/bin/lld-link"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/lld-link.com"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/lld-link.exe"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/lld-link"
+      - "C:/Program Files/Git/cmd/lld-link.com"
+      - "C:/Program Files/Git/cmd/lld-link.exe"
+      - "C:/Program Files/Git/cmd/lld-link"
+      - "C:/Program Files/cursor/resources/app/bin/lld-link.com"
+      - "C:/Program Files/cursor/resources/app/bin/lld-link.exe"
+      - "C:/Program Files/cursor/resources/app/bin/lld-link"
+      - "C:/Program Files/Go/bin/lld-link.com"
+      - "C:/Program Files/Go/bin/lld-link.exe"
+      - "C:/Program Files/Go/bin/lld-link"
+      - "C:/Program Files/nodejs/lld-link.com"
+      - "C:/Program Files/nodejs/lld-link.exe"
+      - "C:/Program Files/nodejs/lld-link"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/lld-link"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/lld-link"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/lld-link"
+      - "C:/Users/wilde/.dotnet/tools/lld-link.com"
+      - "C:/Users/wilde/.dotnet/tools/lld-link.exe"
+      - "C:/Users/wilde/.dotnet/tools/lld-link"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/lld-link.com"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/lld-link.exe"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/lld-link"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/lld-link"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/lld-link"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/lld-link"
+      - "C:/Users/wilde/go/bin/lld-link.com"
+      - "C:/Users/wilde/go/bin/lld-link.exe"
+      - "C:/Users/wilde/go/bin/lld-link"
+      - "C:/Users/wilde/AppData/Roaming/npm/lld-link.com"
+      - "C:/Users/wilde/AppData/Roaming/npm/lld-link.exe"
+      - "C:/Users/wilde/AppData/Roaming/npm/lld-link"
+      - "C:/Users/wilde/.local/bin/lld-link.com"
+      - "C:/Users/wilde/.local/bin/lld-link.exe"
+      - "C:/Users/wilde/.local/bin/lld-link"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/lld-link"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files\\Git\\mingw64\\bin"
+        - "C:\\Program Files\\Git\\usr\\bin"
+        - "C:\\Users\\wilde\\bin"
+        - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+        - "C:\\Windows\\System32\\OpenSSH"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\Microsoft SQL Server\\170\\Tools\\Binn"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn"
+        - "C:\\Program Files\\dotnet"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\wilde\\.dotnet\\tools"
+        - "C:\\ProgramData\\wilde\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\wilde\\go\\bin"
+        - "C:\\Users\\wilde\\AppData\\Roaming\\npm"
+        - "C:\\Users\\Wilde\\.local\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:243 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_LINKER"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "link"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Program Files/Git/mingw64/bin/"
+      - "C:/Program Files/Git/usr/bin/"
+      - "C:/Users/wilde/bin/"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/cursor/resources/app/bin/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/"
+      - "C:/Users/wilde/.dotnet/tools/"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/"
+      - "C:/Users/wilde/go/bin/"
+      - "C:/Users/wilde/AppData/Roaming/npm/"
+      - "C:/Users/wilde/.local/bin/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
+    found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files\\Git\\mingw64\\bin"
+        - "C:\\Program Files\\Git\\usr\\bin"
+        - "C:\\Users\\wilde\\bin"
+        - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+        - "C:\\Windows\\System32\\OpenSSH"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\Microsoft SQL Server\\170\\Tools\\Binn"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn"
+        - "C:\\Program Files\\dotnet"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\wilde\\.dotnet\\tools"
+        - "C:\\ProgramData\\wilde\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\wilde\\go\\bin"
+        - "C:\\Users\\wilde\\AppData\\Roaming\\npm"
+        - "C:\\Users\\Wilde\\.local\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:243 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_MT"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "mt"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Program Files/Git/mingw64/bin/"
+      - "C:/Program Files/Git/usr/bin/"
+      - "C:/Users/wilde/bin/"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/cursor/resources/app/bin/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/"
+      - "C:/Users/wilde/.dotnet/tools/"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/"
+      - "C:/Users/wilde/go/bin/"
+      - "C:/Users/wilde/AppData/Roaming/npm/"
+      - "C:/Users/wilde/.local/bin/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.com"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.exe"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt"
+      - "C:/Program Files/Git/mingw64/bin/mt.com"
+      - "C:/Program Files/Git/mingw64/bin/mt.exe"
+      - "C:/Program Files/Git/mingw64/bin/mt"
+      - "C:/Program Files/Git/usr/bin/mt.com"
+      - "C:/Program Files/Git/usr/bin/mt.exe"
+      - "C:/Program Files/Git/usr/bin/mt"
+      - "C:/Users/wilde/bin/mt.com"
+      - "C:/Users/wilde/bin/mt.exe"
+      - "C:/Users/wilde/bin/mt"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/mt.com"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/mt.exe"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/mt"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/mt.com"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/mt.exe"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/mt"
+      - "C:/Windows/System32/mt.com"
+      - "C:/Windows/System32/mt.exe"
+      - "C:/Windows/System32/mt"
+      - "C:/Windows/mt.com"
+      - "C:/Windows/mt.exe"
+      - "C:/Windows/mt"
+      - "C:/Windows/System32/wbem/mt.com"
+      - "C:/Windows/System32/wbem/mt.exe"
+      - "C:/Windows/System32/wbem/mt"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/mt.com"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/mt.exe"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/mt"
+      - "C:/Windows/System32/OpenSSH/mt.com"
+      - "C:/Windows/System32/OpenSSH/mt.exe"
+      - "C:/Windows/System32/OpenSSH/mt"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/mt.com"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/mt.exe"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/mt"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.com"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.exe"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/mt.com"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/mt.exe"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/mt"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/mt.com"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/mt.exe"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/mt"
+      - "C:/Program Files/dotnet/mt.com"
+      - "C:/Program Files/dotnet/mt.exe"
+      - "C:/Program Files/dotnet/mt"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt"
+      - "C:/Program Files/CMake/bin/mt.com"
+      - "C:/Program Files/CMake/bin/mt.exe"
+      - "C:/Program Files/CMake/bin/mt"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/mt.com"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/mt.exe"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/mt"
+      - "C:/Program Files/Git/cmd/mt.com"
+      - "C:/Program Files/Git/cmd/mt.exe"
+      - "C:/Program Files/Git/cmd/mt"
+      - "C:/Program Files/cursor/resources/app/bin/mt.com"
+      - "C:/Program Files/cursor/resources/app/bin/mt.exe"
+      - "C:/Program Files/cursor/resources/app/bin/mt"
+      - "C:/Program Files/Go/bin/mt.com"
+      - "C:/Program Files/Go/bin/mt.exe"
+      - "C:/Program Files/Go/bin/mt"
+      - "C:/Program Files/nodejs/mt.com"
+      - "C:/Program Files/nodejs/mt.exe"
+      - "C:/Program Files/nodejs/mt"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/mt.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/mt.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/mt"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/mt.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/mt.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/mt"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/mt.com"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/mt.exe"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/mt"
+      - "C:/Users/wilde/.dotnet/tools/mt.com"
+      - "C:/Users/wilde/.dotnet/tools/mt.exe"
+      - "C:/Users/wilde/.dotnet/tools/mt"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/mt.com"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/mt.exe"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/mt"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/mt.com"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/mt.exe"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/mt"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/mt.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/mt.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/mt"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/mt.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/mt.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/mt"
+      - "C:/Users/wilde/go/bin/mt.com"
+      - "C:/Users/wilde/go/bin/mt.exe"
+      - "C:/Users/wilde/go/bin/mt"
+      - "C:/Users/wilde/AppData/Roaming/npm/mt.com"
+      - "C:/Users/wilde/AppData/Roaming/npm/mt.exe"
+      - "C:/Users/wilde/AppData/Roaming/npm/mt"
+      - "C:/Users/wilde/.local/bin/mt.com"
+      - "C:/Users/wilde/.local/bin/mt.exe"
+      - "C:/Users/wilde/.local/bin/mt"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/mt.com"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/mt.exe"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/mt"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files\\Git\\mingw64\\bin"
+        - "C:\\Program Files\\Git\\usr\\bin"
+        - "C:\\Users\\wilde\\bin"
+        - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+        - "C:\\Windows\\System32\\OpenSSH"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\Microsoft SQL Server\\170\\Tools\\Binn"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn"
+        - "C:\\Program Files\\dotnet"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\wilde\\.dotnet\\tools"
+        - "C:\\ProgramData\\wilde\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\wilde\\go\\bin"
+        - "C:\\Users\\wilde\\AppData\\Roaming\\npm"
+        - "C:\\Users\\Wilde\\.local\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:243 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_AR"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "lib"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Program Files/Git/mingw64/bin/"
+      - "C:/Program Files/Git/usr/bin/"
+      - "C:/Users/wilde/bin/"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/cursor/resources/app/bin/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/"
+      - "C:/Users/wilde/.dotnet/tools/"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/"
+      - "C:/Users/wilde/go/bin/"
+      - "C:/Users/wilde/AppData/Roaming/npm/"
+      - "C:/Users/wilde/.local/bin/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.com"
+    found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files\\Git\\mingw64\\bin"
+        - "C:\\Program Files\\Git\\usr\\bin"
+        - "C:\\Users\\wilde\\bin"
+        - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+        - "C:\\Windows\\System32\\OpenSSH"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\Microsoft SQL Server\\170\\Tools\\Binn"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn"
+        - "C:\\Program Files\\dotnet"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\wilde\\.dotnet\\tools"
+        - "C:\\ProgramData\\wilde\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\wilde\\go\\bin"
+        - "C:\\Users\\wilde\\AppData\\Roaming\\npm"
+        - "C:\\Users\\Wilde\\.local\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:462 (find_file)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:500 (CMAKE_DETERMINE_COMPILER_ID_WRITE)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:8 (CMAKE_DETERMINE_COMPILER_ID_BUILD)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "file"
+    variable: "src_in"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "CMakeCCompilerId.c.in"
+    candidate_directories:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/"
+    found: "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeCCompilerId.c.in"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files\\Git\\mingw64\\bin"
+        - "C:\\Program Files\\Git\\usr\\bin"
+        - "C:\\Users\\wilde\\bin"
+        - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+        - "C:\\Windows\\System32\\OpenSSH"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\Microsoft SQL Server\\170\\Tools\\Binn"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn"
+        - "C:\\Program Files\\dotnet"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\wilde\\.dotnet\\tools"
+        - "C:\\ProgramData\\wilde\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\wilde\\go\\bin"
+        - "C:\\Users\\wilde\\AppData\\Roaming\\npm"
+        - "C:\\Users\\Wilde\\.local\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler:  
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      MSBuild version 17.14.23+b0019275e for .NET Framework
+      Build started 2/26/2026 11:21:02 PM.
+      
+      Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
+      PrepareForBuild:
+        Creating directory "Debug\\".
+        Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+        Creating directory "Debug\\CompilerIdC.tlog\\".
+      InitializeBuildStatus:
+        Creating "Debug\\CompilerIdC.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+        Touching "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
+      ClCompile:
+        C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\vc143.pdb" /external:W0 /Gd /TC /FC /errorReport:queue CMakeCCompilerId.c
+        CMakeCCompilerId.c
+      Link:
+        C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdC.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdC.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdC.lib" /MACHINE:X64 Debug\\CMakeCCompilerId.obj
+        CompilerIdC.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdC\\CompilerIdC.exe
+      PostBuildEvent:
+        for %%i in (cl.exe) do @echo CMAKE_C_COMPILER=%%~$PATH:i
+        :VCEnd
+        CMAKE_C_COMPILER=C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe
+      FinalizeBuildStatus:
+        Deleting file "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
+        Touching "Debug\\CompilerIdC.tlog\\CompilerIdC.lastbuildstate".
+      Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdC\\CompilerIdC.vcxproj" (default targets).
+      
+      Build succeeded.
+          0 Warning(s)
+          0 Error(s)
+      
+      Time Elapsed 00:00:00.34
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.vcxproj"
+      
+      The C compiler identification is MSVC, found in:
+        C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/4.2.0/CompilerIdC/CompilerIdC.exe
+      
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:37 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:65 (__resolve_tool_path)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindBinUtils.cmake:104 (__resolve_linker_path)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "_CMAKE_TOOL_WITH_PATH"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "lld-link"
+    candidate_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Program Files/Git/mingw64/bin/"
+      - "C:/Program Files/Git/usr/bin/"
+      - "C:/Users/wilde/bin/"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/cursor/resources/app/bin/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/"
+      - "C:/Users/wilde/.dotnet/tools/"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/"
+      - "C:/Users/wilde/go/bin/"
+      - "C:/Users/wilde/AppData/Roaming/npm/"
+      - "C:/Users/wilde/.local/bin/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/"
+    searched_directories:
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.com"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.exe"
+      - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link"
+      - "C:/Program Files/Git/mingw64/bin/lld-link.com"
+      - "C:/Program Files/Git/mingw64/bin/lld-link.exe"
+      - "C:/Program Files/Git/mingw64/bin/lld-link"
+      - "C:/Program Files/Git/usr/bin/lld-link.com"
+      - "C:/Program Files/Git/usr/bin/lld-link.exe"
+      - "C:/Program Files/Git/usr/bin/lld-link"
+      - "C:/Users/wilde/bin/lld-link.com"
+      - "C:/Users/wilde/bin/lld-link.exe"
+      - "C:/Users/wilde/bin/lld-link"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/lld-link.com"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/lld-link.exe"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/lld-link"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/lld-link.com"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/lld-link.exe"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/lld-link"
+      - "C:/Windows/System32/lld-link.com"
+      - "C:/Windows/System32/lld-link.exe"
+      - "C:/Windows/System32/lld-link"
+      - "C:/Windows/lld-link.com"
+      - "C:/Windows/lld-link.exe"
+      - "C:/Windows/lld-link"
+      - "C:/Windows/System32/wbem/lld-link.com"
+      - "C:/Windows/System32/wbem/lld-link.exe"
+      - "C:/Windows/System32/wbem/lld-link"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/lld-link.com"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/lld-link.exe"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/lld-link"
+      - "C:/Windows/System32/OpenSSH/lld-link.com"
+      - "C:/Windows/System32/OpenSSH/lld-link.exe"
+      - "C:/Windows/System32/OpenSSH/lld-link"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/lld-link.com"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/lld-link.exe"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/lld-link"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.com"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.exe"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/lld-link.com"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/lld-link.exe"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/lld-link"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/lld-link.com"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/lld-link.exe"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/lld-link"
+      - "C:/Program Files/dotnet/lld-link.com"
+      - "C:/Program Files/dotnet/lld-link.exe"
+      - "C:/Program Files/dotnet/lld-link"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link"
+      - "C:/Program Files/CMake/bin/lld-link.com"
+      - "C:/Program Files/CMake/bin/lld-link.exe"
+      - "C:/Program Files/CMake/bin/lld-link"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/lld-link.com"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/lld-link.exe"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/lld-link"
+      - "C:/Program Files/Git/cmd/lld-link.com"
+      - "C:/Program Files/Git/cmd/lld-link.exe"
+      - "C:/Program Files/Git/cmd/lld-link"
+      - "C:/Program Files/cursor/resources/app/bin/lld-link.com"
+      - "C:/Program Files/cursor/resources/app/bin/lld-link.exe"
+      - "C:/Program Files/cursor/resources/app/bin/lld-link"
+      - "C:/Program Files/Go/bin/lld-link.com"
+      - "C:/Program Files/Go/bin/lld-link.exe"
+      - "C:/Program Files/Go/bin/lld-link"
+      - "C:/Program Files/nodejs/lld-link.com"
+      - "C:/Program Files/nodejs/lld-link.exe"
+      - "C:/Program Files/nodejs/lld-link"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/lld-link"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/lld-link"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/lld-link"
+      - "C:/Users/wilde/.dotnet/tools/lld-link.com"
+      - "C:/Users/wilde/.dotnet/tools/lld-link.exe"
+      - "C:/Users/wilde/.dotnet/tools/lld-link"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/lld-link.com"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/lld-link.exe"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/lld-link"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/lld-link"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/lld-link"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/lld-link"
+      - "C:/Users/wilde/go/bin/lld-link.com"
+      - "C:/Users/wilde/go/bin/lld-link.exe"
+      - "C:/Users/wilde/go/bin/lld-link"
+      - "C:/Users/wilde/AppData/Roaming/npm/lld-link.com"
+      - "C:/Users/wilde/AppData/Roaming/npm/lld-link.exe"
+      - "C:/Users/wilde/AppData/Roaming/npm/lld-link"
+      - "C:/Users/wilde/.local/bin/lld-link.com"
+      - "C:/Users/wilde/.local/bin/lld-link.exe"
+      - "C:/Users/wilde/.local/bin/lld-link"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/lld-link.com"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/lld-link.exe"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/lld-link"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files\\Git\\mingw64\\bin"
+        - "C:\\Program Files\\Git\\usr\\bin"
+        - "C:\\Users\\wilde\\bin"
+        - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+        - "C:\\Windows\\System32\\OpenSSH"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\Microsoft SQL Server\\170\\Tools\\Binn"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn"
+        - "C:\\Program Files\\dotnet"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\wilde\\.dotnet\\tools"
+        - "C:\\ProgramData\\wilde\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\wilde\\go\\bin"
+        - "C:\\Users\\wilde\\AppData\\Roaming\\npm"
+        - "C:\\Users\\Wilde\\.local\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineRCCompiler.cmake:40 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/Platform/Windows-MSVC.cmake:580 (enable_language)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/Platform/Windows-MSVC.cmake:553 (__windows_compiler_msvc_enable_rc)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/Platform/Windows-MSVC-CXX.cmake:6 (__windows_compiler_msvc)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeCXXInformation.cmake:48 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_RC_COMPILER"
+    description: "RC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "rc"
+    candidate_directories:
+      - "C:/Program Files/Git/mingw64/bin/"
+      - "C:/Program Files/Git/usr/bin/"
+      - "C:/Users/wilde/bin/"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/cursor/resources/app/bin/"
+      - "C:/Program Files/Go/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/"
+      - "C:/Users/wilde/.dotnet/tools/"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/"
+      - "C:/Users/wilde/go/bin/"
+      - "C:/Users/wilde/AppData/Roaming/npm/"
+      - "C:/Users/wilde/.local/bin/"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/"
+      - "C:/Program Files/bin/"
+      - "C:/Program Files/sbin/"
+      - "C:/Program Files/"
+      - "C:/Program Files (x86)/bin/"
+      - "C:/Program Files (x86)/sbin/"
+      - "C:/Program Files (x86)/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/CMake/sbin/"
+      - "C:/Program Files/CMake/"
+      - "C:/Program Files/KenshiMP/bin/"
+      - "C:/Program Files/KenshiMP/sbin/"
+      - "C:/Program Files/KenshiMP/"
+    searched_directories:
+      - "C:/Program Files/Git/mingw64/bin/rc.com"
+      - "C:/Program Files/Git/mingw64/bin/rc.exe"
+      - "C:/Program Files/Git/mingw64/bin/rc"
+      - "C:/Program Files/Git/usr/bin/rc.com"
+      - "C:/Program Files/Git/usr/bin/rc.exe"
+      - "C:/Program Files/Git/usr/bin/rc"
+      - "C:/Users/wilde/bin/rc.com"
+      - "C:/Users/wilde/bin/rc.exe"
+      - "C:/Users/wilde/bin/rc"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/rc.com"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/rc.exe"
+      - "C:/Program Files/Meta Horizon/Support/oculus-runtime/rc"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/rc.com"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/rc.exe"
+      - "C:/Program Files/Common Files/Oracle/Java/javapath/rc"
+      - "C:/Windows/System32/rc.com"
+      - "C:/Windows/System32/rc.exe"
+      - "C:/Windows/System32/rc"
+      - "C:/Windows/rc.com"
+      - "C:/Windows/rc.exe"
+      - "C:/Windows/rc"
+      - "C:/Windows/System32/wbem/rc.com"
+      - "C:/Windows/System32/wbem/rc.exe"
+      - "C:/Windows/System32/wbem/rc"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/rc.com"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/rc.exe"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/rc"
+      - "C:/Windows/System32/OpenSSH/rc.com"
+      - "C:/Windows/System32/OpenSSH/rc.exe"
+      - "C:/Windows/System32/OpenSSH/rc"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/rc.com"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/rc.exe"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/rc"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.com"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.exe"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/rc.com"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/rc.exe"
+      - "C:/Program Files/Microsoft SQL Server/170/Tools/Binn/rc"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/rc.com"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/rc.exe"
+      - "C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/170/Tools/Binn/rc"
+      - "C:/Program Files/dotnet/rc.com"
+      - "C:/Program Files/dotnet/rc.exe"
+      - "C:/Program Files/dotnet/rc"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc"
+      - "C:/Program Files/CMake/bin/rc.com"
+      - "C:/Program Files/CMake/bin/rc.exe"
+      - "C:/Program Files/CMake/bin/rc"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/rc.com"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/rc.exe"
+      - "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/rc"
+      - "C:/Program Files/Git/cmd/rc.com"
+      - "C:/Program Files/Git/cmd/rc.exe"
+      - "C:/Program Files/Git/cmd/rc"
+      - "C:/Program Files/cursor/resources/app/bin/rc.com"
+      - "C:/Program Files/cursor/resources/app/bin/rc.exe"
+      - "C:/Program Files/cursor/resources/app/bin/rc"
+      - "C:/Program Files/Go/bin/rc.com"
+      - "C:/Program Files/Go/bin/rc.exe"
+      - "C:/Program Files/Go/bin/rc"
+      - "C:/Program Files/nodejs/rc.com"
+      - "C:/Program Files/nodejs/rc.exe"
+      - "C:/Program Files/nodejs/rc"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/rc.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/rc.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/Scripts/rc"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/rc.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/rc.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Python/Python312/rc"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/rc.com"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/rc.exe"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WindowsApps/rc"
+      - "C:/Users/wilde/.dotnet/tools/rc.com"
+      - "C:/Users/wilde/.dotnet/tools/rc.exe"
+      - "C:/Users/wilde/.dotnet/tools/rc"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/rc.com"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/rc.exe"
+      - "C:/ProgramData/wilde/GitHubDesktop/bin/rc"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/rc.com"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/rc.exe"
+      - "C:/Users/wilde/AppData/Local/GitHubDesktop/bin/rc"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/rc.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/rc.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Microsoft VS Code/bin/rc"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/rc.com"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/rc.exe"
+      - "C:/Users/wilde/AppData/Local/Programs/Ollama/rc"
+      - "C:/Users/wilde/go/bin/rc.com"
+      - "C:/Users/wilde/go/bin/rc.exe"
+      - "C:/Users/wilde/go/bin/rc"
+      - "C:/Users/wilde/AppData/Roaming/npm/rc.com"
+      - "C:/Users/wilde/AppData/Roaming/npm/rc.exe"
+      - "C:/Users/wilde/AppData/Roaming/npm/rc"
+      - "C:/Users/wilde/.local/bin/rc.com"
+      - "C:/Users/wilde/.local/bin/rc.exe"
+      - "C:/Users/wilde/.local/bin/rc"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/rc.com"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/rc.exe"
+      - "C:/Users/wilde/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.0.1-full_build/bin/rc"
+      - "C:/Program Files/bin/rc.com"
+      - "C:/Program Files/bin/rc.exe"
+      - "C:/Program Files/bin/rc"
+      - "C:/Program Files/sbin/rc.com"
+      - "C:/Program Files/sbin/rc.exe"
+      - "C:/Program Files/sbin/rc"
+      - "C:/Program Files/rc.com"
+      - "C:/Program Files/rc.exe"
+      - "C:/Program Files/rc"
+      - "C:/Program Files (x86)/bin/rc.com"
+      - "C:/Program Files (x86)/bin/rc.exe"
+      - "C:/Program Files (x86)/bin/rc"
+      - "C:/Program Files (x86)/sbin/rc.com"
+      - "C:/Program Files (x86)/sbin/rc.exe"
+      - "C:/Program Files (x86)/sbin/rc"
+      - "C:/Program Files (x86)/rc.com"
+      - "C:/Program Files (x86)/rc.exe"
+      - "C:/Program Files (x86)/rc"
+      - "C:/Program Files/CMake/bin/rc.com"
+      - "C:/Program Files/CMake/bin/rc.exe"
+      - "C:/Program Files/CMake/bin/rc"
+      - "C:/Program Files/CMake/sbin/rc.com"
+      - "C:/Program Files/CMake/sbin/rc.exe"
+      - "C:/Program Files/CMake/sbin/rc"
+      - "C:/Program Files/CMake/rc.com"
+      - "C:/Program Files/CMake/rc.exe"
+      - "C:/Program Files/CMake/rc"
+      - "C:/Program Files/KenshiMP/bin/rc.com"
+      - "C:/Program Files/KenshiMP/bin/rc.exe"
+      - "C:/Program Files/KenshiMP/bin/rc"
+      - "C:/Program Files/KenshiMP/sbin/rc.com"
+      - "C:/Program Files/KenshiMP/sbin/rc.exe"
+      - "C:/Program Files/KenshiMP/sbin/rc"
+      - "C:/Program Files/KenshiMP/rc.com"
+      - "C:/Program Files/KenshiMP/rc.exe"
+      - "C:/Program Files/KenshiMP/rc"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files\\Git\\mingw64\\bin"
+        - "C:\\Program Files\\Git\\usr\\bin"
+        - "C:\\Users\\wilde\\bin"
+        - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
+        - "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+        - "C:\\Windows\\System32\\OpenSSH"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\Microsoft SQL Server\\170\\Tools\\Binn"
+        - "C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn"
+        - "C:\\Program Files\\dotnet"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\cursor\\resources\\app\\bin"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\Users\\wilde\\.dotnet\\tools"
+        - "C:\\ProgramData\\wilde\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\GitHubDesktop\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Programs\\Ollama"
+        - "C:\\Users\\wilde\\go\\bin"
+        - "C:\\Users\\wilde\\AppData\\Roaming\\npm"
+        - "C:\\Users\\Wilde\\.local\\bin"
+        - "C:\\Users\\wilde\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.0.1-full_build\\bin"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/KenshiMP"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files/KenshiMP"
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerABI.cmake:83 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-t9sa7b"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-t9sa7b"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
+      CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-t9sa7b'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_2e19e.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:03 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t9sa7b\\cmTC_2e19e.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t9sa7b\\Debug\\".
+          Creating directory "cmTC_2e19e.dir\\Debug\\cmTC_2e19e.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_2e19e.dir\\Debug\\cmTC_2e19e.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_2e19e.dir\\Debug\\cmTC_2e19e.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_2e19e.dir\\Debug\\\\" /Fd"cmTC_2e19e.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_2e19e.dir\\Debug\\\\" /Fd"cmTC_2e19e.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          CMakeCXXCompilerABI.cpp
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t9sa7b\\Debug\\cmTC_2e19e.exe" /INCREMENTAL /ILK:"cmTC_2e19e.dir\\Debug\\cmTC_2e19e.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-t9sa7b/Debug/cmTC_2e19e.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-t9sa7b/Debug/cmTC_2e19e.lib" /MACHINE:X64  /machine:x64 cmTC_2e19e.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_2e19e.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t9sa7b\\Debug\\cmTC_2e19e.exe
+        FinalizeBuildStatus:
+          Deleting file "cmTC_2e19e.dir\\Debug\\cmTC_2e19e.tlog\\unsuccessfulbuild".
+          Touching "cmTC_2e19e.dir\\Debug\\cmTC_2e19e.tlog\\cmTC_2e19e.lastbuildstate".
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t9sa7b\\cmTC_2e19e.vcxproj" (default targets).
+        
+        Build succeeded.
+            0 Warning(s)
+            0 Error(s)
+        
+        Time Elapsed 00:00:00.32
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerABI.cmake:253 (message)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
+        linker tool for 'CXX': C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/Internal/CMakeDetermineLinkerId.cmake:38 (message)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerABI.cmake:299 (cmake_determine_linker_id)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Running the CXX compiler's linker: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.44.35222.0
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerABI.cmake:83 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-89s09f"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-89s09f"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-89s09f'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_3c5e4.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:04 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-89s09f\\cmTC_3c5e4.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-89s09f\\Debug\\".
+          Creating directory "cmTC_3c5e4.dir\\Debug\\cmTC_3c5e4.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_3c5e4.dir\\Debug\\cmTC_3c5e4.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_3c5e4.dir\\Debug\\cmTC_3c5e4.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_3c5e4.dir\\Debug\\\\" /Fd"cmTC_3c5e4.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCCompilerABI.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_3c5e4.dir\\Debug\\\\" /Fd"cmTC_3c5e4.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCCompilerABI.c"
+          CMakeCCompilerABI.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-89s09f\\Debug\\cmTC_3c5e4.exe" /INCREMENTAL /ILK:"cmTC_3c5e4.dir\\Debug\\cmTC_3c5e4.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-89s09f/Debug/cmTC_3c5e4.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-89s09f/Debug/cmTC_3c5e4.lib" /MACHINE:X64  /machine:x64 cmTC_3c5e4.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_3c5e4.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-89s09f\\Debug\\cmTC_3c5e4.exe
+        FinalizeBuildStatus:
+          Deleting file "cmTC_3c5e4.dir\\Debug\\cmTC_3c5e4.tlog\\unsuccessfulbuild".
+          Touching "cmTC_3c5e4.dir\\Debug\\cmTC_3c5e4.tlog\\cmTC_3c5e4.lastbuildstate".
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-89s09f\\cmTC_3c5e4.vcxproj" (default targets).
+        
+        Build succeeded.
+            0 Warning(s)
+            0 Error(s)
+        
+        Time Elapsed 00:00:00.31
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerABI.cmake:253 (message)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
+        linker tool for 'C': C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/Internal/CMakeDetermineLinkerId.cmake:38 (message)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeDetermineCompilerABI.cmake:299 (cmake_determine_linker_id)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Running the C compiler's linker: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.44.35222.0
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "lib/enet/CMakeLists.txt:9 (check_function_exists)"
+    checks:
+      - "Looking for fcntl"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-8x5mux"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-8x5mux"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_FCNTL"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-8x5mux'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_7f588.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:04 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\cmTC_7f588.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\Debug\\".
+          Creating directory "cmTC_7f588.dir\\Debug\\cmTC_7f588.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_7f588.dir\\Debug\\cmTC_7f588.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_7f588.dir\\Debug\\cmTC_7f588.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=fcntl /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_7f588.dir\\Debug\\\\" /Fd"cmTC_7f588.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=fcntl /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_7f588.dir\\Debug\\\\" /Fd"cmTC_7f588.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\Debug\\cmTC_7f588.exe" /INCREMENTAL /ILK:"cmTC_7f588.dir\\Debug\\cmTC_7f588.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-8x5mux/Debug/cmTC_7f588.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-8x5mux/Debug/cmTC_7f588.lib" /MACHINE:X64  /machine:x64 cmTC_7f588.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol fcntl referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\cmTC_7f588.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\Debug\\cmTC_7f588.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\cmTC_7f588.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\cmTC_7f588.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\cmTC_7f588.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol fcntl referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\cmTC_7f588.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\Debug\\cmTC_7f588.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8x5mux\\cmTC_7f588.vcxproj]
+        
+            0 Warning(s)
+            2 Error(s)
+        
+        Time Elapsed 00:00:00.28
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "lib/enet/CMakeLists.txt:10 (check_function_exists)"
+    checks:
+      - "Looking for poll"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-e9zl46"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-e9zl46"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_POLL"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-e9zl46'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_5f531.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:04 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\cmTC_5f531.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\Debug\\".
+          Creating directory "cmTC_5f531.dir\\Debug\\cmTC_5f531.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_5f531.dir\\Debug\\cmTC_5f531.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_5f531.dir\\Debug\\cmTC_5f531.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=poll /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_5f531.dir\\Debug\\\\" /Fd"cmTC_5f531.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=poll /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_5f531.dir\\Debug\\\\" /Fd"cmTC_5f531.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\Debug\\cmTC_5f531.exe" /INCREMENTAL /ILK:"cmTC_5f531.dir\\Debug\\cmTC_5f531.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-e9zl46/Debug/cmTC_5f531.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-e9zl46/Debug/cmTC_5f531.lib" /MACHINE:X64  /machine:x64 cmTC_5f531.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol poll referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\cmTC_5f531.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\Debug\\cmTC_5f531.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\cmTC_5f531.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\cmTC_5f531.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\cmTC_5f531.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol poll referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\cmTC_5f531.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\Debug\\cmTC_5f531.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e9zl46\\cmTC_5f531.vcxproj]
+        
+            0 Warning(s)
+            2 Error(s)
+        
+        Time Elapsed 00:00:00.27
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "lib/enet/CMakeLists.txt:11 (check_function_exists)"
+    checks:
+      - "Looking for getaddrinfo"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7b0va8"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7b0va8"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_GETADDRINFO"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7b0va8'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_e6b27.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:05 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\cmTC_e6b27.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\Debug\\".
+          Creating directory "cmTC_e6b27.dir\\Debug\\cmTC_e6b27.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_e6b27.dir\\Debug\\cmTC_e6b27.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_e6b27.dir\\Debug\\cmTC_e6b27.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getaddrinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_e6b27.dir\\Debug\\\\" /Fd"cmTC_e6b27.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getaddrinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_e6b27.dir\\Debug\\\\" /Fd"cmTC_e6b27.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\Debug\\cmTC_e6b27.exe" /INCREMENTAL /ILK:"cmTC_e6b27.dir\\Debug\\cmTC_e6b27.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7b0va8/Debug/cmTC_e6b27.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7b0va8/Debug/cmTC_e6b27.lib" /MACHINE:X64  /machine:x64 cmTC_e6b27.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol getaddrinfo referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\cmTC_e6b27.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\Debug\\cmTC_e6b27.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\cmTC_e6b27.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\cmTC_e6b27.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\cmTC_e6b27.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol getaddrinfo referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\cmTC_e6b27.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\Debug\\cmTC_e6b27.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7b0va8\\cmTC_e6b27.vcxproj]
+        
+            0 Warning(s)
+            2 Error(s)
+        
+        Time Elapsed 00:00:00.27
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "lib/enet/CMakeLists.txt:12 (check_function_exists)"
+    checks:
+      - "Looking for getnameinfo"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-4k3c86"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-4k3c86"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_GETNAMEINFO"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-4k3c86'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_b5dd1.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:05 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\cmTC_b5dd1.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\Debug\\".
+          Creating directory "cmTC_b5dd1.dir\\Debug\\cmTC_b5dd1.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_b5dd1.dir\\Debug\\cmTC_b5dd1.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_b5dd1.dir\\Debug\\cmTC_b5dd1.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getnameinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_b5dd1.dir\\Debug\\\\" /Fd"cmTC_b5dd1.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getnameinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_b5dd1.dir\\Debug\\\\" /Fd"cmTC_b5dd1.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\Debug\\cmTC_b5dd1.exe" /INCREMENTAL /ILK:"cmTC_b5dd1.dir\\Debug\\cmTC_b5dd1.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-4k3c86/Debug/cmTC_b5dd1.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-4k3c86/Debug/cmTC_b5dd1.lib" /MACHINE:X64  /machine:x64 cmTC_b5dd1.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol getnameinfo referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\cmTC_b5dd1.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\Debug\\cmTC_b5dd1.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\cmTC_b5dd1.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\cmTC_b5dd1.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\cmTC_b5dd1.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol getnameinfo referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\cmTC_b5dd1.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\Debug\\cmTC_b5dd1.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-4k3c86\\cmTC_b5dd1.vcxproj]
+        
+            0 Warning(s)
+            2 Error(s)
+        
+        Time Elapsed 00:00:00.27
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "lib/enet/CMakeLists.txt:13 (check_function_exists)"
+    checks:
+      - "Looking for gethostbyname_r"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-19cvq7"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-19cvq7"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_GETHOSTBYNAME_R"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-19cvq7'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_fcc2c.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:06 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\cmTC_fcc2c.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\Debug\\".
+          Creating directory "cmTC_fcc2c.dir\\Debug\\cmTC_fcc2c.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_fcc2c.dir\\Debug\\cmTC_fcc2c.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_fcc2c.dir\\Debug\\cmTC_fcc2c.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyname_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_fcc2c.dir\\Debug\\\\" /Fd"cmTC_fcc2c.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyname_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_fcc2c.dir\\Debug\\\\" /Fd"cmTC_fcc2c.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\Debug\\cmTC_fcc2c.exe" /INCREMENTAL /ILK:"cmTC_fcc2c.dir\\Debug\\cmTC_fcc2c.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-19cvq7/Debug/cmTC_fcc2c.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-19cvq7/Debug/cmTC_fcc2c.lib" /MACHINE:X64  /machine:x64 cmTC_fcc2c.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyname_r referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\cmTC_fcc2c.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\Debug\\cmTC_fcc2c.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\cmTC_fcc2c.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\cmTC_fcc2c.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\cmTC_fcc2c.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyname_r referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\cmTC_fcc2c.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\Debug\\cmTC_fcc2c.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-19cvq7\\cmTC_fcc2c.vcxproj]
+        
+            0 Warning(s)
+            2 Error(s)
+        
+        Time Elapsed 00:00:00.27
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "lib/enet/CMakeLists.txt:14 (check_function_exists)"
+    checks:
+      - "Looking for gethostbyaddr_r"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-2to5j9"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-2to5j9"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_GETHOSTBYADDR_R"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-2to5j9'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_9b4e6.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:06 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\cmTC_9b4e6.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\Debug\\".
+          Creating directory "cmTC_9b4e6.dir\\Debug\\cmTC_9b4e6.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_9b4e6.dir\\Debug\\cmTC_9b4e6.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_9b4e6.dir\\Debug\\cmTC_9b4e6.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyaddr_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_9b4e6.dir\\Debug\\\\" /Fd"cmTC_9b4e6.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyaddr_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_9b4e6.dir\\Debug\\\\" /Fd"cmTC_9b4e6.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\Debug\\cmTC_9b4e6.exe" /INCREMENTAL /ILK:"cmTC_9b4e6.dir\\Debug\\cmTC_9b4e6.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-2to5j9/Debug/cmTC_9b4e6.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-2to5j9/Debug/cmTC_9b4e6.lib" /MACHINE:X64  /machine:x64 cmTC_9b4e6.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyaddr_r referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\cmTC_9b4e6.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\Debug\\cmTC_9b4e6.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\cmTC_9b4e6.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\cmTC_9b4e6.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\cmTC_9b4e6.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyaddr_r referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\cmTC_9b4e6.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\Debug\\cmTC_9b4e6.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2to5j9\\cmTC_9b4e6.vcxproj]
+        
+            0 Warning(s)
+            2 Error(s)
+        
+        Time Elapsed 00:00:00.28
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "lib/enet/CMakeLists.txt:15 (check_function_exists)"
+    checks:
+      - "Looking for inet_pton"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-x8nrc8"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-x8nrc8"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_INET_PTON"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-x8nrc8'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_72e2f.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:07 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\cmTC_72e2f.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\Debug\\".
+          Creating directory "cmTC_72e2f.dir\\Debug\\cmTC_72e2f.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_72e2f.dir\\Debug\\cmTC_72e2f.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_72e2f.dir\\Debug\\cmTC_72e2f.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_pton /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_72e2f.dir\\Debug\\\\" /Fd"cmTC_72e2f.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_pton /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_72e2f.dir\\Debug\\\\" /Fd"cmTC_72e2f.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\Debug\\cmTC_72e2f.exe" /INCREMENTAL /ILK:"cmTC_72e2f.dir\\Debug\\cmTC_72e2f.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-x8nrc8/Debug/cmTC_72e2f.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-x8nrc8/Debug/cmTC_72e2f.lib" /MACHINE:X64  /machine:x64 cmTC_72e2f.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_pton referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\cmTC_72e2f.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\Debug\\cmTC_72e2f.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\cmTC_72e2f.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\cmTC_72e2f.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\cmTC_72e2f.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_pton referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\cmTC_72e2f.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\Debug\\cmTC_72e2f.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-x8nrc8\\cmTC_72e2f.vcxproj]
+        
+            0 Warning(s)
+            2 Error(s)
+        
+        Time Elapsed 00:00:00.27
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "lib/enet/CMakeLists.txt:16 (check_function_exists)"
+    checks:
+      - "Looking for inet_ntop"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-27gztz"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-27gztz"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_INET_NTOP"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-27gztz'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_ddfaf.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:07 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\cmTC_ddfaf.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\Debug\\".
+          Creating directory "cmTC_ddfaf.dir\\Debug\\cmTC_ddfaf.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_ddfaf.dir\\Debug\\cmTC_ddfaf.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_ddfaf.dir\\Debug\\cmTC_ddfaf.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_ntop /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_ddfaf.dir\\Debug\\\\" /Fd"cmTC_ddfaf.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_ntop /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_ddfaf.dir\\Debug\\\\" /Fd"cmTC_ddfaf.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\Debug\\cmTC_ddfaf.exe" /INCREMENTAL /ILK:"cmTC_ddfaf.dir\\Debug\\cmTC_ddfaf.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-27gztz/Debug/cmTC_ddfaf.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-27gztz/Debug/cmTC_ddfaf.lib" /MACHINE:X64  /machine:x64 cmTC_ddfaf.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_ntop referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\cmTC_ddfaf.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\Debug\\cmTC_ddfaf.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\cmTC_ddfaf.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\cmTC_ddfaf.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\cmTC_ddfaf.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_ntop referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\cmTC_ddfaf.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\Debug\\cmTC_ddfaf.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-27gztz\\cmTC_ddfaf.vcxproj]
+        
+            0 Warning(s)
+            2 Error(s)
+        
+        Time Elapsed 00:00:00.28
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/Internal/CheckSourceCompiles.cmake:104 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "lib/enet/CMakeLists.txt:17 (check_c_source_compiles)"
+    checks:
+      - "Performing Test HAS_OFFSETOF"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-uq3f7h"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-uq3f7h"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_OFFSETOF"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-uq3f7h'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_390b3.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:07 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uq3f7h\\cmTC_390b3.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uq3f7h\\Debug\\".
+          Creating directory "cmTC_390b3.dir\\Debug\\cmTC_390b3.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_390b3.dir\\Debug\\cmTC_390b3.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_390b3.dir\\Debug\\cmTC_390b3.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_OFFSETOF /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_390b3.dir\\Debug\\\\" /Fd"cmTC_390b3.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uq3f7h\\src.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_OFFSETOF /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_390b3.dir\\Debug\\\\" /Fd"cmTC_390b3.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uq3f7h\\src.c"
+          src.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uq3f7h\\Debug\\cmTC_390b3.exe" /INCREMENTAL /ILK:"cmTC_390b3.dir\\Debug\\cmTC_390b3.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-uq3f7h/Debug/cmTC_390b3.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-uq3f7h/Debug/cmTC_390b3.lib" /MACHINE:X64  /machine:x64 cmTC_390b3.dir\\Debug\\src.obj
+          cmTC_390b3.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uq3f7h\\Debug\\cmTC_390b3.exe
+        FinalizeBuildStatus:
+          Deleting file "cmTC_390b3.dir\\Debug\\cmTC_390b3.tlog\\unsuccessfulbuild".
+          Touching "cmTC_390b3.dir\\Debug\\cmTC_390b3.tlog\\cmTC_390b3.lastbuildstate".
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-uq3f7h\\cmTC_390b3.vcxproj" (default targets).
+        
+        Build succeeded.
+            0 Warning(s)
+            0 Error(s)
+        
+        Time Elapsed 00:00:00.31
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/Internal/CheckSourceCompiles.cmake:104 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckSourceCompiles.cmake:205 (cmake_check_source_compiles)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckStructHasMember.cmake:161 (check_source_compiles)"
+      - "lib/enet/CMakeLists.txt:24 (check_struct_has_member)"
+    checks:
+      - "Performing Test HAS_MSGHDR_FLAGS"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-jun3xy"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-jun3xy"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAS_MSGHDR_FLAGS"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-jun3xy'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_2c7ae.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:08 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\cmTC_2c7ae.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\Debug\\".
+          Creating directory "cmTC_2c7ae.dir\\Debug\\cmTC_2c7ae.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_2c7ae.dir\\Debug\\cmTC_2c7ae.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_2c7ae.dir\\Debug\\cmTC_2c7ae.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_MSGHDR_FLAGS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_2c7ae.dir\\Debug\\\\" /Fd"cmTC_2c7ae.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\src.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_MSGHDR_FLAGS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_2c7ae.dir\\Debug\\\\" /Fd"cmTC_2c7ae.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\src.c"
+          src.c
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\src.c(3,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\cmTC_2c7ae.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\cmTC_2c7ae.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\cmTC_2c7ae.vcxproj" (default target) (1) ->
+        (ClCompile target) -> 
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\src.c(3,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jun3xy\\cmTC_2c7ae.vcxproj]
+        
+            0 Warning(s)
+            1 Error(s)
+        
+        Time Elapsed 00:00:00.20
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckTypeSize.cmake:348 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckTypeSize.cmake:481 (__check_type_size_impl)"
+      - "lib/enet/CMakeLists.txt:26 (check_type_size)"
+    checks:
+      - "Check size of socklen_t"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-kgaulq"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-kgaulq"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAVE_HAS_SOCKLEN_T"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-kgaulq'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_fb9b7.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:08 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\cmTC_fb9b7.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\Debug\\".
+          Creating directory "cmTC_fb9b7.dir\\Debug\\cmTC_fb9b7.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_fb9b7.dir\\Debug\\cmTC_fb9b7.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_fb9b7.dir\\Debug\\cmTC_fb9b7.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_fb9b7.dir\\Debug\\\\" /Fd"cmTC_fb9b7.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\HAS_SOCKLEN_T.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_fb9b7.dir\\Debug\\\\" /Fd"cmTC_fb9b7.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\HAS_SOCKLEN_T.c"
+          HAS_SOCKLEN_T.c
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\HAS_SOCKLEN_T.c(2,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\cmTC_fb9b7.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\cmTC_fb9b7.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\cmTC_fb9b7.vcxproj" (default target) (1) ->
+        (ClCompile target) -> 
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\HAS_SOCKLEN_T.c(2,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-kgaulq\\cmTC_fb9b7.vcxproj]
+        
+            0 Warning(s)
+            1 Error(s)
+        
+        Time Elapsed 00:00:00.21
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/Internal/CheckSourceCompiles.cmake:104 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindThreads.cmake:160 (check_c_source_compiles)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindThreads.cmake:226 (_threads_check_libc)"
+      - "lib/spdlog/CMakeLists.txt:151 (find_package)"
+    checks:
+      - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-6nx5zy"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-6nx5zy"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "CMAKE_HAVE_LIBC_PTHREAD"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-6nx5zy'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_562ae.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:09 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\cmTC_562ae.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\Debug\\".
+          Creating directory "cmTC_562ae.dir\\Debug\\cmTC_562ae.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_562ae.dir\\Debug\\cmTC_562ae.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_562ae.dir\\Debug\\cmTC_562ae.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_562ae.dir\\Debug\\\\" /Fd"cmTC_562ae.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\src.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_562ae.dir\\Debug\\\\" /Fd"cmTC_562ae.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\src.c"
+          src.c
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\cmTC_562ae.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\cmTC_562ae.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\cmTC_562ae.vcxproj" (default target) (1) ->
+        (ClCompile target) -> 
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6nx5zy\\cmTC_562ae.vcxproj]
+        
+            0 Warning(s)
+            1 Error(s)
+        
+        Time Elapsed 00:00:00.21
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckLibraryExists.cmake:154 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindThreads.cmake:175 (check_library_exists)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindThreads.cmake:238 (_threads_check_lib)"
+      - "lib/spdlog/CMakeLists.txt:151 (find_package)"
+    checks:
+      - "Looking for pthread_create in pthreads"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-awe1zz"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-awe1zz"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "CMAKE_HAVE_PTHREADS_CREATE"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-awe1zz'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_f70b6.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:09 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-awe1zz\\cmTC_f70b6.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-awe1zz\\Debug\\".
+          Creating directory "cmTC_f70b6.dir\\Debug\\cmTC_f70b6.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_f70b6.dir\\Debug\\cmTC_f70b6.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_f70b6.dir\\Debug\\cmTC_f70b6.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_f70b6.dir\\Debug\\\\" /Fd"cmTC_f70b6.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-awe1zz\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_f70b6.dir\\Debug\\\\" /Fd"cmTC_f70b6.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-awe1zz\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-awe1zz\\Debug\\cmTC_f70b6.exe" /INCREMENTAL /ILK:"cmTC_f70b6.dir\\Debug\\cmTC_f70b6.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-awe1zz/Debug/cmTC_f70b6.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-awe1zz/Debug/cmTC_f70b6.lib" /MACHINE:X64  /machine:x64 cmTC_f70b6.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-awe1zz\\cmTC_f70b6.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-awe1zz\\cmTC_f70b6.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-awe1zz\\cmTC_f70b6.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-awe1zz\\cmTC_f70b6.vcxproj]
+        
+            0 Warning(s)
+            1 Error(s)
+        
+        Time Elapsed 00:00:00.26
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckLibraryExists.cmake:154 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindThreads.cmake:175 (check_library_exists)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindThreads.cmake:239 (_threads_check_lib)"
+      - "lib/spdlog/CMakeLists.txt:151 (find_package)"
+    checks:
+      - "Looking for pthread_create in pthread"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-u340qk"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-u340qk"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "CMAKE_HAVE_PTHREAD_CREATE"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-u340qk'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_391f6.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:09 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u340qk\\cmTC_391f6.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u340qk\\Debug\\".
+          Creating directory "cmTC_391f6.dir\\Debug\\cmTC_391f6.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_391f6.dir\\Debug\\cmTC_391f6.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_391f6.dir\\Debug\\cmTC_391f6.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_391f6.dir\\Debug\\\\" /Fd"cmTC_391f6.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u340qk\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_391f6.dir\\Debug\\\\" /Fd"cmTC_391f6.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u340qk\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u340qk\\Debug\\cmTC_391f6.exe" /INCREMENTAL /ILK:"cmTC_391f6.dir\\Debug\\cmTC_391f6.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-u340qk/Debug/cmTC_391f6.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-u340qk/Debug/cmTC_391f6.lib" /MACHINE:X64  /machine:x64 cmTC_391f6.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u340qk\\cmTC_391f6.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u340qk\\cmTC_391f6.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u340qk\\cmTC_391f6.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u340qk\\cmTC_391f6.vcxproj]
+        
+            0 Warning(s)
+            1 Error(s)
+        
+        Time Elapsed 00:00:00.24
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckSymbolExists.cmake:193 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CheckSymbolExists.cmake:98 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "lib/spdlog/CMakeLists.txt:248 (check_symbol_exists)"
+    checks:
+      - "Looking for _fwrite_nolock"
+    directories:
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-jic7vv"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-jic7vv"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
+      CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "HAVE_FWRITE_UNLOCKED"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-jic7vv'
+        
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_37893.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.23+b0019275e for .NET Framework
+        Build started 2/26/2026 11:21:10 PM.
+        
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jic7vv\\cmTC_37893.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jic7vv\\Debug\\".
+          Creating directory "cmTC_37893.dir\\Debug\\cmTC_37893.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_37893.dir\\Debug\\cmTC_37893.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_37893.dir\\Debug\\cmTC_37893.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_37893.dir\\Debug\\\\" /Fd"cmTC_37893.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jic7vv\\CheckSymbolExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_37893.dir\\Debug\\\\" /Fd"cmTC_37893.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jic7vv\\CheckSymbolExists.c"
+          CheckSymbolExists.c
+        Link:
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jic7vv\\Debug\\cmTC_37893.exe" /INCREMENTAL /ILK:"cmTC_37893.dir\\Debug\\cmTC_37893.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-jic7vv/Debug/cmTC_37893.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-jic7vv/Debug/cmTC_37893.lib" /MACHINE:X64  /machine:x64 cmTC_37893.dir\\Debug\\CheckSymbolExists.obj
+          cmTC_37893.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jic7vv\\Debug\\cmTC_37893.exe
+        FinalizeBuildStatus:
+          Deleting file "cmTC_37893.dir\\Debug\\cmTC_37893.tlog\\unsuccessfulbuild".
+          Touching "cmTC_37893.dir\\Debug\\cmTC_37893.tlog\\cmTC_37893.lastbuildstate".
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jic7vv\\cmTC_37893.vcxproj" (default targets).
+        
+        Build succeeded.
+            0 Warning(s)
+            0 Error(s)
+        
+        Time Elapsed 00:00:00.31
+        
+      exitCode: 0
+...

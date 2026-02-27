@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\callbacks.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\compress.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\host.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\list.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\packet.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\peer.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\protocol.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\unix.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\win32.c">
+      <Filter>source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include\enet\callbacks.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include\enet\enet.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include\enet\list.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include\enet\protocol.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include\enet\time.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include\enet\types.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include\enet\unix.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include\enet\utility.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include\enet\win32.h">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{8067E329-D6E2-330F-9D63-CAAA44958FCC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{ACB7E211-75DB-37C2-AAEF-7262DAF394FA}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

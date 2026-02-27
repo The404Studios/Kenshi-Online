@@ -1,0 +1,12 @@
+# CMake generation dependency list for this directory.
+C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/spdlog/CMakeLists.txt
+C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/spdlog/cmake/ide.cmake
+C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/spdlog/cmake/utils.cmake
+C:/Program Files/CMake/share/cmake-4.2/Modules/CheckCSourceCompiles.cmake
+C:/Program Files/CMake/share/cmake-4.2/Modules/CheckIncludeFile.cmake
+C:/Program Files/CMake/share/cmake-4.2/Modules/CheckLibraryExists.cmake
+C:/Program Files/CMake/share/cmake-4.2/Modules/CheckSymbolExists.cmake
+C:/Program Files/CMake/share/cmake-4.2/Modules/FindPackageHandleStandardArgs.cmake
+C:/Program Files/CMake/share/cmake-4.2/Modules/FindPackageMessage.cmake
+C:/Program Files/CMake/share/cmake-4.2/Modules/FindThreads.cmake
+C:/Program Files/CMake/share/cmake-4.2/Modules/GNUInstallDirs.cmake

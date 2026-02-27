@@ -1,0 +1,6 @@
+# CMake generation dependency list for this directory.
+C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/minhook/CMakeLists.txt
+C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/minhook/cmake/minhook-config.cmake.in
+C:/Program Files/CMake/share/cmake-4.2/Modules/BasicConfigVersion-AnyNewerVersion.cmake.in
+C:/Program Files/CMake/share/cmake-4.2/Modules/CMakePackageConfigHelpers.cmake
+C:/Program Files/CMake/share/cmake-4.2/Modules/WriteBasicConfigVersionFile.cmake

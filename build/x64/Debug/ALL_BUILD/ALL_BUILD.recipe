@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\x64\Debug\ZERO_CHECK</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\Debug\KenshiMP.Core.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\Debug\KenshiMP.Injector.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\Debug\KenshiMP.Server.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\x64\Debug\ALL_BUILD</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles />
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>

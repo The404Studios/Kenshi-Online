@@ -1,0 +1,16 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/enet/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/spdlog/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/json/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Common/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Scanner/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Core/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Server/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Injector/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
