@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+    <!-- Fullscreen dark overlay (like Kenshi_MainMenuPopupPanel) -->
+    <Widget type="Widget" skin="WhiteSkin" position_real="0 0 1 1" layer="Main" name="MPRoot">
+        <Property key="Alpha" value="0.75"/>
+        <Property key="Colour" value="0 0 0"/>
+        <Property key="NeedMouse" value="true"/>
+        <Property key="Visible" value="false"/>
+
+        <!-- Main multiplayer panel (right side, matching Kenshi style) -->
+        <Widget type="Widget" skin="Kenshi_FloatingPanelSkin" position_real="0.520312 0.138889 0.364062 0.768519" align="Default" name="MultiplayerPanel">
+            <Property key="InheritsAlpha" value="false"/>
+
+            <!-- Title -->
+            <Widget type="TextBox" skin="Kenshi_TextboxPaintedText" position_real="0.02 0.02 0.96 0.08" align="HStretch Top" name="MPTitle">
+                <Property key="Caption" value="MULTIPLAYER"/>
+                <Property key="TextAlign" value="Center"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+
+            <!-- HOST GAME button -->
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.1 0.13 0.8 0.09" align="HStretch Top" name="MPHostButton">
+                <Property key="Caption" value="HOST GAME"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+
+            <!-- JOIN GAME button -->
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.1 0.25 0.8 0.09" align="HStretch Top" name="MPJoinButton">
+                <Property key="Caption" value="JOIN GAME"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+
+            <!-- SETTINGS button -->
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.1 0.37 0.8 0.09" align="HStretch Top" name="MPSettingsButton">
+                <Property key="Caption" value="SETTINGS"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+
+            <!-- SERVER BROWSER button -->
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.1 0.49 0.8 0.09" align="HStretch Top" name="MPBrowserButton">
+                <Property key="Caption" value="SERVER BROWSER"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+
+            <!-- BACK button -->
+            <!-- BACK button -->
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.1 0.61 0.8 0.09" align="HStretch Top" name="MPBackButton">
+                <Property key="Caption" value="BACK"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+
+            <!-- ═══ JOIN GAME sub-panel (hidden by default) ═══ -->
+            <Widget type="Widget" skin="PanelEmpty" position_real="0.05 0.13 0.9 0.75" align="Stretch" name="MPJoinPanel">
+                <Property key="Visible" value="false"/>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.0 0.3 0.1" align="Left Top">
+                    <Property key="Caption" value="Server IP:"/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="EditBox" skin="Kenshi_EditBox" position_real="0.32 0.0 0.66 0.1" align="HStretch Top" name="MPServerIP">
+                    <Property key="Caption" value="127.0.0.1"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.14 0.3 0.1" align="Left Top">
+                    <Property key="Caption" value="Port:"/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="EditBox" skin="Kenshi_EditBox" position_real="0.32 0.14 0.3 0.1" align="Left Top" name="MPServerPort">
+                    <Property key="Caption" value="27800"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.28 0.3 0.1" align="Left Top">
+                    <Property key="Caption" value="Player Name:"/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="EditBox" skin="Kenshi_EditBox" position_real="0.32 0.28 0.66 0.1" align="HStretch Top" name="MPPlayerName">
+                    <Property key="Caption" value="Player"/>
+                </Widget>
+
+                <Widget type="Button" skin="Kenshi_Button1" position_real="0.05 0.5 0.42 0.14" align="Left Bottom" name="MPConnectButton">
+                    <Property key="Caption" value="CONNECT"/>
+                    <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+                </Widget>
+                <Widget type="Button" skin="Kenshi_Button1" position_real="0.53 0.5 0.42 0.14" align="Right Bottom" name="MPJoinBackButton">
+                    <Property key="Caption" value="BACK"/>
+                    <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+                </Widget>
+
+                <!-- Status text -->
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.7 1.0 0.1" align="HStretch Bottom" name="MPStatusText">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Center"/>
+                    <Property key="TextColour" value="0.9 0.55 0.1"/>
+                </Widget>
+            </Widget>
+
+            <!-- ═══ SETTINGS sub-panel (hidden by default) ═══ -->
+            <Widget type="Widget" skin="PanelEmpty" position_real="0.05 0.13 0.9 0.75" align="Stretch" name="MPSettingsPanel">
+                <Property key="Visible" value="false"/>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.0 0.4 0.1" align="Left Top">
+                    <Property key="Caption" value="Player Name:"/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="EditBox" skin="Kenshi_EditBox" position_real="0.42 0.0 0.56 0.1" align="HStretch Top" name="MPSettingsName">
+                    <Property key="Caption" value="Player"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.14 0.4 0.1" align="Left Top">
+                    <Property key="Caption" value="Auto-Connect:"/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="Button" skin="Kenshi_TickBoxSkin" position_real="0.42 0.15 0.06 0.08" align="Left Top" name="MPAutoConnectTick"/>
+
+                <Widget type="Button" skin="Kenshi_Button1" position_real="0.25 0.5 0.5 0.14" align="HCenter Bottom" name="MPSettingsBackButton">
+                    <Property key="Caption" value="BACK"/>
+                    <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+                </Widget>
+            </Widget>
+
+            <!-- ═══ SERVER BROWSER sub-panel (hidden by default) ═══ -->
+            <Widget type="Widget" skin="PanelEmpty" position_real="0.05 0.13 0.9 0.75" align="Stretch" name="MPBrowserPanel">
+                <Property key="Visible" value="false"/>
+
+                <!-- Title -->
+                <Widget type="TextBox" skin="Kenshi_TextboxPaintedText" position_real="0.0 0.0 1.0 0.07" align="HStretch Top" name="MPBrowserTitle">
+                    <Property key="Caption" value="SERVER BROWSER"/>
+                    <Property key="TextAlign" value="Center"/>
+                    <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+                </Widget>
+
+                <!-- Server rows: Name + Info (players/ping) -->
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.08 0.65 0.07" align="Left Top" name="MPServerName0">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.67 0.08 0.33 0.07" align="Right Top" name="MPServerInfo0">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Right VCenter"/>
+                    <Property key="TextColour" value="0.7 0.7 0.7"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.165 0.65 0.07" align="Left Top" name="MPServerName1">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.67 0.165 0.33 0.07" align="Right Top" name="MPServerInfo1">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Right VCenter"/>
+                    <Property key="TextColour" value="0.7 0.7 0.7"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.25 0.65 0.07" align="Left Top" name="MPServerName2">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.67 0.25 0.33 0.07" align="Right Top" name="MPServerInfo2">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Right VCenter"/>
+                    <Property key="TextColour" value="0.7 0.7 0.7"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.335 0.65 0.07" align="Left Top" name="MPServerName3">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.67 0.335 0.33 0.07" align="Right Top" name="MPServerInfo3">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Right VCenter"/>
+                    <Property key="TextColour" value="0.7 0.7 0.7"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.42 0.65 0.07" align="Left Top" name="MPServerName4">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.67 0.42 0.33 0.07" align="Right Top" name="MPServerInfo4">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Right VCenter"/>
+                    <Property key="TextColour" value="0.7 0.7 0.7"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.505 0.65 0.07" align="Left Top" name="MPServerName5">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.67 0.505 0.33 0.07" align="Right Top" name="MPServerInfo5">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Right VCenter"/>
+                    <Property key="TextColour" value="0.7 0.7 0.7"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.59 0.65 0.07" align="Left Top" name="MPServerName6">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.67 0.59 0.33 0.07" align="Right Top" name="MPServerInfo6">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Right VCenter"/>
+                    <Property key="TextColour" value="0.7 0.7 0.7"/>
+                </Widget>
+
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.675 0.65 0.07" align="Left Top" name="MPServerName7">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Left VCenter"/>
+                    <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
+                </Widget>
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.67 0.675 0.33 0.07" align="Right Top" name="MPServerInfo7">
+                    <Property key="Caption" value=""/>
+                    <Property key="TextAlign" value="Right VCenter"/>
+                    <Property key="TextColour" value="0.7 0.7 0.7"/>
+                </Widget>
+
+                <!-- Status text -->
+                <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.76 1.0 0.07" align="HStretch Bottom" name="MPBrowserStatus">
+                    <Property key="Caption" value="Click REFRESH to query servers"/>
+                    <Property key="TextAlign" value="Center"/>
+                    <Property key="TextColour" value="0.9 0.55 0.1"/>
+                </Widget>
+
+                <!-- Buttons -->
+                <Widget type="Button" skin="Kenshi_Button1" position_real="0.05 0.85 0.42 0.12" align="Left Bottom" name="MPBrowserRefresh">
+                    <Property key="Caption" value="REFRESH"/>
+                    <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+                </Widget>
+                <Widget type="Button" skin="Kenshi_Button1" position_real="0.53 0.85 0.42 0.12" align="Right Bottom" name="MPBrowserBack">
+                    <Property key="Caption" value="BACK"/>
+                    <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+                </Widget>
+            </Widget>
+
+            <!-- Credit line at bottom -->
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.92 0.96 0.06" align="HStretch Bottom" name="MPCreditText">
+                <Property key="Caption" value="made with love by fourzerofour"/>
+                <Property key="TextAlign" value="Center"/>
+                <Property key="TextColour" value="0.5 0.5 0.5"/>
+            </Widget>
+        </Widget>
+    </Widget>
+    <CodeGeneratorSettings/>
+</MyGUI>

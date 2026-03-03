@@ -1,0 +1,50 @@
+{
+  "CHARACTER_KO": {
+    "pattern": "48 89 5C 24 ? 48 89 6C 24 ? 48 89 74 24 ? 57 48 83 EC ? 48 8B 02 48 8B E9 ? ? ? ? 8B FA",
+    "rva": "0x00345C10",
+    "offset": "0x00345010",
+    "string": "knockout",
+    "raw_bytes": "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 48 83 EC 50 48 8B 02 48 8B E9 48 8B CA 48 8B FA",
+    "description": "Character knockout"
+  },
+  "CHARACTER_MOVE_TO": {
+    "pattern": "48 89 4C 24 ? C7 41 58 01 00 00 00 B8 0A 00 00 00 8B C8 FF 15 6C 55 F5 01 41 83 7E 58 01 B8 0A",
+    "rva": "0x002EF4E3",
+    "offset": "0x002EE8E3",
+    "string": "pathfind",
+    "raw_bytes": "48 89 4C 24 48 C7 41 58 01 00 00 00 B8 0A 00 00 00 8B C8 FF 15 6C 55 F5 01 41 83 7E 58 01 B8 0A",
+    "description": "Character movement/pathfinding"
+  },
+  "GAME_INIT": {
+    "pattern": "4C 89 44 24 ? 48 89 54 24 ? 48 89 4C 24 ? 55 53 56 57 41 54 41 55 41 56 41 57 48 8B EC 48 83",
+    "rva": "0x00123590",
+    "offset": "0x00122990",
+    "string": "Kenshi 1.0.",
+    "raw_bytes": "4C 89 44 24 18 48 89 54 24 10 48 89 4C 24 08 55 53 56 57 41 54 41 55 41 56 41 57 48 8B EC 48 83",
+    "description": "Game initialization"
+  },
+  "NAVMESH": {
+    "pattern": "48 89 54 24 ? 57 48 83 EC ? 48 C7 44 24 20 FE FF FF FF 48 89 5C 24 ? 49 8B F8 48 8B DA 48 89",
+    "rva": "0x00881950",
+    "offset": "0x00880D50",
+    "string": "navmesh",
+    "raw_bytes": "48 89 54 24 10 57 48 83 EC 30 48 C7 44 24 20 FE FF FF FF 48 89 5C 24 40 49 8B F8 48 8B DA 48 89",
+    "description": "NAVMESH system"
+  },
+  "SAVE_GAME": {
+    "pattern": "40 55 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 F9 48 81 EC ? ? ? ? 48 C7 45 97 FE FF FF FF",
+    "rva": "0x007EF040",
+    "offset": "0x007EE440",
+    "string": "quicksave",
+    "raw_bytes": "40 55 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 F9 48 81 EC A0 00 00 00 48 C7 45 97 FE FF FF FF",
+    "description": "Game save function"
+  },
+  "ZONE_LOAD": {
+    "pattern": "40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 E0 FC FF FF 48 81 EC ? ? ? ? 48 C7 45 88 FE",
+    "rva": "0x00377710",
+    "offset": "0x00376B10",
+    "string": "zone.%d.%d.zone",
+    "raw_bytes": "40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 E0 FC FF FF 48 81 EC 20 04 00 00 48 C7 45 88 FE",
+    "description": "Zone loading function"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "game_version": "1.0.68",
+  "sources": "KServerMod structs.h, KenshiLib GameWorld.h, Cheat Engine tables",
+  "character_offsets": {
+    "faction":         { "offset": "0x10",  "type": "Faction*",        "source": "KServerMod", "verified": true },
+    "name":            { "offset": "0x18",  "type": "std::string",     "source": "KServerMod", "verified": true },
+    "gameDataPtr":     { "offset": "0x40",  "type": "GameData*",       "source": "KServerMod", "verified": true },
+    "position":        { "offset": "0x48",  "type": "Vec3",            "source": "KServerMod", "verified": true },
+    "rotation":        { "offset": "0x58",  "type": "Quat",            "source": "KServerMod", "verified": true },
+    "inventory":       { "offset": "0x2E8", "type": "Inventory*",      "source": "KServerMod", "verified": true },
+    "stats":           { "offset": "0x450", "type": "Stats (inline)",  "source": "KServerMod", "verified": true },
+    "sceneNode":       { "offset": "-1",    "type": "SceneNode*",      "source": "unverified", "verified": false },
+    "aiPackage":       { "offset": "-1",    "type": "AIPackage*",      "source": "unverified", "verified": false },
+    "equipment":       { "offset": "-1",    "type": "ptr[14]",         "source": "runtime probed", "verified": false },
+    "squad":           { "offset": "-1",    "type": "KSquad*",         "source": "runtime probed", "verified": false },
+    "currentTask":     { "offset": "-1",    "type": "uint32 enum",     "source": "unverified", "verified": false },
+    "isAlive":         { "offset": "-1",    "type": "bool",            "source": "use health chain", "verified": false },
+    "isPlayerControlled": { "offset": "-1", "type": "bool",            "source": "unverified", "verified": false },
+    "moveSpeed":       { "offset": "-1",    "type": "float",           "source": "unverified", "verified": false },
+    "animState":       { "offset": "-1",    "type": "uint8",           "source": "unverified", "verified": false }
+  },
+  "character_chains": {
+    "health": {
+      "chain": "char+0x2B8 -> +0x5F8 -> +0x40",
+      "stride": 8,
+      "type": "float health + float stun per body part",
+      "source": "CE verified"
+    },
+    "money": {
+      "chain": "char+0x298 -> +0x78 -> +0x88",
+      "type": "int",
+      "source": "CE verified"
+    },
+    "writable_position": {
+      "chain": "char+animClassOffset -> +0xC0 -> +0x320 -> +0x20",
+      "note": "animClassOffset discovered at runtime (0x60-0x200 probe)",
+      "source": "KServerMod"
+    }
+  },
+  "world_offsets": {
+    "gameSpeed":       { "offset": "0x700",  "type": "float",         "source": "KenshiLib",  "verified": true },
+    "characterList":   { "offset": "0x0888", "type": "ptr array",     "source": "KenshiLib",  "verified": true },
+    "zoneManager":     { "offset": "0x08B0", "type": "ZoneManager*",  "source": "KenshiLib",  "verified": true },
+    "timeOfDay":       { "offset": "-1",     "type": "float",         "source": "on TimeManager +0x08, not GameWorld", "verified": false },
+    "weatherState":    { "offset": "-1",     "type": "int enum",      "source": "unverified", "verified": false },
+    "buildingList":    { "offset": "-1",     "type": "ptr array",     "source": "unverified", "verified": false }
+  },
+  "time_manager_offsets": {
+    "timeOfDay":       { "offset": "0x08",   "type": "float 0-1",     "source": "runtime hook capture", "verified": true },
+    "gameSpeed":       { "offset": "0x10",   "type": "float",         "source": "runtime hook capture", "verified": true }
+  },
+  "building_offsets": {
+    "name":            { "offset": "0x10",   "type": "std::string",   "source": "same as character" },
+    "position":        { "offset": "0x48",   "type": "Vec3",          "source": "same as character" },
+    "rotation":        { "offset": "0x58",   "type": "Quat",          "source": "same as character" },
+    "ownerFaction":    { "offset": "0x80",   "type": "Faction*" },
+    "health":          { "offset": "0xA0",   "type": "float" },
+    "maxHealth":       { "offset": "0xA4",   "type": "float" },
+    "isDestroyed":     { "offset": "0xA8",   "type": "bool" },
+    "functionality":   { "offset": "0xC0",   "type": "BuildingFunctionality*" },
+    "inventory":       { "offset": "0xE0",   "type": "Inventory*" },
+    "buildProgress":   { "offset": "0x110",  "type": "float 0-1" },
+    "isConstructed":   { "offset": "0x114",  "type": "bool" }
+  },
+  "inventory_offsets": {
+    "items":           { "offset": "0x10",   "type": "Item* array" },
+    "itemCount":       { "offset": "0x18",   "type": "int" },
+    "width":           { "offset": "0x20",   "type": "int" },
+    "height":          { "offset": "0x24",   "type": "int" }
+  },
+  "faction_offsets": {
+    "name":            { "offset": "0x10",   "type": "std::string" },
+    "factionId":       { "offset": "0x08",   "type": "uint32",        "source": "faction_hooks.cpp reads at +0x08" },
+    "members":         { "offset": "0x30",   "type": "ptr array" },
+    "relations":       { "offset": "0x50",   "type": "map ptr" },
+    "isPlayerFaction": { "offset": "0x90",   "type": "bool" },
+    "money":           { "offset": "0xA0",   "type": "int" }
+  },
+  "stats_offsets": {
+    "meleeAttack":     "0x00", "meleeDefence": "0x04", "dodge": "0x08",
+    "martialArts":     "0x0C", "strength":     "0x10", "toughness": "0x14",
+    "dexterity":       "0x18", "athletics":    "0x1C", "crossbows": "0x20",
+    "turrets":         "0x24", "precision":    "0x28", "stealth":   "0x30",
+    "assassination":   "0x34", "lockpicking":  "0x38", "thievery":  "0x3C",
+    "science":         "0x40", "engineering":  "0x44", "medic":     "0x48",
+    "farming":         "0x50", "cooking":      "0x54", "weaponsmith": "0x58",
+    "armoursmith":     "0x5C", "labouring":    "0x60"
+  },
+  "singletons": {
+    "PlayerBase":         { "rva": "0x01AC8A90", "source": "pattern scanner" },
+    "GameWorldSingleton": { "rva": "0x02133040", "source": "pattern scanner" }
+  },
+  "string_layout": {
+    "type": "MSVC x64 std::string",
+    "sso_threshold": 15,
+    "buf_offset":    "0x00 (16 bytes inline)",
+    "size_offset":   "0x10 (uint64_t)",
+    "capacity_offset": "0x18 (uint64_t)",
+    "heap_ptr_at":   "0x00 (first 8 bytes when capacity > 15)"
+  }
+}

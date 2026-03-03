@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+    <!-- ═══ In-game Multiplayer HUD (native Kenshi UI) ═══ -->
+    <!-- Non-interactive fullscreen container — does NOT block clicks -->
+    <Widget type="Widget" skin="PanelEmpty" position_real="0 0 1 1" layer="Main" name="HUDRoot">
+        <Property key="NeedMouse" value="false"/>
+        <Property key="Visible" value="false"/>
+        <Property key="InheritsAlpha" value="false"/>
+
+        <!-- ═══ CONNECTION STATUS BAR (top-center, always visible) ═══ -->
+        <Widget type="Widget" skin="Kenshi_FloatingPanelSkin" position_real="0.3 0.003 0.4 0.04" align="HCenter Top" name="HUDStatusBar">
+            <Property key="InheritsAlpha" value="false"/>
+            <Property key="NeedMouse" value="false"/>
+            <Property key="Alpha" value="0.85"/>
+
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.05 0.96 0.9" align="Stretch" name="HUDStatusText">
+                <Property key="Caption" value="KENSHI ONLINE  |  Not Connected  |  F1 = Menu"/>
+                <Property key="TextAlign" value="Center VCenter"/>
+                <Property key="TextColour" value="0.9 0.55 0.1"/>
+                <Property key="NeedMouse" value="false"/>
+            </Widget>
+        </Widget>
+
+        <!-- ═══ DEBUG / LOADING LOG PANEL (right side, toggleable with Insert) ═══ -->
+        <Widget type="Widget" skin="Kenshi_FloatingPanelSkin" position_real="0.6 0.05 0.39 0.55" align="Right Top" name="HUDLogPanel">
+            <Property key="InheritsAlpha" value="false"/>
+            <Property key="NeedMouse" value="false"/>
+            <Property key="Alpha" value="0.8"/>
+            <Property key="Visible" value="true"/>
+
+            <!-- Title -->
+            <Widget type="TextBox" skin="Kenshi_TextboxPaintedText" position_real="0.02 0.01 0.96 0.06" align="HStretch Top" name="HUDLogTitle">
+                <Property key="Caption" value="KENSHI ONLINE"/>
+                <Property key="TextAlign" value="Center"/>
+                <Property key="NeedMouse" value="false"/>
+            </Widget>
+
+            <!-- Log lines (20 lines for debug/loading messages) -->
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.08 0.96 0.04" align="HStretch Top" name="HUDLog0">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.12 0.96 0.04" align="HStretch Top" name="HUDLog1">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.16 0.96 0.04" align="HStretch Top" name="HUDLog2">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.20 0.96 0.04" align="HStretch Top" name="HUDLog3">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.24 0.96 0.04" align="HStretch Top" name="HUDLog4">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.28 0.96 0.04" align="HStretch Top" name="HUDLog5">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.32 0.96 0.04" align="HStretch Top" name="HUDLog6">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.36 0.96 0.04" align="HStretch Top" name="HUDLog7">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.40 0.96 0.04" align="HStretch Top" name="HUDLog8">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.44 0.96 0.04" align="HStretch Top" name="HUDLog9">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.48 0.96 0.04" align="HStretch Top" name="HUDLog10">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.52 0.96 0.04" align="HStretch Top" name="HUDLog11">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.56 0.96 0.04" align="HStretch Top" name="HUDLog12">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.60 0.96 0.04" align="HStretch Top" name="HUDLog13">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.64 0.96 0.04" align="HStretch Top" name="HUDLog14">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.68 0.96 0.04" align="HStretch Top" name="HUDLog15">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.72 0.96 0.04" align="HStretch Top" name="HUDLog16">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.76 0.96 0.04" align="HStretch Top" name="HUDLog17">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.80 0.96 0.04" align="HStretch Top" name="HUDLog18">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.84 0.96 0.04" align="HStretch Top" name="HUDLog19">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.7 0.7 0.7"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+
+            <!-- Toggle hint -->
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.92 0.96 0.06" align="HStretch Bottom" name="HUDLogHint">
+                <Property key="Caption" value="Insert = toggle  |  F1 = menu  |  Enter = chat"/>
+                <Property key="TextAlign" value="Center"/>
+                <Property key="TextColour" value="0.5 0.5 0.5"/>
+                <Property key="NeedMouse" value="false"/>
+            </Widget>
+        </Widget>
+
+        <!-- ═══ CHAT AREA (bottom-left, with semi-transparent background panel) ═══ -->
+        <Widget type="Widget" skin="Kenshi_FloatingPanelSkin" position_real="0.0 0.75 0.41 0.25" align="Left Bottom" name="HUDChatPanel">
+            <Property key="InheritsAlpha" value="false"/>
+            <Property key="NeedMouse" value="false"/>
+            <Property key="Alpha" value="0.7"/>
+            <Property key="Visible" value="false"/>
+
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.04 0.976 0.088" align="HStretch Top" name="HUDChat0">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.128 0.976 0.088" align="HStretch Top" name="HUDChat1">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.216 0.976 0.088" align="HStretch Top" name="HUDChat2">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.304 0.976 0.088" align="HStretch Top" name="HUDChat3">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.392 0.976 0.088" align="HStretch Top" name="HUDChat4">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.48 0.976 0.088" align="HStretch Top" name="HUDChat5">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.568 0.976 0.088" align="HStretch Top" name="HUDChat6">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.656 0.976 0.088" align="HStretch Top" name="HUDChat7">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.744 0.976 0.088" align="HStretch Top" name="HUDChat8">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.832 0.976 0.088" align="HStretch Top" name="HUDChat9">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.9 0.9"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+
+            <!-- Chat input line -->
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.012 0.912 0.976 0.088" align="HStretch Bottom" name="HUDChatInput">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.9 0.55 0.1"/>
+                <Property key="Visible" value="false"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+        </Widget>
+
+        <!-- ═══ PLAYER LIST (top-right, toggled with Tab) ═══ -->
+        <Widget type="Widget" skin="Kenshi_FloatingPanelSkin" position_real="0.75 0.05 0.245 0.35" align="Right Top" name="HUDPlayerList">
+            <Property key="Visible" value="false"/>
+            <Property key="NeedMouse" value="false"/>
+            <Property key="Alpha" value="0.85"/>
+
+            <Widget type="TextBox" skin="Kenshi_TextboxPaintedText" position_real="0.0 0.0 1.0 0.12" align="HStretch Top" name="HUDPlayerListTitle">
+                <Property key="Caption" value="PLAYERS ONLINE"/>
+                <Property key="TextAlign" value="Center"/>
+                <Property key="NeedMouse" value="false"/>
+            </Widget>
+
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.14 0.96 0.1" align="HStretch Top" name="HUDPlayer0">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.871345 0.845139 0.810198"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.24 0.96 0.1" align="HStretch Top" name="HUDPlayer1">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.871345 0.845139 0.810198"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.34 0.96 0.1" align="HStretch Top" name="HUDPlayer2">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.871345 0.845139 0.810198"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.44 0.96 0.1" align="HStretch Top" name="HUDPlayer3">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.871345 0.845139 0.810198"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.54 0.96 0.1" align="HStretch Top" name="HUDPlayer4">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.871345 0.845139 0.810198"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.64 0.96 0.1" align="HStretch Top" name="HUDPlayer5">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.871345 0.845139 0.810198"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.74 0.96 0.1" align="HStretch Top" name="HUDPlayer6">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.871345 0.845139 0.810198"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.02 0.84 0.96 0.1" align="HStretch Top" name="HUDPlayer7">
+                <Property key="Caption" value=""/><Property key="TextAlign" value="Left VCenter"/>
+                <Property key="TextColour" value="0.871345 0.845139 0.810198"/><Property key="NeedMouse" value="false"/>
+            </Widget>
+        </Widget>
+    </Widget>
+    <CodeGeneratorSettings/>
+</MyGUI>

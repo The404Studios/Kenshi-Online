@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "WebSearch",
+      "Bash(find C:\\\\Program Files \\(x86\\)\\\\Steam\\\\steamapps\\\\common\\\\Kenshi:*)",
+      "Bash(find C:\\\\Program Files \\(x86\\)\\\\Steam\\\\steamapps\\\\common\\\\Kenshi\\\\data:*)",
+      "Bash(find C:\\\\Program Files \\(x86\\)\\\\Steam\\\\steamapps\\\\common\\\\Kenshi\\\\KenshiMP:*)",
+      "Bash(find C:\\\\Program Files \\(x86\\)\\\\Steam\\\\steamapps\\\\common\\\\Kenshi\\\\KenshiMP\\\\lib:*)",
+      "Bash(du:*)",
+      "Bash(find C:\\\\Program Files \\(x86\\)\\\\Steam\\\\steamapps\\\\common\\\\Kenshi\\\\locale:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:steamcommunity.com)",
+      "WebFetch(domain:fearlessrevolution.com)",
+      "WebFetch(domain:kenshi-modding.fandom.com)",
+      "Bash(find:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(cmake:*)",
+      "Bash(winget:*)",
+      "Bash(git:*)",
+      "Bash(rm:*)",
+      "Bash(head:*)",
+      "Bash(export:*)",
+      "Bash(where cl:*)",
+      "Bash(do:*)"
+    ]
+  }
+}

@@ -1,0 +1,135 @@
+#pragma once
+#include <cstdint>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <mutex>
+
+namespace kmp {
+
+// Diagnostics snapshot for a single hook (returned by GetDiagnostics)
+struct HookDiag {
+    std::string name;
+    uintptr_t   targetAddr    = 0;
+    uint8_t     prologue[8]   = {};      // First 8 bytes of original function
+    bool        installed     = false;
+    bool        enabled       = false;
+    bool        isVtable      = false;
+    bool        hasRelayThunk = false;    // True if relay thunk was built for mov-rax-rsp
+    int         callCount     = 0;
+    int         crashCount    = 0;
+};
+
+class HookManager {
+public:
+    static HookManager& Get();
+
+    bool Initialize();
+    void Shutdown();
+
+    // Install an inline hook using MinHook.
+    // If the target starts with `mov rax, rsp` (48 8B C4), a relay thunk is
+    // built automatically and `*original` receives the patched pointer instead
+    // of the raw trampoline. This fixes the RSP capture bug.
+    template<typename T>
+    bool Install(const std::string& name, T* target, T* detour, T** original) {
+        return InstallRaw(name,
+            reinterpret_cast<void*>(target),
+            reinterpret_cast<void*>(detour),
+            reinterpret_cast<void**>(original));
+    }
+
+    // Install a hook by address
+    template<typename T>
+    bool InstallAt(const std::string& name, uintptr_t address, T* detour, T** original) {
+        return InstallRaw(name,
+            reinterpret_cast<void*>(address),
+            reinterpret_cast<void*>(detour),
+            reinterpret_cast<void**>(original));
+    }
+
+    // Remove a specific hook by name
+    bool Remove(const std::string& name);
+
+    // Remove all hooks
+    void RemoveAll();
+
+    // Enable/disable a hook without removing it
+    bool Enable(const std::string& name);
+    bool Disable(const std::string& name);
+
+    // Get the original target address (NOT the trampoline) for direct calling
+    void* GetTarget(const std::string& name) const;
+
+    // Check if a hook is installed
+    bool IsInstalled(const std::string& name) const;
+
+    // Get hook count
+    size_t GetHookCount() const;
+
+    // Install a vtable hook (swap vtable entry)
+    bool InstallVTableHook(const std::string& name, void** vtable, int index,
+                           void* detour, void** original);
+
+    // ── Diagnostics ──
+
+    // Get diagnostics for all hooks (thread-safe snapshot)
+    std::vector<HookDiag> GetDiagnostics() const;
+
+    // Increment call/crash counters (called from hook detours)
+    void IncrementCallCount(const std::string& name);
+    void IncrementCrashCount(const std::string& name);
+
+private:
+    HookManager() = default;
+    ~HookManager() = default;
+
+    bool InstallRaw(const std::string& name, void* target, void* detour, void** original);
+
+    // Build a relay thunk for functions starting with `mov rax, rsp` (48 8B C4).
+    // Returns VirtualAlloc'd executable memory, or nullptr on failure.
+    // The thunk does: mov rax,rsp; add rax,8; jmp trampoline+3
+    void* BuildRelayThunk(const std::string& name, void* trampoline);
+
+    struct HookEntry {
+        std::string name;
+        void*       target   = nullptr;
+        void*       detour   = nullptr;
+        void*       original = nullptr;     // Raw trampoline from MinHook
+        bool        enabled  = false;
+        bool        isVtable = false;
+        void**      vtableAddr = nullptr;
+        int         vtableIndex = -1;
+
+        // ── Diagnostics ──
+        uint8_t     prologueBytes[8] = {};  // First 8 bytes of original function
+        void*       relayThunk = nullptr;   // VirtualAlloc'd relay thunk (or nullptr)
+        bool        hasMovRaxRsp = false;   // True if target starts with 48 8B C4
+        int         callCount  = 0;         // Protected by m_mutex
+        int         crashCount = 0;         // Protected by m_mutex
+    };
+
+    std::unordered_map<std::string, HookEntry> m_hooks;
+    mutable std::mutex m_mutex;
+    bool m_initialized = false;
+};
+
+// RAII guard: disables a hook on construction, re-enables on destruction.
+// Use this to call the original function directly (bypassing the trampoline)
+// for functions whose prologues start with `mov rax, rsp` which breaks
+// MinHook's trampoline mechanism. Prefer relay thunks (automatic) over this.
+class HookBypass {
+public:
+    HookBypass(const std::string& name) : m_name(name) {
+        HookManager::Get().Disable(name);
+    }
+    ~HookBypass() {
+        HookManager::Get().Enable(m_name);
+    }
+    HookBypass(const HookBypass&) = delete;
+    HookBypass& operator=(const HookBypass&) = delete;
+private:
+    std::string m_name;
+};
+
+} // namespace kmp

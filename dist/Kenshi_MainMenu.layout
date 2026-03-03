@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+    <Widget type="Widget" skin="PanelEmpty" position_real="0 0 1 1" align="Stretch" layer="Main" name="Root">
+        <Property key="InheritsPick" value="true"/>
+        <Widget type="ImageBox" skin="ImageBox" position_real="0 0 1 1" align="Stretch">
+            <Property key="ImageResource" value="Kenshi_TitleScreen"/>
+            <Property key="ImageGroup" value="TitleScreen1"/>
+            <Property key="ImageName" value="Background"/>
+            <Property key="NeedMouse" value="false"/>
+            <Property key="InheritsPick" value="true"/>
+            <Property key="NeedKey" value="false"/>
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.260417 0.138889 0.15625 0.0638889" align="Default" name="ContinueButton">
+                <Property key="Caption" value="CONTINUE"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.260417 0.25 0.15625 0.0638889" name="NewGameButton">
+                <Property key="Caption" value="NEW GAME"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.260417 0.360185 0.15625 0.0638889" name="LoadGameButton">
+                <Property key="Caption" value="LOAD GAME"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.260417 0.471296 0.15625 0.0638889" name="ImportGameButton">
+                <Property key="Caption" value="IMPORT GAME"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.260417 0.582407 0.15625 0.0638889" name="MultiplayerButton">
+                <Property key="Caption" value="MULTIPLAYER"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.260417 0.693519 0.15625 0.0638889" name="OptionsButton">
+                <Property key="Caption" value="OPTIONS"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.260417 0.805556 0.15625 0.0638889" name="CreditsButton">
+                <Property key="Caption" value="CREDITS"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+            <Widget type="Button" skin="Kenshi_Button1" position_real="0.260417 0.916667 0.15625 0.0638889" name="ExitButton">
+                <Property key="Caption" value="EXIT"/>
+                <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
+            </Widget>
+            <Widget type="Widget" skin="Kenshi_EditBox" position_real="0.520312 0.37963 0.364062 0.564815" align="Stretch" name="CreditsPanel">
+                <Property key="Visible" value="false"/>
+                <Property key="NeedMouse" value="false"/>
+                <Property key="NeedKey" value="false"/>
+                <Widget type="TextBox" skin="PanelEmpty" position_real="0.0128755 0.0147541 0.971388 0.965574" align="Stretch">
+                    <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0 0 1 1" align="Stretch" name="CreditsPanelContent">
+                        <Property key="TextAlign" value="HCenter Top"/>
+                        <Property key="TextColour" value="1 1 1"/>
+                    </Widget>
+                </Widget>
+            </Widget>
+            <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.604688 0.977778 0.39375 0.0222222" align="Right Bottom" name="VersionText">
+                <Property key="TextAlign" value="Right VCenter"/>
+            </Widget>
+        </Widget>
+    </Widget>
+    <CodeGeneratorSettings/>
+</MyGUI>

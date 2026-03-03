@@ -1,0 +1,34 @@
+# Build output
+build/
+build.zip
+*.obj
+*.pdb
+*.ilk
+*.lib
+*.exp
+*.iobj
+*.ipdb
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.ipch
+*.vsidx
+*.VC.db
+*.opendb
+
+# Logs
+*.log
+
+# Windows artifacts
+nul
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Compiled binaries (tracked via dist/ with LFS)
+*.o
+*.a
