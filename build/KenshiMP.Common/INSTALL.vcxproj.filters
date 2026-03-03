@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\CMakeFiles\668b738204af85edd69ac2204f4e79e7\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{660164DA-C45F-361F-AAAB-7EFD37246494}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

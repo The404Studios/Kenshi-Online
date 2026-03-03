@@ -1,0 +1,10 @@
+^C:\USERS\WILDE\DOCUMENTS\GITHUB\KENSHI-ONLINE\BUILD\CMAKEFILES\A90E763A98B4F0586FA004EBB5D55CAE\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/wilde/Documents/GitHub/Kenshi-Online -BC:/Users/wilde/Documents/GitHub/Kenshi-Online/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
