@@ -2,6 +2,8 @@
 
 **16-player co-op multiplayer mod for Kenshi**
 
+Discord : https://discord.gg/KuxW6UqSVJ
+
 [English Documentation](docs/english.md) | [Документация на русском](docs/russian.md)
 
 Kenshi-Online adds seamless multiplayer to Kenshi using native MyGUI integration, ENet networking, and Ogre plugin injection. Players can explore, fight, build, and trade together in the open world of Kenshi.
