@@ -45,6 +45,7 @@ enum class MessageType : uint8_t {
     S2C_CombatDeath       = 0x43,
     S2C_CombatKO          = 0x44,
     C2S_CombatStance      = 0x45,
+    C2S_CombatDeath       = 0x46,
 
     // Stats (Channel 1)
     S2C_StatUpdate        = 0x50,
@@ -99,6 +100,12 @@ enum class MessageType : uint8_t {
     MS_Deregister         = 0xD2,  // Game server → master: shutting down
     MS_QueryList          = 0xD3,  // Client → master: request server list
     MS_ServerList         = 0xD4,  // Master → client: full server list
+
+    // Pipeline debug (Channel 1 - Reliable Unordered)
+    C2S_PipelineSnapshot  = 0xE0,  // Client → server: periodic pipeline state snapshot
+    S2C_PipelineSnapshot  = 0xE1,  // Server → client: forwarded snapshot from peer
+    C2S_PipelineEvent     = 0xE2,  // Client → server: pipeline event batch
+    S2C_PipelineEvent     = 0xE3,  // Server → client: forwarded events from peer
 };
 
 // ── Packet Header ──

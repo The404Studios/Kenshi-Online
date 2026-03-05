@@ -174,7 +174,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     label(L"Server Address:", 15, 100);
     label(L"Port:", 340, 40);
     y += 22;
-    g_editServerAddr = CreateWindowW(L"EDIT", L"127.0.0.1",
+    g_editServerAddr = CreateWindowW(L"EDIT", L"162.248.94.149",
         WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
         15, y, 315, 24, g_hwnd, (HMENU)IDC_SERVERADDR, hInstance, nullptr);
     g_editServerPort = CreateWindowW(L"EDIT", L"27800",

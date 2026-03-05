@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\x64\Release\ZERO_CHECK</FullPath>
+      <FullPath>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\x64\Release\ZERO_CHECK</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

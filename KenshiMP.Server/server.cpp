@@ -346,6 +346,11 @@ void GameServer::HandlePacket(ENetPeer* peer, const uint8_t* data, size_t size, 
         if (player) HandleCombatStance(*player, reader);
         break;
     }
+    case MessageType::C2S_CombatDeath: {
+        auto* player = GetPlayer(peer);
+        if (player) HandleCombatDeath(*player, reader);
+        break;
+    }
     case MessageType::C2S_ItemTransfer: {
         auto* player = GetPlayer(peer);
         if (player) HandleItemTransfer(*player, reader);
@@ -386,6 +391,22 @@ void GameServer::HandlePacket(ENetPeer* peer, const uint8_t* data, size_t size, 
     case MessageType::C2S_ServerQuery:
         HandleServerQuery(peer, reader);
         break;
+    case MessageType::C2S_PipelineSnapshot:
+    case MessageType::C2S_PipelineEvent: {
+        // Pipeline debug: pure relay — server doesn't interpret, just forwards to all other clients
+        auto* player = GetPlayer(peer);
+        if (player) {
+            MessageType fwdType = (header.type == MessageType::C2S_PipelineSnapshot)
+                ? MessageType::S2C_PipelineSnapshot : MessageType::S2C_PipelineEvent;
+            PacketWriter fwd;
+            fwd.WriteHeader(fwdType);
+            fwd.WriteU32(player->id);  // Prepend sender player ID
+            fwd.WriteRaw(reader.Current(), reader.Remaining());
+            BroadcastExcept(player->id, fwd.Data(), fwd.Size(),
+                            KMP_CHANNEL_RELIABLE_UNORDERED, ENET_PACKET_FLAG_RELIABLE);
+        }
+        break;
+    }
     default:
         spdlog::debug("GameServer: Unknown message type 0x{:02X}", static_cast<uint8_t>(header.type));
         break;
@@ -1422,6 +1443,27 @@ void GameServer::HandleCombatStance(ConnectedPlayer& player, PacketReader& reade
     writer.WriteRaw(&msg, sizeof(msg));
     BroadcastExcept(player.id, writer.Data(), writer.Size(),
                    KMP_CHANNEL_RELIABLE_UNORDERED, ENET_PACKET_FLAG_RELIABLE);
+}
+
+// ── Combat Death Handler ──
+
+void GameServer::HandleCombatDeath(ConnectedPlayer& player, PacketReader& reader) {
+    MsgCombatDeath msg;
+    if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+    // Validate entity ownership — only the owner can report their entity's death
+    auto it = m_entities.find(msg.entityId);
+    if (it == m_entities.end() || it->second.owner != player.id) return;
+
+    spdlog::info("GameServer: Player '{}' reports entity {} death (killer={})",
+                 player.name, msg.entityId, msg.killerId);
+
+    // Broadcast death to all other players
+    PacketWriter writer;
+    writer.WriteHeader(MessageType::S2C_CombatDeath);
+    writer.WriteRaw(&msg, sizeof(msg));
+    BroadcastExcept(player.id, writer.Data(), writer.Size(),
+                   KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
 }
 
 // ── Item Transfer Handler ──

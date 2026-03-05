@@ -1,7 +1,36 @@
 #include "task_orchestrator.h"
 #include <spdlog/spdlog.h>
+#include <windows.h>
 
 namespace kmp {
+
+// SEH wrapper for task execution on worker threads.
+// C++ try/catch does NOT catch access violations (structured exceptions).
+// Without this, an AV in BackgroundReadEntities or BackgroundInterpolate
+// terminates the entire process silently. With SEH, the AV is caught,
+// logged, and the worker thread continues processing future tasks.
+//
+// This function MUST NOT contain C++ objects with destructors (MSVC rule).
+// The std::function is passed by pointer (no construction inside __try).
+static bool SEH_ExecuteWorkerTask(void (*executor)(void*), void* context) {
+    __try {
+        executor(context);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        DWORD code = GetExceptionCode();
+        char buf[256];
+        sprintf_s(buf, "KMP: TaskOrchestrator worker SEH caught exception 0x%08lX "
+                       "(likely AV in game memory read on background thread)\n", code);
+        OutputDebugStringA(buf);
+        return false;
+    }
+}
+
+// Trampoline: calls std::function<void()> via void* cast
+static void ExecuteFnPtr(void* ctx) {
+    auto* fn = static_cast<std::function<void()>*>(ctx);
+    (*fn)();
+}
 
 void TaskOrchestrator::Start(int numWorkers) {
     if (m_running.exchange(true)) return; // Already running
@@ -75,13 +104,12 @@ void TaskOrchestrator::WorkerLoop() {
             m_tasks.pop();
         }
 
-        // Execute the task
-        try {
-            task.work();
-        } catch (const std::exception& e) {
-            spdlog::error("TaskOrchestrator: Worker caught exception: {}", e.what());
-        } catch (...) {
-            spdlog::error("TaskOrchestrator: Worker caught unknown exception");
+        // Execute the task with SEH + C++ exception protection.
+        // SEH catches structured exceptions (access violations from game memory reads).
+        // Without this, an AV on a worker thread terminates the entire process.
+        if (!SEH_ExecuteWorkerTask(ExecuteFnPtr, &task.work)) {
+            spdlog::error("TaskOrchestrator: Worker caught structured exception "
+                          "(AV in game memory) — task skipped, worker continues");
         }
 
         // If this was frame work, decrement counter and notify game thread

@@ -1,4 +1,5 @@
 # CMake generation dependency list for this directory.
+C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/enet/CMakeLists.txt
 C:/Program Files/CMake/share/cmake-4.2/Modules/CheckCSourceCompiles.cmake
 C:/Program Files/CMake/share/cmake-4.2/Modules/CheckCXXSourceCompiles.cmake
 C:/Program Files/CMake/share/cmake-4.2/Modules/CheckFunctionExists.cmake
@@ -9,4 +10,3 @@ C:/Program Files/CMake/share/cmake-4.2/Modules/CheckStructHasMember.cmake
 C:/Program Files/CMake/share/cmake-4.2/Modules/CheckTypeSize.cmake
 C:/Program Files/CMake/share/cmake-4.2/Modules/GNUInstallDirs.cmake
 C:/Program Files/CMake/share/cmake-4.2/Modules/Internal/CheckSourceCompiles.cmake
-C:/Users/wilde/Documents/GitHub/Kenshi-Online/lib/enet/CMakeLists.txt

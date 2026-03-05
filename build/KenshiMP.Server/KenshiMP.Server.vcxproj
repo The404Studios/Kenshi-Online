@@ -22,7 +22,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{8ADFED42-F24A-342A-81B0-60896B3A0056}</ProjectGuid>
+    <ProjectGuid>{BF86D852-10CE-3FE1-9D79-BBDA817E0344}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
@@ -59,25 +59,25 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\bin\Debug\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\Debug\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">KenshiMP.Server.dir\Debug\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">KenshiMP.Server</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.exe</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\bin\Release\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">KenshiMP.Server.dir\Release\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">KenshiMP.Server</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\bin\MinSizeRel\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\MinSizeRel\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">KenshiMP.Server.dir\MinSizeRel\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">KenshiMP.Server</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.exe</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\bin\RelWithDebInfo\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\RelWithDebInfo\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">KenshiMP.Server.dir\RelWithDebInfo\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">KenshiMP.Server</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.exe</TargetExt>
@@ -86,7 +86,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -112,16 +112,28 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_ITERATOR_DEBUG_LEVEL=0;SPDLOG_COMPILED_LIB;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
       <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
+    <PostBuildEvent>
+      <Message>Copying KenshiMP.Server.exe to Kenshi directory</Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/bin/Debug/KenshiMP.Server.exe" "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP.Server.exe"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PostBuildEvent>
     <Link>
       <AdditionalDependencies>..\lib\Debug\KenshiMP.Common.lib;..\lib\Debug\enet.lib;..\lib\Debug\spdlogd.lib;ws2_32.lib;winmm.lib;ole32.lib;oleaut32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -130,9 +142,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
-      <ImportLibrary>C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/Debug/KenshiMP.Server.lib</ImportLibrary>
+      <ImportLibrary>C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/Debug/KenshiMP.Server.lib</ImportLibrary>
       <LinkErrorReporting></LinkErrorReporting>
-      <ProgramDataBaseFile>C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/bin/Debug/KenshiMP.Server.pdb</ProgramDataBaseFile>
+      <ProgramDataBaseFile>C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/bin/Debug/KenshiMP.Server.pdb</ProgramDataBaseFile>
       <RandomizedBaseAddress></RandomizedBaseAddress>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -142,7 +154,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -169,16 +181,28 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_ITERATOR_DEBUG_LEVEL=0;SPDLOG_COMPILED_LIB;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
       <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
+    <PostBuildEvent>
+      <Message>Copying KenshiMP.Server.exe to Kenshi directory</Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/bin/Release/KenshiMP.Server.exe" "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP.Server.exe"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PostBuildEvent>
     <Link>
       <AdditionalDependencies>..\lib\Release\KenshiMP.Common.lib;..\lib\Release\enet.lib;..\lib\Release\spdlog.lib;ws2_32.lib;winmm.lib;ole32.lib;oleaut32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -187,9 +211,9 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
-      <ImportLibrary>C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/Release/KenshiMP.Server.lib</ImportLibrary>
+      <ImportLibrary>C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/Release/KenshiMP.Server.lib</ImportLibrary>
       <LinkErrorReporting></LinkErrorReporting>
-      <ProgramDataBaseFile>C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/bin/Release/KenshiMP.Server.pdb</ProgramDataBaseFile>
+      <ProgramDataBaseFile>C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/bin/Release/KenshiMP.Server.pdb</ProgramDataBaseFile>
       <RandomizedBaseAddress></RandomizedBaseAddress>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -199,7 +223,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -226,16 +250,28 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_ITERATOR_DEBUG_LEVEL=0;SPDLOG_COMPILED_LIB;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
       <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
+    <PostBuildEvent>
+      <Message>Copying KenshiMP.Server.exe to Kenshi directory</Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/bin/MinSizeRel/KenshiMP.Server.exe" "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP.Server.exe"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PostBuildEvent>
     <Link>
       <AdditionalDependencies>..\lib\MinSizeRel\KenshiMP.Common.lib;..\lib\MinSizeRel\enet.lib;..\lib\MinSizeRel\spdlog.lib;ws2_32.lib;winmm.lib;ole32.lib;oleaut32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -244,9 +280,9 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
-      <ImportLibrary>C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/MinSizeRel/KenshiMP.Server.lib</ImportLibrary>
+      <ImportLibrary>C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/MinSizeRel/KenshiMP.Server.lib</ImportLibrary>
       <LinkErrorReporting></LinkErrorReporting>
-      <ProgramDataBaseFile>C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/bin/MinSizeRel/KenshiMP.Server.pdb</ProgramDataBaseFile>
+      <ProgramDataBaseFile>C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/bin/MinSizeRel/KenshiMP.Server.pdb</ProgramDataBaseFile>
       <RandomizedBaseAddress></RandomizedBaseAddress>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -256,7 +292,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -282,16 +318,28 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_ITERATOR_DEBUG_LEVEL=0;SPDLOG_COMPILED_LIB;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server;C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Common\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\spdlog\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Common\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\spdlog\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
       <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
+    <PostBuildEvent>
+      <Message>Copying KenshiMP.Server.exe to Kenshi directory</Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/bin/RelWithDebInfo/KenshiMP.Server.exe" "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP.Server.exe"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PostBuildEvent>
     <Link>
       <AdditionalDependencies>..\lib\RelWithDebInfo\KenshiMP.Common.lib;..\lib\RelWithDebInfo\enet.lib;..\lib\RelWithDebInfo\spdlog.lib;ws2_32.lib;winmm.lib;ole32.lib;oleaut32.lib;iphlpapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -300,9 +348,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
-      <ImportLibrary>C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/RelWithDebInfo/KenshiMP.Server.lib</ImportLibrary>
+      <ImportLibrary>C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/RelWithDebInfo/KenshiMP.Server.lib</ImportLibrary>
       <LinkErrorReporting></LinkErrorReporting>
-      <ProgramDataBaseFile>C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/bin/RelWithDebInfo/KenshiMP.Server.pdb</ProgramDataBaseFile>
+      <ProgramDataBaseFile>C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/bin/RelWithDebInfo/KenshiMP.Server.pdb</ProgramDataBaseFile>
       <RandomizedBaseAddress></RandomizedBaseAddress>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -311,11 +359,11 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\CMakeLists.txt">
+    <CustomBuild Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\CMakeLists.txt">
       <UseUtf8Encoding>Always</UseUtf8Encoding>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/wilde/Documents/GitHub/Kenshi-Online/KenshiMP.Server/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.Server/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/wilde/Documents/GitHub/Kenshi-Online -BC:/Users/wilde/Documents/GitHub/Kenshi-Online/build --check-stamp-file C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Server/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP" "-BC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build" --check-stamp-file "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Server/CMakeFiles/generate.stamp"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -324,11 +372,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/wilde/Documents/GitHub/Kenshi-Online/KenshiMP.Server/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.Server/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/wilde/Documents/GitHub/Kenshi-Online -BC:/Users/wilde/Documents/GitHub/Kenshi-Online/build --check-stamp-file C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Server/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP" "-BC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build" --check-stamp-file "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Server/CMakeFiles/generate.stamp"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -337,11 +385,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/wilde/Documents/GitHub/Kenshi-Online/KenshiMP.Server/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.Server/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/wilde/Documents/GitHub/Kenshi-Online -BC:/Users/wilde/Documents/GitHub/Kenshi-Online/build --check-stamp-file C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Server/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP" "-BC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build" --check-stamp-file "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Server/CMakeFiles/generate.stamp"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -350,11 +398,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/wilde/Documents/GitHub/Kenshi-Online/KenshiMP.Server/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.Server/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/wilde/Documents/GitHub/Kenshi-Online -BC:/Users/wilde/Documents/GitHub/Kenshi-Online/build --check-stamp-file C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Server/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP" "-BC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build" --check-stamp-file "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Server/CMakeFiles/generate.stamp"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -363,41 +411,41 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\main.cpp" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\server.cpp" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\upnp.cpp" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\game_state.cpp" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\player_manager.cpp" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\entity_manager.cpp" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\zone_manager.cpp" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\combat_resolver.cpp" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\world_persistence.cpp" />
-    <Natvis Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\nlohmann_json.natvis">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\main.cpp" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\server.cpp" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\upnp.cpp" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\game_state.cpp" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\player_manager.cpp" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\entity_manager.cpp" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\zone_manager.cpp" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\combat_resolver.cpp" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\world_persistence.cpp" />
+    <Natvis Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\nlohmann_json.natvis">
     </Natvis>
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\ZERO_CHECK.vcxproj">
-      <Project>{BB70B1F7-5E66-3519-8096-26E01B99BFC1}</Project>
+    <ProjectReference Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\ZERO_CHECK.vcxproj">
+      <Project>{23EA5D88-F382-371A-8204-F7BD0C924362}</Project>
       <Name>ZERO_CHECK</Name>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </ProjectReference>
-    <ProjectReference Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Common\KenshiMP.Common.vcxproj">
-      <Project>{CCD8CD26-0F0C-39B0-BE17-F27FAB889AA9}</Project>
+    <ProjectReference Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Common\KenshiMP.Common.vcxproj">
+      <Project>{5551EACE-ED6A-3014-8DB0-4C98BE8AF493}</Project>
       <Name>KenshiMP.Common</Name>
     </ProjectReference>
-    <ProjectReference Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.vcxproj">
-      <Project>{6911C4BD-BC0D-3666-B92D-0BD4EA9BE22B}</Project>
+    <ProjectReference Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.vcxproj">
+      <Project>{2B5E10EE-6092-3E62-9F5C-C8537E9811AD}</Project>
       <Name>enet</Name>
     </ProjectReference>
-    <ProjectReference Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\spdlog\spdlog.vcxproj">
-      <Project>{87320E7F-89B1-3E38-B1B9-F50E0B680DFD}</Project>
+    <ProjectReference Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\spdlog\spdlog.vcxproj">
+      <Project>{3DDCA713-A29F-32C6-A051-AC9A9E54DB88}</Project>
       <Name>spdlog</Name>
     </ProjectReference>
   </ItemGroup>

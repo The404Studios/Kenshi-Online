@@ -89,20 +89,31 @@ static void __fastcall Hook_CharacterDeath(void* character, void* killer) {
 
     auto& core = Core::Get();
 
-    if (core.IsConnected()) {
-        EntityID entityId = core.GetEntityRegistry().GetNetId(character);
-        EntityID killerId = killer ? core.GetEntityRegistry().GetNetId(killer) : INVALID_ENTITY;
-
-        if (entityId != INVALID_ENTITY) {
-            spdlog::debug("combat_hooks: Character death netId={}, killer={}", entityId, killerId);
-        }
-    }
-
-    // SEH-protected trampoline call
+    // SEH-protected trampoline call (apply death locally first)
     if (!SafeCall_Void_PtrPtr(reinterpret_cast<void*>(s_origCharDeath),
                                character, killer, &s_deathHealth)) {
         if (s_deathHealth.trampolineFailed.load()) {
             spdlog::error("combat_hooks: CharacterDeath trampoline CRASHED! Hook disabled.");
+        }
+    }
+
+    // Send death notification to server for entities we own
+    if (core.IsConnected()) {
+        EntityID entityId = core.GetEntityRegistry().GetNetId(character);
+        EntityID killerId = killer ? core.GetEntityRegistry().GetNetId(killer) : INVALID_ENTITY;
+
+        auto* info = entityId != INVALID_ENTITY
+            ? core.GetEntityRegistry().GetInfo(entityId)
+            : nullptr;
+
+        if (info && info->ownerPlayerId == core.GetLocalPlayerId()) {
+            PacketWriter writer;
+            writer.WriteHeader(MessageType::C2S_CombatDeath);
+            writer.WriteU32(entityId);
+            writer.WriteU32(killerId);
+            core.GetClient().SendReliable(writer.Data(), writer.Size());
+            spdlog::info("combat_hooks: Sent death event for entity {} (killer={})",
+                         entityId, killerId);
         }
     }
 }

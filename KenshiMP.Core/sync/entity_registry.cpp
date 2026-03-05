@@ -67,6 +67,13 @@ const EntityInfo* EntityRegistry::GetInfo(EntityID netId) const {
     return it != m_entities.end() ? &it->second : nullptr;
 }
 
+std::optional<EntityInfo> EntityRegistry::GetInfoCopy(EntityID netId) const {
+    std::shared_lock lock(m_mutex);
+    auto it = m_entities.find(netId);
+    if (it != m_entities.end()) return it->second;
+    return std::nullopt;
+}
+
 void EntityRegistry::SetGameObject(EntityID netId, void* gameObject) {
     std::unique_lock lock(m_mutex);
     auto it = m_entities.find(netId);

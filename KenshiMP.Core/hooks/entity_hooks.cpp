@@ -6,6 +6,8 @@
 #include "../game/game_types.h"
 #include "../game/spawn_manager.h"
 #include "../game/player_controller.h"
+#include "../game/asset_facilitator.h"
+#include "../sync/pipeline_state.h"
 #include "kmp/hook_manager.h"
 #include "kmp/protocol.h"
 #include "kmp/memory.h"
@@ -15,12 +17,18 @@
 #include <cmath>
 #include <unordered_map>
 
+// Declared in core.cpp — updated here so VEH crash handler shows which create# crashed
+namespace kmp { extern volatile int g_lastCharacterCreateNum; }
+
 namespace kmp::entity_hooks {
 
 // ── Function Types ──
-// CharacterSpawn prologue: mov rax,rsp + 7 pushes + 544 stack
+// CharacterSpawn prologue: mov rax,rsp + 7 pushes + lea rbp,[rax-0x158] + sub rsp,0x220
 // Confirmed 2-param: RCX=factory(this), RDX=GameData*
-// Raw MinHook trampoline works: mov rax,rsp saves/restores are internally consistent.
+// RBP is derived from RAX, so ALL [rbp+XX] locals depend on RAX being correct.
+// HookManager builds a custom caller stub that sets RAX = real RSP, then jumps
+// to original+3 (past the original's `mov rax, rsp`). This bypasses MinHook's
+// trampoline entirely for the "call original" path.
 using CharacterCreateFn = void*(__fastcall*)(void* factory, void* templateData);
 using CharacterDestroyFn = void(__fastcall*)(void* character);
 
@@ -28,9 +36,19 @@ using CharacterDestroyFn = void(__fastcall*)(void* character);
 static uintptr_t s_createTargetAddr = 0;
 static uintptr_t s_destroyTargetAddr = 0;
 
-// Trampoline pointers (set by MinHook but NOT used for calling CharacterCreate)
+// s_origCreate: Points to the TRAMPOLINE WRAPPER built by MovRaxRsp fix.
+// The wrapper restores RAX to the game caller's RSP (captured by the naked
+// detour at hook entry), then jumps to trampoline+3 (past `mov rax, rsp`).
+// This keeps RAX correct so `lea rbp, [rax-0x158]` computes the right frame
+// pointer. The stack swap ensures push/pop slots are at correct offsets.
 static CharacterCreateFn  s_origCreate  = nullptr;
 static CharacterDestroyFn s_origDestroy = nullptr;
+
+// s_rawTrampoline: MinHook's raw trampoline (starts with `mov rax, rsp`).
+// Used for REENTRANT calls to avoid corrupting the MovRaxRsp wrapper's global
+// data slots (captured_rsp, stub_rsp, saved_game_ret). When s_hookDepth > 0,
+// we call through the raw trampoline which does NOT manipulate any global state.
+static CharacterCreateFn  s_rawCreateTrampoline = nullptr;
 
 // Whether CharacterDestroy hook is actually installed (may be skipped if wrong function found)
 static bool s_destroyHookInstalled = false;
@@ -45,7 +63,7 @@ static std::atomic<bool> s_inBurst{false};
 static auto s_lastCreateTime = std::chrono::steady_clock::now();
 static constexpr int    BURST_THRESHOLD = 5;
 static constexpr int    BURST_WINDOW_MS = 500;
-static constexpr int    MIN_CREATES_BEFORE_SUSPEND = 30;
+static constexpr int    MIN_CREATES_BEFORE_READY = 30;
 
 // ── Loading Completion Gate ──
 // Unlike IsInLoadingBurst() which is reactive (needs 5+ creates to trigger),
@@ -74,6 +92,11 @@ static void TrackCreationRate() {
             s_loadingComplete.store(false); // Block spawns until burst finishes
             // Signal Core that game is actually loading (enables Overlay polling)
             Core::Get().SetLoading(true);
+            // Notify LoadingOrchestrator + PipelineOrchestrator
+            Core::Get().GetLoadingOrch().OnBurstDetected(count);
+            Core::Get().GetPipelineOrch().RecordEvent(
+                PipelineEventType::BurstDetected, 1, 0, count,
+                "Burst: " + std::to_string(count) + " creates in " + std::to_string(elapsed.count()) + "ms");
             spdlog::info("entity_hooks: BURST DETECTED ({} creates in {}ms) — loading guard ON, spawns BLOCKED",
                          count, elapsed.count());
         }
@@ -86,11 +109,17 @@ static void TrackCreationRate() {
             s_burstEndTime = std::chrono::steady_clock::now();
 
             // Loading complete once a burst has ended with enough total creates
-            if (!s_loadingComplete.load() && s_totalCreates.load() >= MIN_CREATES_BEFORE_SUSPEND) {
+            if (!s_loadingComplete.load() && s_totalCreates.load() >= MIN_CREATES_BEFORE_READY) {
                 s_loadingComplete.store(true);
                 spdlog::info("entity_hooks: LOADING COMPLETE — spawns now allowed after {}s settle (total creates={})",
                              BURST_SETTLE_SECONDS, s_totalCreates.load());
             }
+
+            // Notify LoadingOrchestrator + PipelineOrchestrator
+            Core::Get().GetLoadingOrch().OnBurstEnded(s_totalCreates.load());
+            Core::Get().GetPipelineOrch().RecordEvent(
+                PipelineEventType::BurstEnded, 0, 0, s_totalCreates.load(),
+                "Burst ended, total=" + std::to_string(s_totalCreates.load()));
 
             spdlog::info("entity_hooks: BURST ENDED — total creates={}, destroys={}, loadingComplete={}",
                          s_totalCreates.load(), s_totalDestroys.load(), s_loadingComplete.load());
@@ -277,33 +306,26 @@ void SetDirectSpawnBypass(bool bypass) {
     s_directSpawnBypass.store(bypass, std::memory_order_release);
 }
 
-// ── Hook suspension state ──
-// After capturing the factory pointer, we permanently disable the CharacterCreate
-// hook during loading to avoid the massive overhead of MH_DisableHook/MH_EnableHook
-// (which freeze ALL threads on every call). The hook is re-enabled when connecting.
-static std::atomic<bool> s_hookSuspended{false};
+// Hook suspension is NO LONGER NEEDED. HookManager builds a custom caller stub
+// for mov-rax-rsp functions that bypasses MinHook's trampoline entirely.
+// The hook stays active for the lifetime of the session, enabling real-time
+// entity registration and in-place spawn replay for multiplayer.
 
-// Once ResumeForNetwork() is called, NEVER re-suspend.
-// Without this flag, the hook re-suspends immediately because IsConnected() is
-// still false during async connect (handshake hasn't completed yet).
-static std::atomic<bool> s_resumedForNetwork{false};
-
-// MIN_CREATES_BEFORE_SUSPEND defined above (near burst detection constants)
-
-// ── SEH wrapper for calling the original CharacterCreate via TRAMPOLINE ──
-// Uses MinHook's trampoline (s_origCreate) instead of HookBypass.
-// The trampoline has the `mov rax, rsp` instruction from the original function,
-// which captures the trampoline's RSP instead of the caller's. For this 2-param
-// __fastcall function in Release builds, this is safe — RAX is only used for
-// exception unwind info, not for parameter access.
-// NO THREAD SUSPENSION needed — this is the key advantage over HookBypass.
+// ── SEH wrapper for calling the original CharacterCreate ──
+// s_origCreate now points to the MovRaxRsp trampoline wrapper, which:
+//   1. Reads the captured RSP (saved by naked detour at hook entry)
+//   2. Swaps to the game caller's stack
+//   3. Sets RAX = captured RSP (what the function expects)
+//   4. Pushes a return address and JMPs to trampoline+3
+//   5. Original function executes with correct RAX/RBP/RSP
+//   6. Returns to wrapper, which restores our stack and returns here
 static void* SEH_CallOriginalCreate(CharacterCreateFn trampoline, void* factory, void* templateData) {
     __try {
         return trampoline(factory, templateData);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         static int s_trampolineCrash = 0;
         if (++s_trampolineCrash <= 5) {
-            OutputDebugStringA("KMP: CharacterCreate TRAMPOLINE CRASHED (SEH caught)\n");
+            OutputDebugStringA("KMP: CharacterCreate trampoline CRASHED (SEH caught)\n");
         }
         return nullptr;
     }
@@ -321,9 +343,9 @@ static uint8_t s_preCallStruct[REQUEST_STRUCT_SIZE] = {};
 static bool s_havePreCallData = false;
 static void* s_savedFactory = nullptr;
 
-// SEH wrapper for in-place spawn replay via TRAMPOLINE (no C++ objects allowed).
+// SEH wrapper for in-place spawn replay via trampoline (no C++ objects allowed).
 // Uses a LOCAL buffer for post-call state to avoid corruption when multiple
-// replays happen in the same Hook_CharacterCreate call (MAX_REPLAYS_PER_CALL=3).
+// replays happen in the same Hook_CharacterCreate call (MAX_REPLAYS_PER_CALL=1).
 static void* SEH_ReplayFactory(CharacterCreateFn trampoline, void* factory, void* reqStruct,
                                 const uint8_t* preCallData, size_t structSize) {
     __try {
@@ -334,7 +356,7 @@ static void* SEH_ReplayFactory(CharacterCreateFn trampoline, void* factory, void
         // 2. Restore pre-call data to the ORIGINAL stack address
         memcpy(reqStruct, preCallData, structSize);
 
-        // 3. Call factory via trampoline (no thread suspension!)
+        // 3. Call factory via trampoline
         void* result = trampoline(factory, reqStruct);
 
         // 4. Restore post-call state so the game caller sees expected data
@@ -347,20 +369,48 @@ static void* SEH_ReplayFactory(CharacterCreateFn trampoline, void* factory, void
 }
 
 static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) {
+    // ── Re-entrancy guard ──
+    // The MovRaxRsp wrapper uses global state slots (captured_rsp, stub_rsp,
+    // saved_game_ret). If CharacterSpawn calls itself internally (e.g., spawning
+    // squad members or mounts), the nested wrapper call would overwrite the outer
+    // call's slots, corrupting its stack swap context on return → crash.
+    //
+    // Fix: For reentrant calls, use the RAW MinHook trampoline which starts with
+    // `mov rax, rsp` and does NOT touch any global slots. The raw trampoline is
+    // just the original function's copied prologue + jmp back — completely safe.
+    static thread_local int s_hookDepth = 0;
+    struct DepthGuard { int& d; DepthGuard(int& d_) : d(d_) { d++; } ~DepthGuard() { d--; } };
+    if (s_hookDepth > 0) {
+        // Use raw trampoline — no global slot manipulation, safe for nesting
+        if (s_rawCreateTrampoline) {
+            return s_rawCreateTrampoline(factory, templateData);
+        }
+        // Fallback: shouldn't happen, but try wrapper with SEH protection
+        return SEH_CallOriginalCreate(s_origCreate, factory, templateData);
+    }
+    DepthGuard _guard(s_hookDepth);
+
+    // ── Immediate log on FIRST call to prove the hook fires ──
+    {
+        static bool s_firstCall = true;
+        if (s_firstCall) {
+            s_firstCall = false;
+            spdlog::info("entity_hooks: *** FIRST CharacterCreate call *** factory=0x{:X} template=0x{:X}",
+                         reinterpret_cast<uintptr_t>(factory),
+                         reinterpret_cast<uintptr_t>(templateData));
+        }
+    }
+
     // ── Direct spawn bypass ──
     if (s_directSpawnBypass.load(std::memory_order_acquire)) {
-        OutputDebugStringA("KMP: CharacterCreate — direct spawn bypass (trampoline)\n");
         return SEH_CallOriginalCreate(s_origCreate, factory, templateData);
     }
 
     int createNum = s_totalCreates.fetch_add(1) + 1;
+    g_lastCharacterCreateNum = createNum;  // VEH crash handler reads this
 
-    // ── DEBUG: Log first 10 creates with OutputDebugString + spdlog ──
-    if (createNum <= 10 || createNum % 100 == 0) {
-        char buf[256];
-        sprintf_s(buf, "KMP: CharacterCreate #%d factory=0x%p template=0x%p\n",
-                  createNum, factory, templateData);
-        OutputDebugStringA(buf);
+    // ── DEBUG: Log creates at #1-10, then every 10th ──
+    if (createNum <= 10 || createNum % 10 == 0) {
         spdlog::info("entity_hooks: CharacterCreate #{} factory=0x{:X} template=0x{:X}",
                       createNum,
                       reinterpret_cast<uintptr_t>(factory),
@@ -368,19 +418,29 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
     }
 
     // ═══ SAVE PRE-CALL request struct (BEFORE factory modifies it) ═══
-    // This is critical: the factory may consume/modify the struct during the call.
-    // We need the pristine pre-call state to replay later.
-    uint8_t localPreCall[REQUEST_STRUCT_SIZE] = {};
-    if (templateData) {
-        if (!SEH_MemcpySafe(localPreCall, templateData, REQUEST_STRUCT_SIZE)) {
-            // templateData near page boundary — fall through with zeroed buffer
+    // Only needed for the first few calls (position detection + template capture)
+    // and when connected (for in-place spawn replay). Skip the expensive 1024-byte
+    // stack alloc + memcpy for the common non-connected loading path.
+    auto& coreRef = Core::Get();
+    bool needPreCallCapture = !s_havePreCallData ||
+                              (s_positionOffsetInStruct == -1 && s_positionDetectAttempts < 10) ||
+                              (coreRef.IsConnected() && coreRef.IsGameLoaded());
+
+    uint8_t localPreCall[REQUEST_STRUCT_SIZE];
+    bool haveLocalPreCall = false;
+
+    if (needPreCallCapture && templateData) {
+        memset(localPreCall, 0, REQUEST_STRUCT_SIZE);
+        if (SEH_MemcpySafe(localPreCall, templateData, REQUEST_STRUCT_SIZE)) {
+            haveLocalPreCall = true;
+        } else {
             static int s_memcpyCrash = 0;
             if (++s_memcpyCrash <= 5) {
                 OutputDebugStringA("KMP: CharacterCreate — SEH caught AV on memcpy of request struct\n");
             }
         }
 
-        // Also save a persistent copy from the first call
+        // Save a persistent copy from the first call
         if (!s_havePreCallData) {
             SEH_MemcpySafe(s_preCallStruct, templateData, REQUEST_STRUCT_SIZE);
             s_havePreCallData = true;
@@ -389,17 +449,14 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
             spdlog::info("entity_hooks: Saved PRE-CALL request struct ({} bytes) from call #{} at 0x{:X}",
                          REQUEST_STRUCT_SIZE, createNum, origAddr);
 
-            // Pass to SpawnManager for standalone spawning from GameFrameUpdate
             Core::Get().GetSpawnManager().SetPreCallData(
                 s_preCallStruct, REQUEST_STRUCT_SIZE, origAddr);
-            // Also wire SetSavedRequestStruct so ProcessSpawnQueue can use it
             Core::Get().GetSpawnManager().SetSavedRequestStruct(
                 s_preCallStruct, REQUEST_STRUCT_SIZE);
-            OutputDebugStringA("KMP: CharacterCreate — saved request struct + pre-call data\n");
         }
     }
 
-    // Dump the request struct (first 3 calls) to see layout
+    // Dump the request struct (first 3 calls only)
     if (createNum <= 3 && templateData) {
         uintptr_t reqAddr = reinterpret_cast<uintptr_t>(templateData);
         spdlog::info("entity_hooks: PRE-CALL STRUCT #{} at 0x{:X}:", createNum, reqAddr);
@@ -410,41 +467,23 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
         }
     }
 
-    // Call the ORIGINAL function via MinHook TRAMPOLINE.
-    // No HookBypass / thread suspension — trampoline routes around the hook safely.
-    // The `mov rax, rsp` prologue issue is benign for this 2-param function in Release.
-    void* character = nullptr;
-    {
-        if (createNum <= 10) {
-            OutputDebugStringA("KMP: CharacterCreate — calling original via TRAMPOLINE (no thread suspension)...\n");
-        }
+    // ═══ CALL ORIGINAL FUNCTION ═══
+    void* character = SEH_CallOriginalCreate(s_origCreate, factory, templateData);
 
-        character = SEH_CallOriginalCreate(s_origCreate, factory, templateData);
-
-        if (createNum <= 10) {
-            char buf[128];
-            sprintf_s(buf, "KMP: CharacterCreate — trampoline returned 0x%p\n", character);
-            OutputDebugStringA(buf);
-        }
-
+    if (character && haveLocalPreCall) {
         // ═══ POSITION OFFSET DETECTION ═══
-        // Scan the pre-call struct for float values matching the character's position.
-        // This tells us which offset in the request struct controls spawn position.
-        if (character && s_positionOffsetInStruct == -1 && s_positionDetectAttempts < 10) {
+        if (s_positionOffsetInStruct == -1 && s_positionDetectAttempts < 10) {
             s_positionDetectAttempts++;
             SEH_CharData charData = SEH_ReadCharacterData(character);
             float cx = charData.position.x, cy = charData.position.y, cz = charData.position.z;
 
-            // Only scan if position looks valid (non-zero)
             if (cx != 0.f || cy != 0.f || cz != 0.f) {
-                // Scan the pre-call struct for 3 consecutive floats matching position
                 for (int off = 0; off < (int)REQUEST_STRUCT_SIZE - 12; off += 4) {
                     float sx, sy, sz;
                     memcpy(&sx, &localPreCall[off], 4);
                     memcpy(&sy, &localPreCall[off + 4], 4);
                     memcpy(&sz, &localPreCall[off + 8], 4);
 
-                    // Check if these 3 floats match the character position (within tolerance)
                     if (fabsf(sx - cx) < 2.0f && fabsf(sy - cy) < 2.0f && fabsf(sz - cz) < 2.0f) {
                         s_positionOffsetInStruct = off;
                         spdlog::info("entity_hooks: POSITION OFFSET FOUND at struct+0x{:X}! "
@@ -453,114 +492,55 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
                         break;
                     }
                 }
-
-                // If not found, log some candidate floats for debugging
-                if (s_positionOffsetInStruct == -1 && s_positionDetectAttempts <= 3) {
-                    spdlog::info("entity_hooks: Position offset NOT found (attempt {}). "
-                                 "charPos=({:.1f},{:.1f},{:.1f}). Struct floats:",
-                                 s_positionDetectAttempts, cx, cy, cz);
-                    for (int off = 0; off < 256; off += 4) {
-                        float val;
-                        memcpy(&val, &localPreCall[off], 4);
-                        // Log floats that look like coordinates (magnitude > 100)
-                        if (fabsf(val) > 100.f && fabsf(val) < 200000.f) {
-                            spdlog::info("  struct+0x{:02X}: {:.1f}", off, val);
-                        }
-                    }
-                }
             }
         }
 
         // ═══ IN-PLACE SPAWN REPLAY ═══
-        // The original factory call has completed. The request struct at `templateData`
-        // may have been modified. We restore the PRE-CALL data to the SAME stack address
-        // and call the factory again. All internal/stack-relative pointers remain valid
-        // because we're using the original address.
-        //
-        // This is the PRIMARY spawn mechanism for remote players. It works because:
-        // 1. The request struct is at the ORIGINAL stack address (all pointers valid)
-        // 2. The factory creates a full game character (visual, physics, AI, etc.)
-        // 3. We then teleport the character to the desired position
-        if (character && templateData) {
-            auto& coreRef = Core::Get();
-            // Gate spawns on: connected + game loaded + loading burst finished + settle time elapsed
-            // s_loadingComplete is only true AFTER a loading burst has ended (proactive guard).
-            // The settle time gives the engine a few seconds to finish initializing after loading.
-            bool settled = s_loadingComplete.load() && !IsInLoadingBurst();
-            if (settled) {
-                auto timeSinceBurst = std::chrono::duration_cast<std::chrono::seconds>(
-                    std::chrono::steady_clock::now() - s_burstEndTime);
-                settled = (timeSinceBurst.count() >= BURST_SETTLE_SECONDS);
-            }
-            if (coreRef.IsConnected() && coreRef.IsGameLoaded() && settled) {
+        if (templateData && coreRef.IsConnected() && coreRef.IsGameLoaded()) {
+            bool canSpawn = AssetFacilitator::Get().CanSpawn();
+            if (canSpawn) {
                 auto& spawnMgr = coreRef.GetSpawnManager();
-                auto& registry = coreRef.GetEntityRegistry();
 
-                // Process ONE pending spawn per hook call.
-                // Spreading spawns across multiple hook triggers gives the game engine
-                // time to initialize each character (AI, pathfinding, physics) before
-                // the next one. Doing 3+ at once during loading burst crashes the game.
                 constexpr int MAX_REPLAYS_PER_CALL = 1;
                 for (int replayIdx = 0; replayIdx < MAX_REPLAYS_PER_CALL; replayIdx++) {
                     SpawnRequest spawnReq;
                     if (!spawnMgr.PopNextSpawn(spawnReq)) break;
 
-                    // ── Per-player spawn cap ──
-                    // Prevents one remote player from flooding us with 40+ spawn requests
                     int& playerSpawns = s_spawnsPerPlayer[spawnReq.owner];
                     if (playerSpawns >= MAX_SPAWNS_PER_PLAYER) {
                         spdlog::warn("entity_hooks: SPAWN CAP reached for player {} ({}/{}) — dropping entity {}",
                                      spawnReq.owner, playerSpawns, MAX_SPAWNS_PER_PLAYER, spawnReq.netId);
-                        continue; // Drop this spawn, don't requeue
+                        continue;
                     }
 
-                    spdlog::info("entity_hooks: IN-PLACE SPAWN #{} for entity {} owner={} ({}/{} cap) at ({:.0f},{:.0f},{:.0f})",
+                    spdlog::info("entity_hooks: IN-PLACE SPAWN #{} for entity {} owner={} at ({:.0f},{:.0f},{:.0f})",
                                  replayIdx + 1, spawnReq.netId, spawnReq.owner,
-                                 playerSpawns + 1, MAX_SPAWNS_PER_PLAYER,
                                  spawnReq.position.x, spawnReq.position.y, spawnReq.position.z);
 
-                    // Replay factory call with UNMODIFIED pre-call data at ORIGINAL address.
-                    // Position is NOT modified in the struct (crashes due to zone/terrain deps).
-                    // We teleport the character after spawning instead.
                     void* newChar = SEH_ReplayFactory(
                         s_origCreate, factory, templateData,
                         localPreCall, REQUEST_STRUCT_SIZE);
 
                     if (newChar) {
-                        uintptr_t newCharAddr = reinterpret_cast<uintptr_t>(newChar);
-                        spdlog::info("entity_hooks: IN-PLACE SPAWN SUCCESS! char=0x{:X} for entity {}",
-                                     newCharAddr, spawnReq.netId);
-
-                        // ── SEH-protected post-spawn setup ──
-                        // WritePosition, registry link, name/faction all follow game memory
-                        // pointers that may be invalid for freshly-spawned characters.
-                        // SEH catches any AV so the game doesn't call exit(1).
                         Vec3 spawnPos = spawnReq.position;
                         bool setupOk = SEH_PostSpawnSetup(
                             newChar, spawnReq.netId, spawnReq.owner,
                             spawnPos, factory, templateData);
 
+                        s_inPlaceSpawnCount.fetch_add(1);
+                        s_lastInPlaceSpawnTime = std::chrono::steady_clock::now();
+                        playerSpawns++;
+
                         if (setupOk) {
-                            // Track success + per-player count
-                            s_inPlaceSpawnCount.fetch_add(1);
-                            s_lastInPlaceSpawnTime = std::chrono::steady_clock::now();
-                            playerSpawns++;
-
-                            spdlog::info("entity_hooks: Entity {} fully spawned and registered "
-                                         "(total in-place spawns: {})",
+                            spdlog::info("entity_hooks: Entity {} spawned OK (total: {})",
                                          spawnReq.netId, s_inPlaceSpawnCount.load());
-
                             coreRef.GetNativeHud().AddSystemMessage("Character spawned for remote player!");
                         } else {
-                            spdlog::error("entity_hooks: Post-spawn setup CRASHED for entity {} "
-                                         "(SEH caught — char exists but may be broken)",
+                            spdlog::error("entity_hooks: Post-spawn setup CRASHED for entity {}",
                                          spawnReq.netId);
-                            // Still count it — the character exists in-game even if setup failed
-                            s_inPlaceSpawnCount.fetch_add(1);
-                            playerSpawns++;
                         }
                     } else {
-                        spdlog::error("entity_hooks: IN-PLACE SPAWN FAILED for entity {} (SEH caught or null)",
+                        spdlog::error("entity_hooks: IN-PLACE SPAWN FAILED for entity {}",
                                      spawnReq.netId);
                         spawnReq.retryCount++;
                         if (spawnReq.retryCount < MAX_SPAWN_RETRIES) {
@@ -572,19 +552,8 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
         }
     }
 
-    if (createNum <= 10) {
-        OutputDebugStringA("KMP: CharacterCreate — trampoline call complete\n");
-    }
-
     if (!character) {
-        if (createNum <= 10) {
-            OutputDebugStringA("KMP: CharacterCreate — original returned NULL\n");
-        }
         return nullptr;
-    }
-
-    if (createNum <= 10) {
-        OutputDebugStringA("KMP: CharacterCreate — feeding SpawnManager...\n");
     }
 
     // ═══ EARLY ANIMCLASS PROBE ═══
@@ -633,10 +602,8 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
     // Feed SpawnManager for template/factory capture.
     // Rate-limit during loading burst: after factory is captured and we have enough templates,
     // skip the intensive memory scan (~63 reads per character) to avoid AVs during rapid loading.
-    auto& core = Core::Get();
     bool shouldCapture = true;
-    if (IsInLoadingBurst() && core.GetSpawnManager().IsReady()) {
-        // Factory captured + enough templates — skip further scanning during burst
+    if (IsInLoadingBurst() && coreRef.GetSpawnManager().IsReady()) {
         shouldCapture = false;
     }
     if (shouldCapture) {
@@ -646,91 +613,62 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
     // Track creation rate
     TrackCreationRate();
 
-    // Once we've captured the factory and enough templates, disable this hook
-    // during loading to eliminate the per-call overhead of MH_DisableHook/MH_EnableHook.
-    // The hook will be re-enabled via ResumeForNetwork() when connecting.
-    // NEVER re-suspend after ResumeForNetwork (IsConnected may still be false during async connect).
-    if (!core.IsConnected() && core.GetSpawnManager().IsReady() &&
-        !s_hookSuspended.load(std::memory_order_relaxed) &&
-        !s_resumedForNetwork.load(std::memory_order_relaxed) &&
-        createNum >= MIN_CREATES_BEFORE_SUSPEND) {
-        s_hookSuspended.store(true, std::memory_order_relaxed);
-
-        char buf[256];
-        sprintf_s(buf, "KMP: CharacterCreate — SUSPENDING hook after %d creates\n", createNum);
-        OutputDebugStringA(buf);
-
-        HookManager::Get().Disable("CharacterCreate");
-        spdlog::info("entity_hooks: Hook SUSPENDED during load (factory captured after {} creates, "
-                     "factoryTemplates={}, characterTemplates={})",
-                     createNum,
-                     core.GetSpawnManager().GetFactoryTemplateCount(),
-                     core.GetSpawnManager().GetCharacterTemplateCount());
-
-        // Notify Core that the game world is loaded
-        OutputDebugStringA("KMP: CharacterCreate — calling Core::OnGameLoaded()\n");
-        core.OnGameLoaded();
-
-        return character;
+    // ── Notify Core that the game world is loaded ──
+    if (!coreRef.IsGameLoaded() &&
+        coreRef.GetSpawnManager().IsReady() &&
+        createNum >= MIN_CREATES_BEFORE_READY) {
+        spdlog::info("entity_hooks: Triggering OnGameLoaded (connected={}, creates={})",
+                     coreRef.IsConnected(), createNum);
+        coreRef.OnGameLoaded();
     }
 
     // Register characters from the PLAYER'S FACTION in the EntityRegistry.
     // Only squad members should be synced — random NPCs like bandits/traders stay local.
     // MUST check IsGameLoaded — the client can be connected before the game world exists
     // (user clicks Host on main menu, then starts a new game).
-    if (core.IsConnected() && core.IsGameLoaded()) {
+    if (coreRef.IsConnected() && coreRef.IsGameLoaded()) {
         // SEH-protected character data read — prevents AV from crashing the game
         SEH_CharData charData = SEH_ReadCharacterData(character);
         if (!charData.valid) {
-            return character; // Bad memory — skip this character safely
+            return character;
         }
 
         Vec3 pos = charData.position;
 
-        // Skip uninitialized characters (position 0,0,0)
         if (pos.x == 0.f && pos.y == 0.f && pos.z == 0.f) {
             return character;
         }
 
-        // Faction filter: only register characters from the player's faction.
-        // This prevents syncing hundreds of random NPCs to the server.
-        uintptr_t playerFaction = core.GetPlayerController().GetLocalFactionPtr();
+        uintptr_t playerFaction = coreRef.GetPlayerController().GetLocalFactionPtr();
 
-        // If we don't have a faction yet, try to bootstrap from this character.
-        // But NEVER register characters when faction is unknown — this was the
-        // root cause of the 40+ NPC flood that crashed the joiner.
         if (playerFaction == 0) {
             if (charData.factionPtr != 0) {
                 spdlog::info("entity_hooks: FACTION BOOTSTRAP — captured faction 0x{:X} (id={}) from character at ({:.0f},{:.0f},{:.0f})",
                              charData.factionPtr, charData.factionId, pos.x, pos.y, pos.z);
 
-                const_cast<PlayerController&>(core.GetPlayerController())
+                const_cast<PlayerController&>(coreRef.GetPlayerController())
                     .SetLocalFactionPtr(charData.factionPtr);
                 playerFaction = charData.factionPtr;
 
-                core.RequestEntityRescan();
+                coreRef.RequestEntityRescan();
             } else {
                 return character;
             }
         }
 
-        // Now we have a faction — filter strictly
         if (charData.factionPtr != playerFaction) {
-            return character; // Not a squad member — skip
+            return character;
         }
 
-        // Register in EntityRegistry with local player as owner (host owns squad entities)
-        PlayerID owner = core.GetLocalPlayerId();
-        EntityID netId = core.GetEntityRegistry().Register(
+        PlayerID owner = coreRef.GetLocalPlayerId();
+        EntityID netId = coreRef.GetEntityRegistry().Register(
             character, EntityType::NPC, owner);
-        core.GetEntityRegistry().UpdatePosition(netId, pos);
+        coreRef.GetEntityRegistry().UpdatePosition(netId, pos);
 
-        // During burst loading, skip network send (too many at once)
         if (IsInLoadingBurst()) {
             return character;
         }
 
-        // Report spawn to server (uses already-read SEH_CharData — no more raw reads)
         {
             uint32_t compQuat = charData.rotation.Compress();
 
@@ -760,7 +698,7 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
                 writer.WriteRaw(templateName.data(), nameLen);
             }
 
-            core.GetClient().SendReliable(writer.Data(), writer.Size());
+            coreRef.GetClient().SendReliable(writer.Data(), writer.Size());
         }
     }
 
@@ -825,10 +763,20 @@ bool Install() {
             OutputDebugStringA("KMP: entity_hooks — InstallAt FAILED\n");
             success = false;
         } else {
+            // Get raw trampoline for reentrant calls (avoids MovRaxRsp wrapper corruption)
+            void* rawTramp = hookMgr.GetRawTrampoline("CharacterCreate");
+            if (rawTramp) {
+                s_rawCreateTrampoline = reinterpret_cast<CharacterCreateFn>(rawTramp);
+                spdlog::info("entity_hooks: Raw trampoline at 0x{:X} (for reentrant calls)",
+                             reinterpret_cast<uintptr_t>(rawTramp));
+            } else {
+                spdlog::warn("entity_hooks: No raw trampoline — reentrant calls will use wrapper (crash risk)");
+            }
+
             core.GetSpawnManager().SetOrigProcess(
                 reinterpret_cast<FactoryProcessFn>(s_createTargetAddr));
-            spdlog::info("entity_hooks: CharacterCreate hooked (disable-call-reenable mode)");
-            OutputDebugStringA("KMP: entity_hooks — CharacterCreate hooked OK\n");
+            spdlog::info("entity_hooks: CharacterCreate hooked (MovRaxRsp fix — always active)");
+            OutputDebugStringA("KMP: entity_hooks — CharacterCreate hooked OK (MovRaxRsp fix)\n");
         }
     }
 
@@ -850,19 +798,25 @@ void Uninstall() {
 }
 
 void ResumeForNetwork() {
-    // Set flag FIRST to prevent immediate re-suspension.
-    // The hook would re-suspend because IsConnected() is false during async connect.
-    s_resumedForNetwork.store(true, std::memory_order_relaxed);
-
     // Reset per-player spawn caps for new connection
     s_spawnsPerPlayer.clear();
 
-    if (s_hookSuspended.load(std::memory_order_relaxed)) {
-        HookManager::Get().Enable("CharacterCreate");
-        s_hookSuspended.store(false, std::memory_order_relaxed);
-        spdlog::info("entity_hooks: Hook RESUMED for network sync (total creates so far: {}, loadingComplete={})",
-                     s_totalCreates.load(), s_loadingComplete.load());
+    // Clear stale loading cache from any previous game load — prevents stale
+    // game object pointers from being used in SendExistingEntitiesToServer fallback.
+    s_loadingCharacters.clear();
+    s_capturedFaction = 0;
+
+    // Re-enable CharacterCreate hook for multiplayer.
+    // It was disabled after loading to prevent the MovRaxRsp silent crash.
+    // Now that we're connected, we need it to register new characters.
+    if (HookManager::Get().Enable("CharacterCreate")) {
+        spdlog::info("entity_hooks: ResumeForNetwork — CharacterCreate RE-ENABLED for multiplayer");
+    } else {
+        spdlog::warn("entity_hooks: ResumeForNetwork — CharacterCreate enable failed (may not be installed)");
     }
+
+    spdlog::info("entity_hooks: ResumeForNetwork — total creates={}, loadingComplete={}",
+                 s_totalCreates.load(), s_loadingComplete.load());
 }
 
 bool HasRecentInPlaceSpawn(int withinSeconds) {
@@ -881,6 +835,22 @@ uintptr_t GetCapturedFaction() {
 
 const std::vector<CachedCharacter>& GetLoadingCharacters() {
     return s_loadingCharacters;
+}
+
+int GetTotalCreates() {
+    return s_totalCreates.load();
+}
+
+int GetTotalDestroys() {
+    return s_totalDestroys.load();
+}
+
+bool IsInBurst() {
+    return s_inBurst.load();
+}
+
+bool IsLoadingComplete() {
+    return s_loadingComplete.load();
 }
 
 } // namespace kmp::entity_hooks

@@ -1,9 +1,9 @@
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\callbacks.c;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.dir\Release\callbacks.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\compress.c;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.dir\Release\compress.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\host.c;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.dir\Release\host.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\list.c;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.dir\Release\list.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\packet.c;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.dir\Release\packet.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\peer.c;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.dir\Release\peer.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\protocol.c;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.dir\Release\protocol.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\unix.c;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.dir\Release\unix.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\enet\win32.c;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\enet\enet.dir\Release\win32.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\callbacks.c;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.dir\Release\callbacks.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\compress.c;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.dir\Release\compress.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\host.c;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.dir\Release\host.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\list.c;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.dir\Release\list.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\packet.c;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.dir\Release\packet.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\peer.c;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.dir\Release\peer.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\protocol.c;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.dir\Release\protocol.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\unix.c;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.dir\Release\unix.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\win32.c;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\enet\enet.dir\Release\win32.obj

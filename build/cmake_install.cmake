@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/wilde/Documents/GitHub/Kenshi-Online
+# Install script for directory: C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,68 +34,68 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/enet/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/enet/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Common/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Common/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Scanner/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Scanner/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Core/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Core/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Server/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Server/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.MasterServer/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.MasterServer/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Injector/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Injector/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.TestClient/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.TestClient/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.IntegrationTest/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.IntegrationTest/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.UnitTest/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.UnitTest/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.LiveTest/cmake_install.cmake")
+  include("C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.LiveTest/cmake_install.cmake")
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/install_local_manifest.txt"
+  file(WRITE "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
 if(CMAKE_INSTALL_COMPONENT)
@@ -111,6 +111,6 @@ else()
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

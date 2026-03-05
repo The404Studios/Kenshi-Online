@@ -1,9 +1,9 @@
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\main.cpp;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\KenshiMP.Server.dir\Release\main.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\server.cpp;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\KenshiMP.Server.dir\Release\server.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\upnp.cpp;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\KenshiMP.Server.dir\Release\upnp.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\game_state.cpp;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\KenshiMP.Server.dir\Release\game_state.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\player_manager.cpp;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\KenshiMP.Server.dir\Release\player_manager.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\entity_manager.cpp;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\KenshiMP.Server.dir\Release\entity_manager.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\zone_manager.cpp;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\KenshiMP.Server.dir\Release\zone_manager.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\combat_resolver.cpp;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\KenshiMP.Server.dir\Release\combat_resolver.obj
-C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Server\world_persistence.cpp;C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\KenshiMP.Server\KenshiMP.Server.dir\Release\world_persistence.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\main.cpp;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\KenshiMP.Server.dir\Release\main.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\server.cpp;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\KenshiMP.Server.dir\Release\server.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\upnp.cpp;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\KenshiMP.Server.dir\Release\upnp.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\game_state.cpp;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\KenshiMP.Server.dir\Release\game_state.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\player_manager.cpp;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\KenshiMP.Server.dir\Release\player_manager.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\entity_manager.cpp;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\KenshiMP.Server.dir\Release\entity_manager.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\zone_manager.cpp;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\KenshiMP.Server.dir\Release\zone_manager.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\combat_resolver.cpp;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\KenshiMP.Server.dir\Release\combat_resolver.obj
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Server\world_persistence.cpp;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\KenshiMP.Server\KenshiMP.Server.dir\Release\world_persistence.obj

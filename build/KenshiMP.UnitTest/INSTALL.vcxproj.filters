@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\CMakeFiles\71cc24998f515dd07932f5e2d9b49613\INSTALL_force.rule">
+    <CustomBuild Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\CMakeFiles\39e124d4a5ff09de8efc51448cebc9cb\INSTALL_force.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{660164DA-C45F-361F-AAAB-7EFD37246494}</UniqueIdentifier>
+      <UniqueIdentifier>{06CC253D-EDEB-3FB8-AC35-14D01321D3F9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

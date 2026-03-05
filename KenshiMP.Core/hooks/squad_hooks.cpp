@@ -201,6 +201,46 @@ static bool SEH_InjectIntoSquad(SquadAddMemberFn addFn, void* squad, void* chara
     }
 }
 
+// SEH-protected pointer read for following chains
+static uintptr_t SEH_ReadPtr(uintptr_t addr) {
+    __try {
+        return *reinterpret_cast<uintptr_t*>(addr);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
+// Try to resolve the activePlatoon from the primary character.
+// The addMember function expects activePlatoon as 'this', not platoon.
+// Research data: CharacterHuman+0x658 = activePlatoon*
+//                platoon+0x1D8 = activePlatoon*
+static uintptr_t ResolveActivePlatoon(void* primaryChar) {
+    uintptr_t charAddr = reinterpret_cast<uintptr_t>(primaryChar);
+
+    // Try 1: character+0x658 → activePlatoon directly
+    uintptr_t ap = SEH_ReadPtr(charAddr + 0x658);
+    if (ap > 0x10000 && ap < 0x00007FFFFFFFFFFF) {
+        spdlog::debug("squad_hooks: activePlatoon via char+0x658 = 0x{:X}", ap);
+        return ap;
+    }
+
+    // Try 2: GetSquadPtr → platoon → +0x1D8 → activePlatoon
+    game::CharacterAccessor accessor(primaryChar);
+    uintptr_t squadPtr = accessor.GetSquadPtr();
+    if (squadPtr != 0) {
+        ap = SEH_ReadPtr(squadPtr + 0x1D8);
+        if (ap > 0x10000 && ap < 0x00007FFFFFFFFFFF) {
+            spdlog::debug("squad_hooks: activePlatoon via squad+0x1D8 = 0x{:X}", ap);
+            return ap;
+        }
+        // Try 3: GetSquadPtr might already BE the activePlatoon
+        spdlog::debug("squad_hooks: using GetSquadPtr directly as activePlatoon candidate 0x{:X}", squadPtr);
+        return squadPtr;
+    }
+
+    return 0;
+}
+
 bool AddCharacterToLocalSquad(void* character) {
     if (!character) {
         spdlog::warn("squad_hooks: AddCharacterToLocalSquad — null character");
@@ -209,7 +249,7 @@ bool AddCharacterToLocalSquad(void* character) {
 
     // Resolve the SquadAddMember function — prefer the hook trampoline (bypasses
     // our hook to avoid recursive C2S_SquadAddMember sends), fall back to the
-    // raw game function pointer from the scanner.
+    // raw game function pointer from the scanner/vtable discovery.
     SquadAddMemberFn addFn = s_origSquadAddMember;
     if (!addFn) {
         auto& funcs = Core::Get().GetGameFunctions();
@@ -217,7 +257,7 @@ bool AddCharacterToLocalSquad(void* character) {
     }
     if (!addFn) {
         spdlog::warn("squad_hooks: AddCharacterToLocalSquad — no SquadAddMember function "
-                      "(hook not installed and scanner didn't find it)");
+                      "(hook not installed, scanner didn't find it, vtable discovery pending)");
         return false;
     }
 
@@ -230,26 +270,26 @@ bool AddCharacterToLocalSquad(void* character) {
         return false;
     }
 
-    // Read the squad pointer from the primary character
-    game::CharacterAccessor accessor(primaryChar);
-    uintptr_t squadPtr = accessor.GetSquadPtr();
-    if (squadPtr == 0) {
-        spdlog::warn("squad_hooks: AddCharacterToLocalSquad — primary character has no squad");
+    // Resolve the activePlatoon — the addMember function operates on activePlatoon, not platoon.
+    // CT research: activePlatoon vtable[2] = addMember(this=activePlatoon, character)
+    uintptr_t activePlatoonPtr = ResolveActivePlatoon(primaryChar);
+    if (activePlatoonPtr == 0) {
+        spdlog::warn("squad_hooks: AddCharacterToLocalSquad — could not resolve activePlatoon");
         return false;
     }
 
     // Inject the remote character into the local player's squad
-    void* squad = reinterpret_cast<void*>(squadPtr);
+    void* squad = reinterpret_cast<void*>(activePlatoonPtr);
     bool ok = SEH_InjectIntoSquad(addFn, squad, character);
 
     if (ok) {
-        spdlog::info("squad_hooks: SQUAD INJECTION SUCCESS — char 0x{:X} added to squad 0x{:X} "
+        spdlog::info("squad_hooks: SQUAD INJECTION SUCCESS — char 0x{:X} added to activePlatoon 0x{:X} "
                      "(fn=0x{:X}, via {})",
-                     (uintptr_t)character, squadPtr, (uintptr_t)addFn,
+                     (uintptr_t)character, activePlatoonPtr, (uintptr_t)addFn,
                      (addFn == s_origSquadAddMember) ? "hook trampoline" : "raw game function");
     } else {
-        spdlog::error("squad_hooks: SQUAD INJECTION FAILED — char 0x{:X}, squad 0x{:X}",
-                       (uintptr_t)character, squadPtr);
+        spdlog::error("squad_hooks: SQUAD INJECTION FAILED — char 0x{:X}, activePlatoon 0x{:X}",
+                       (uintptr_t)character, activePlatoonPtr);
     }
 
     return ok;

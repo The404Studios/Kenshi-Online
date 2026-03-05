@@ -1,133 +1,160 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\dllmain.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\core.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\core.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\render_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\render_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\input_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\input_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\entity_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\entity_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\movement_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\movement_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\combat_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\combat_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\world_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\world_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\save_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\save_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\time_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\time_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\game_tick_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\game_tick_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\inventory_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\inventory_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\squad_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\squad_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\faction_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\faction_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\building_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\building_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\hooks\ai_hooks.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\ai_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\game\game_character.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\hooks\resource_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\game\game_squad.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\game_character.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\game\game_world.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\game_squad.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\game\game_inventory.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\game_world.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\game\game_building.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\game_inventory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\game\game_faction.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\game_building.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\game\game_stats.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\game_faction.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\game\spawn_manager.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\game_stats.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\game\player_controller.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\spawn_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\net\client.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\player_controller.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\net\packet_handler.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\loading_orchestrator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\net\server_query.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\game\asset_facilitator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\sync\entity_registry.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\net\client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\sync\interpolation.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\net\packet_handler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\sync\ownership.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\net\server_query.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\sync\zone_interest.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\entity_registry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\sys\task_orchestrator.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\interpolation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\sys\command_registry.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\ownership.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\sys\builtin_commands.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\zone_interest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\ui\overlay.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\entity_resolver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\ui\mygui_bridge.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\zone_engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\ui\native_menu.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\player_engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\ui\native_hud.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\sync_orchestrator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\pipeline_orchestrator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sync\sync_facilitator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sys\task_orchestrator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sys\command_registry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\sys\builtin_commands.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\ui\overlay.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\ui\mygui_bridge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\ui\native_menu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\ui\native_hud.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Core\CMakeLists.txt" />
+    <CustomBuild Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Core\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\nlohmann_json.natvis" />
+    <Natvis Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\nlohmann_json.natvis" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{3E6455D0-BAEB-3146-85CE-87A3A7C71F91}</UniqueIdentifier>
+      <UniqueIdentifier>{6AF3163D-06F1-3047-A919-D8A01DBE09E4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

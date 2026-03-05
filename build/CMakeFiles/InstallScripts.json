@@ -1,21 +1,21 @@
 {
 	"InstallScripts" : 
 	[
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/enet/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/spdlog/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/json/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Common/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Scanner/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Core/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Server/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.MasterServer/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.Injector/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.TestClient/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.IntegrationTest/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.UnitTest/cmake_install.cmake",
-		"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.LiveTest/cmake_install.cmake"
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/enet/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/spdlog/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/json/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Common/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Scanner/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Core/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Server/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.MasterServer/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.Injector/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.TestClient/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.IntegrationTest/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.UnitTest/cmake_install.cmake",
+		"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.LiveTest/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

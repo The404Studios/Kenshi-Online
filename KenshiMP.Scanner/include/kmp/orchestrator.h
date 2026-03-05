@@ -74,6 +74,7 @@ struct PatternEntry {
     float           confidence      = 0.0f;
     bool            isResolved      = false;
     bool            isGlobalPointer = false; // True if this is a global pointer, not a function
+    bool            critical        = false; // Must-resolve: enables aggressive fallbacks
     int             retryCount      = 0;
 
     // ── Target pointer (for GameFunctions integration) ──
@@ -190,6 +191,7 @@ public:
     void RunPhase5_StringFallback();
     void RunPhase6_CallGraph();
     void RunPhase7_GlobalPointers();
+    void RunPhase8_EmergencyCritical();
 
     // Retry resolution for failed entries
     int RetryFailed();
@@ -269,8 +271,13 @@ private:
     bool TryHardcodedOffset(PatternEntry& entry);
     bool TryComplexPattern(PatternEntry& entry);
     bool TryCallGraphTrace(PatternEntry& entry);
+    bool TryDirectStringSearch(PatternEntry& entry);
+    bool TryPrologueValidatedRVA(PatternEntry& entry);
     void ResolveEntry(PatternEntry& entry, uintptr_t address,
                       ResolutionMethod method, float confidence);
+
+    // Walk backwards from a code address to find the function start
+    uintptr_t WalkBackToPrologue(uintptr_t codeAddr, int maxDistance = 4096) const;
 };
 
 } // namespace kmp

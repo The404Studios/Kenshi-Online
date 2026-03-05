@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <shared_mutex>
 #include <vector>
+#include <optional>
 
 namespace kmp {
 
@@ -51,8 +52,11 @@ public:
     // Find network ID by game object pointer
     EntityID GetNetId(void* gameObject) const;
 
-    // Get entity info
+    // Get entity info (raw pointer — caller must not hold across lock boundaries)
     const EntityInfo* GetInfo(EntityID netId) const;
+
+    // Get entity info as a copy (thread-safe — no dangling pointer risk)
+    std::optional<EntityInfo> GetInfoCopy(EntityID netId) const;
 
     // Associate a real game object with a remote entity after spawning
     void SetGameObject(EntityID netId, void* gameObject);

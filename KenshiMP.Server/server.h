@@ -95,6 +95,7 @@ private:
     void HandleBuildDismantle(ConnectedPlayer& player, PacketReader& reader);
     void HandleBuildRepair(ConnectedPlayer& player, PacketReader& reader);
     void HandleCombatStance(ConnectedPlayer& player, PacketReader& reader);
+    void HandleCombatDeath(ConnectedPlayer& player, PacketReader& reader);
     void HandleItemTransfer(ConnectedPlayer& player, PacketReader& reader);
     void HandleDoorInteract(ConnectedPlayer& player, PacketReader& reader);
     void HandleAdminCommand(ConnectedPlayer& player, PacketReader& reader);

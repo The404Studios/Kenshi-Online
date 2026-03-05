@@ -1,49 +1,52 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\scanner.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\scanner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\scanner_engine.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\scanner_engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\patterns.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\patterns.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\memory.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\hook_manager.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\hook_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\function_analyzer.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\mov_rax_rsp_fix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\pdata_enumerator.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\function_analyzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\string_analyzer.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\pdata_enumerator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\vtable_scanner.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\string_analyzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\call_graph.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\vtable_scanner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\src\orchestrator.cpp">
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\call_graph.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\src\orchestrator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\KenshiMP.Scanner\CMakeLists.txt" />
+    <CustomBuild Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\KenshiMP.Scanner\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\json\nlohmann_json.natvis" />
+    <Natvis Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\json\nlohmann_json.natvis" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{3E6455D0-BAEB-3146-85CE-87A3A7C71F91}</UniqueIdentifier>
+      <UniqueIdentifier>{6AF3163D-06F1-3047-A919-D8A01DBE09E4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

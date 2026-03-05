@@ -85,9 +85,9 @@ events:
       The output was:
       0
       MSBuild version 17.14.23+b0019275e for .NET Framework
-      Build started 3/3/2026 5:16:42 AM.
+      Build started 2/27/2026 12:02:33 AM.
       
-      Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
+      Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
         Creating directory "Debug\\".
         Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
@@ -100,7 +100,7 @@ events:
         CMakeCXXCompilerId.cpp
       Link:
         C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdCXX.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdCXX.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdCXX.lib" /MACHINE:X64 Debug\\CMakeCXXCompilerId.obj
-        CompilerIdCXX.vcxproj -> C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.exe
+        CompilerIdCXX.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.exe
       PostBuildEvent:
         for %%i in (cl.exe) do @echo CMAKE_CXX_COMPILER=%%~$PATH:i
         :VCEnd
@@ -108,13 +108,13 @@ events:
       FinalizeBuildStatus:
         Deleting file "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
         Touching "Debug\\CompilerIdCXX.tlog\\CompilerIdCXX.lastbuildstate".
-      Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (default targets).
+      Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (default targets).
       
       Build succeeded.
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.68
+      Time Elapsed 00:00:00.59
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -122,7 +122,7 @@ events:
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.vcxproj"
       
       The CXX compiler identification is MSVC, found in:
-        C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/4.2.0/CompilerIdCXX/CompilerIdCXX.exe
+        C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/4.2.0/CompilerIdCXX/CompilerIdCXX.exe
       
   -
     kind: "find-v1"
@@ -883,9 +883,9 @@ events:
       The output was:
       0
       MSBuild version 17.14.23+b0019275e for .NET Framework
-      Build started 3/3/2026 5:16:43 AM.
+      Build started 2/27/2026 12:02:33 AM.
       
-      Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\4.2.0\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
+      Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
       PrepareForBuild:
         Creating directory "Debug\\".
         Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
@@ -898,7 +898,7 @@ events:
         CMakeCCompilerId.c
       Link:
         C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdC.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdC.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdC.lib" /MACHINE:X64 Debug\\CMakeCCompilerId.obj
-        CompilerIdC.vcxproj -> C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\4.2.0\\CompilerIdC\\CompilerIdC.exe
+        CompilerIdC.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdC\\CompilerIdC.exe
       PostBuildEvent:
         for %%i in (cl.exe) do @echo CMAKE_C_COMPILER=%%~$PATH:i
         :VCEnd
@@ -906,13 +906,13 @@ events:
       FinalizeBuildStatus:
         Deleting file "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
         Touching "Debug\\CompilerIdC.tlog\\CompilerIdC.lastbuildstate".
-      Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\4.2.0\\CompilerIdC\\CompilerIdC.vcxproj" (default targets).
+      Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\4.2.0\\CompilerIdC\\CompilerIdC.vcxproj" (default targets).
       
       Build succeeded.
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.45
+      Time Elapsed 00:00:00.39
       
       
       Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -920,7 +920,7 @@ events:
       Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.vcxproj"
       
       The C compiler identification is MSVC, found in:
-        C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/4.2.0/CompilerIdC/CompilerIdC.exe
+        C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/4.2.0/CompilerIdC/CompilerIdC.exe
       
   -
     kind: "find-v1"
@@ -1382,8 +1382,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-6pl3c9"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-6pl3c9"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-ncpq04"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-ncpq04"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1393,39 +1393,39 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-6pl3c9'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-ncpq04'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_c953e.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_4f1c6.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:44 AM.
+        Build started 2/27/2026 12:02:34 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6pl3c9\\cmTC_c953e.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ncpq04\\cmTC_4f1c6.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6pl3c9\\Debug\\".
-          Creating directory "cmTC_c953e.dir\\Debug\\cmTC_c953e.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ncpq04\\Debug\\".
+          Creating directory "cmTC_4f1c6.dir\\Debug\\cmTC_4f1c6.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_c953e.dir\\Debug\\cmTC_c953e.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_c953e.dir\\Debug\\cmTC_c953e.tlog\\unsuccessfulbuild".
+          Creating "cmTC_4f1c6.dir\\Debug\\cmTC_4f1c6.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_4f1c6.dir\\Debug\\cmTC_4f1c6.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_c953e.dir\\Debug\\\\" /Fd"cmTC_c953e.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_4f1c6.dir\\Debug\\\\" /Fd"cmTC_4f1c6.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_c953e.dir\\Debug\\\\" /Fd"cmTC_c953e.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_4f1c6.dir\\Debug\\\\" /Fd"cmTC_4f1c6.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6pl3c9\\Debug\\cmTC_c953e.exe" /INCREMENTAL /ILK:"cmTC_c953e.dir\\Debug\\cmTC_c953e.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-6pl3c9/Debug/cmTC_c953e.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-6pl3c9/Debug/cmTC_c953e.lib" /MACHINE:X64  /machine:x64 cmTC_c953e.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_c953e.vcxproj -> C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6pl3c9\\Debug\\cmTC_c953e.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ncpq04\\Debug\\cmTC_4f1c6.exe" /INCREMENTAL /ILK:"cmTC_4f1c6.dir\\Debug\\cmTC_4f1c6.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-ncpq04/Debug/cmTC_4f1c6.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-ncpq04/Debug/cmTC_4f1c6.lib" /MACHINE:X64  /machine:x64 cmTC_4f1c6.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_4f1c6.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ncpq04\\Debug\\cmTC_4f1c6.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_c953e.dir\\Debug\\cmTC_c953e.tlog\\unsuccessfulbuild".
-          Touching "cmTC_c953e.dir\\Debug\\cmTC_c953e.tlog\\cmTC_c953e.lastbuildstate".
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6pl3c9\\cmTC_c953e.vcxproj" (default targets).
+          Deleting file "cmTC_4f1c6.dir\\Debug\\cmTC_4f1c6.tlog\\unsuccessfulbuild".
+          Touching "cmTC_4f1c6.dir\\Debug\\cmTC_4f1c6.tlog\\cmTC_4f1c6.lastbuildstate".
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ncpq04\\cmTC_4f1c6.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.38
+        Time Elapsed 00:00:00.39
         
       exitCode: 0
   -
@@ -1465,8 +1465,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-zq8zpn"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-zq8zpn"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3683ph"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3683ph"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1475,39 +1475,39 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-zq8zpn'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3683ph'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_dcd21.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_cc2c7.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:44 AM.
+        Build started 2/27/2026 12:02:34 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zq8zpn\\cmTC_dcd21.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3683ph\\cmTC_cc2c7.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zq8zpn\\Debug\\".
-          Creating directory "cmTC_dcd21.dir\\Debug\\cmTC_dcd21.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3683ph\\Debug\\".
+          Creating directory "cmTC_cc2c7.dir\\Debug\\cmTC_cc2c7.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_dcd21.dir\\Debug\\cmTC_dcd21.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_dcd21.dir\\Debug\\cmTC_dcd21.tlog\\unsuccessfulbuild".
+          Creating "cmTC_cc2c7.dir\\Debug\\cmTC_cc2c7.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_cc2c7.dir\\Debug\\cmTC_cc2c7.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_dcd21.dir\\Debug\\\\" /Fd"cmTC_dcd21.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCCompilerABI.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_cc2c7.dir\\Debug\\\\" /Fd"cmTC_cc2c7.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCCompilerABI.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_dcd21.dir\\Debug\\\\" /Fd"cmTC_dcd21.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCCompilerABI.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_cc2c7.dir\\Debug\\\\" /Fd"cmTC_cc2c7.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCCompilerABI.c"
           CMakeCCompilerABI.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zq8zpn\\Debug\\cmTC_dcd21.exe" /INCREMENTAL /ILK:"cmTC_dcd21.dir\\Debug\\cmTC_dcd21.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-zq8zpn/Debug/cmTC_dcd21.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-zq8zpn/Debug/cmTC_dcd21.lib" /MACHINE:X64  /machine:x64 cmTC_dcd21.dir\\Debug\\CMakeCCompilerABI.obj
-          cmTC_dcd21.vcxproj -> C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zq8zpn\\Debug\\cmTC_dcd21.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3683ph\\Debug\\cmTC_cc2c7.exe" /INCREMENTAL /ILK:"cmTC_cc2c7.dir\\Debug\\cmTC_cc2c7.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3683ph/Debug/cmTC_cc2c7.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3683ph/Debug/cmTC_cc2c7.lib" /MACHINE:X64  /machine:x64 cmTC_cc2c7.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_cc2c7.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3683ph\\Debug\\cmTC_cc2c7.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_dcd21.dir\\Debug\\cmTC_dcd21.tlog\\unsuccessfulbuild".
-          Touching "cmTC_dcd21.dir\\Debug\\cmTC_dcd21.tlog\\cmTC_dcd21.lastbuildstate".
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zq8zpn\\cmTC_dcd21.vcxproj" (default targets).
+          Deleting file "cmTC_cc2c7.dir\\Debug\\cmTC_cc2c7.tlog\\unsuccessfulbuild".
+          Touching "cmTC_cc2c7.dir\\Debug\\cmTC_cc2c7.tlog\\cmTC_cc2c7.lastbuildstate".
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3683ph\\cmTC_cc2c7.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.34
+        Time Elapsed 00:00:00.39
         
       exitCode: 0
   -
@@ -1546,8 +1546,8 @@ events:
     checks:
       - "Looking for fcntl"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cmvti"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cmvti"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-d1tolr"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-d1tolr"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1556,43 +1556,43 @@ events:
       variable: "HAS_FCNTL"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cmvti'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-d1tolr'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_d97e0.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_95dc3.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:45 AM.
+        Build started 2/27/2026 12:02:35 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\cmTC_d97e0.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\cmTC_95dc3.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\Debug\\".
-          Creating directory "cmTC_d97e0.dir\\Debug\\cmTC_d97e0.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\Debug\\".
+          Creating directory "cmTC_95dc3.dir\\Debug\\cmTC_95dc3.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_d97e0.dir\\Debug\\cmTC_d97e0.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_d97e0.dir\\Debug\\cmTC_d97e0.tlog\\unsuccessfulbuild".
+          Creating "cmTC_95dc3.dir\\Debug\\cmTC_95dc3.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_95dc3.dir\\Debug\\cmTC_95dc3.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=fcntl /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_d97e0.dir\\Debug\\\\" /Fd"cmTC_d97e0.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=fcntl /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_95dc3.dir\\Debug\\\\" /Fd"cmTC_95dc3.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=fcntl /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_d97e0.dir\\Debug\\\\" /Fd"cmTC_d97e0.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=fcntl /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_95dc3.dir\\Debug\\\\" /Fd"cmTC_95dc3.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\Debug\\cmTC_d97e0.exe" /INCREMENTAL /ILK:"cmTC_d97e0.dir\\Debug\\cmTC_d97e0.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cmvti/Debug/cmTC_d97e0.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cmvti/Debug/cmTC_d97e0.lib" /MACHINE:X64  /machine:x64 cmTC_d97e0.dir\\Debug\\CheckFunctionExists.obj
-        CheckFunctionExists.obj : error LNK2019: unresolved external symbol fcntl referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\cmTC_d97e0.vcxproj]
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\Debug\\cmTC_d97e0.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\cmTC_d97e0.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\cmTC_d97e0.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\Debug\\cmTC_95dc3.exe" /INCREMENTAL /ILK:"cmTC_95dc3.dir\\Debug\\cmTC_95dc3.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-d1tolr/Debug/cmTC_95dc3.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-d1tolr/Debug/cmTC_95dc3.lib" /MACHINE:X64  /machine:x64 cmTC_95dc3.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol fcntl referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\cmTC_95dc3.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\Debug\\cmTC_95dc3.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\cmTC_95dc3.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\cmTC_95dc3.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\cmTC_d97e0.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\cmTC_95dc3.vcxproj" (default target) (1) ->
         (Link target) -> 
-          CheckFunctionExists.obj : error LNK2019: unresolved external symbol fcntl referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\cmTC_d97e0.vcxproj]
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\Debug\\cmTC_d97e0.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cmvti\\cmTC_d97e0.vcxproj]
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol fcntl referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\cmTC_95dc3.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\Debug\\cmTC_95dc3.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-d1tolr\\cmTC_95dc3.vcxproj]
         
             0 Warning(s)
             2 Error(s)
         
-        Time Elapsed 00:00:00.30
+        Time Elapsed 00:00:00.34
         
       exitCode: 1
   -
@@ -1603,8 +1603,8 @@ events:
     checks:
       - "Looking for poll"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-e2s4bq"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-e2s4bq"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3limvs"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3limvs"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1613,43 +1613,43 @@ events:
       variable: "HAS_POLL"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-e2s4bq'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3limvs'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_97817.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_5ecf7.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:45 AM.
+        Build started 2/27/2026 12:02:36 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\cmTC_97817.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\cmTC_5ecf7.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\Debug\\".
-          Creating directory "cmTC_97817.dir\\Debug\\cmTC_97817.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\Debug\\".
+          Creating directory "cmTC_5ecf7.dir\\Debug\\cmTC_5ecf7.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_97817.dir\\Debug\\cmTC_97817.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_97817.dir\\Debug\\cmTC_97817.tlog\\unsuccessfulbuild".
+          Creating "cmTC_5ecf7.dir\\Debug\\cmTC_5ecf7.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_5ecf7.dir\\Debug\\cmTC_5ecf7.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=poll /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_97817.dir\\Debug\\\\" /Fd"cmTC_97817.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=poll /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_5ecf7.dir\\Debug\\\\" /Fd"cmTC_5ecf7.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=poll /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_97817.dir\\Debug\\\\" /Fd"cmTC_97817.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=poll /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_5ecf7.dir\\Debug\\\\" /Fd"cmTC_5ecf7.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\Debug\\cmTC_97817.exe" /INCREMENTAL /ILK:"cmTC_97817.dir\\Debug\\cmTC_97817.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-e2s4bq/Debug/cmTC_97817.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-e2s4bq/Debug/cmTC_97817.lib" /MACHINE:X64  /machine:x64 cmTC_97817.dir\\Debug\\CheckFunctionExists.obj
-        CheckFunctionExists.obj : error LNK2019: unresolved external symbol poll referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\cmTC_97817.vcxproj]
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\Debug\\cmTC_97817.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\cmTC_97817.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\cmTC_97817.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\Debug\\cmTC_5ecf7.exe" /INCREMENTAL /ILK:"cmTC_5ecf7.dir\\Debug\\cmTC_5ecf7.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3limvs/Debug/cmTC_5ecf7.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3limvs/Debug/cmTC_5ecf7.lib" /MACHINE:X64  /machine:x64 cmTC_5ecf7.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol poll referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\cmTC_5ecf7.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\Debug\\cmTC_5ecf7.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\cmTC_5ecf7.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\cmTC_5ecf7.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\cmTC_97817.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\cmTC_5ecf7.vcxproj" (default target) (1) ->
         (Link target) -> 
-          CheckFunctionExists.obj : error LNK2019: unresolved external symbol poll referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\cmTC_97817.vcxproj]
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\Debug\\cmTC_97817.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-e2s4bq\\cmTC_97817.vcxproj]
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol poll referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\cmTC_5ecf7.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\Debug\\cmTC_5ecf7.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3limvs\\cmTC_5ecf7.vcxproj]
         
             0 Warning(s)
             2 Error(s)
         
-        Time Elapsed 00:00:00.29
+        Time Elapsed 00:00:00.35
         
       exitCode: 1
   -
@@ -1660,8 +1660,8 @@ events:
     checks:
       - "Looking for getaddrinfo"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cms7w"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cms7w"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-fqshui"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-fqshui"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1670,43 +1670,43 @@ events:
       variable: "HAS_GETADDRINFO"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cms7w'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-fqshui'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_9b726.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_082b3.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:46 AM.
+        Build started 2/27/2026 12:02:36 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\cmTC_9b726.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\cmTC_082b3.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\Debug\\".
-          Creating directory "cmTC_9b726.dir\\Debug\\cmTC_9b726.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\Debug\\".
+          Creating directory "cmTC_082b3.dir\\Debug\\cmTC_082b3.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_9b726.dir\\Debug\\cmTC_9b726.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_9b726.dir\\Debug\\cmTC_9b726.tlog\\unsuccessfulbuild".
+          Creating "cmTC_082b3.dir\\Debug\\cmTC_082b3.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_082b3.dir\\Debug\\cmTC_082b3.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getaddrinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_9b726.dir\\Debug\\\\" /Fd"cmTC_9b726.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getaddrinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_082b3.dir\\Debug\\\\" /Fd"cmTC_082b3.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getaddrinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_9b726.dir\\Debug\\\\" /Fd"cmTC_9b726.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getaddrinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_082b3.dir\\Debug\\\\" /Fd"cmTC_082b3.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\Debug\\cmTC_9b726.exe" /INCREMENTAL /ILK:"cmTC_9b726.dir\\Debug\\cmTC_9b726.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cms7w/Debug/cmTC_9b726.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-9cms7w/Debug/cmTC_9b726.lib" /MACHINE:X64  /machine:x64 cmTC_9b726.dir\\Debug\\CheckFunctionExists.obj
-        CheckFunctionExists.obj : error LNK2019: unresolved external symbol getaddrinfo referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\cmTC_9b726.vcxproj]
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\Debug\\cmTC_9b726.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\cmTC_9b726.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\cmTC_9b726.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\Debug\\cmTC_082b3.exe" /INCREMENTAL /ILK:"cmTC_082b3.dir\\Debug\\cmTC_082b3.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-fqshui/Debug/cmTC_082b3.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-fqshui/Debug/cmTC_082b3.lib" /MACHINE:X64  /machine:x64 cmTC_082b3.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol getaddrinfo referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\cmTC_082b3.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\Debug\\cmTC_082b3.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\cmTC_082b3.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\cmTC_082b3.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\cmTC_9b726.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\cmTC_082b3.vcxproj" (default target) (1) ->
         (Link target) -> 
-          CheckFunctionExists.obj : error LNK2019: unresolved external symbol getaddrinfo referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\cmTC_9b726.vcxproj]
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\Debug\\cmTC_9b726.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9cms7w\\cmTC_9b726.vcxproj]
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol getaddrinfo referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\cmTC_082b3.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\Debug\\cmTC_082b3.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fqshui\\cmTC_082b3.vcxproj]
         
             0 Warning(s)
             2 Error(s)
         
-        Time Elapsed 00:00:00.29
+        Time Elapsed 00:00:00.34
         
       exitCode: 1
   -
@@ -1717,8 +1717,8 @@ events:
     checks:
       - "Looking for getnameinfo"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-byy8ho"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-byy8ho"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-iuqvoj"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-iuqvoj"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1727,43 +1727,43 @@ events:
       variable: "HAS_GETNAMEINFO"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-byy8ho'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-iuqvoj'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_e019e.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_fe2dc.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:46 AM.
+        Build started 2/27/2026 12:02:37 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\cmTC_e019e.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\cmTC_fe2dc.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\Debug\\".
-          Creating directory "cmTC_e019e.dir\\Debug\\cmTC_e019e.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\Debug\\".
+          Creating directory "cmTC_fe2dc.dir\\Debug\\cmTC_fe2dc.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_e019e.dir\\Debug\\cmTC_e019e.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_e019e.dir\\Debug\\cmTC_e019e.tlog\\unsuccessfulbuild".
+          Creating "cmTC_fe2dc.dir\\Debug\\cmTC_fe2dc.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_fe2dc.dir\\Debug\\cmTC_fe2dc.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getnameinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_e019e.dir\\Debug\\\\" /Fd"cmTC_e019e.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getnameinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_fe2dc.dir\\Debug\\\\" /Fd"cmTC_fe2dc.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getnameinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_e019e.dir\\Debug\\\\" /Fd"cmTC_e019e.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=getnameinfo /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_fe2dc.dir\\Debug\\\\" /Fd"cmTC_fe2dc.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\Debug\\cmTC_e019e.exe" /INCREMENTAL /ILK:"cmTC_e019e.dir\\Debug\\cmTC_e019e.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-byy8ho/Debug/cmTC_e019e.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-byy8ho/Debug/cmTC_e019e.lib" /MACHINE:X64  /machine:x64 cmTC_e019e.dir\\Debug\\CheckFunctionExists.obj
-        CheckFunctionExists.obj : error LNK2019: unresolved external symbol getnameinfo referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\cmTC_e019e.vcxproj]
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\Debug\\cmTC_e019e.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\cmTC_e019e.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\cmTC_e019e.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\Debug\\cmTC_fe2dc.exe" /INCREMENTAL /ILK:"cmTC_fe2dc.dir\\Debug\\cmTC_fe2dc.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-iuqvoj/Debug/cmTC_fe2dc.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-iuqvoj/Debug/cmTC_fe2dc.lib" /MACHINE:X64  /machine:x64 cmTC_fe2dc.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol getnameinfo referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\cmTC_fe2dc.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\Debug\\cmTC_fe2dc.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\cmTC_fe2dc.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\cmTC_fe2dc.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\cmTC_e019e.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\cmTC_fe2dc.vcxproj" (default target) (1) ->
         (Link target) -> 
-          CheckFunctionExists.obj : error LNK2019: unresolved external symbol getnameinfo referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\cmTC_e019e.vcxproj]
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\Debug\\cmTC_e019e.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-byy8ho\\cmTC_e019e.vcxproj]
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol getnameinfo referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\cmTC_fe2dc.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\Debug\\cmTC_fe2dc.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-iuqvoj\\cmTC_fe2dc.vcxproj]
         
             0 Warning(s)
             2 Error(s)
         
-        Time Elapsed 00:00:00.30
+        Time Elapsed 00:00:00.28
         
       exitCode: 1
   -
@@ -1774,8 +1774,8 @@ events:
     checks:
       - "Looking for gethostbyname_r"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-vdcuxi"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-vdcuxi"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-y7ik05"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-y7ik05"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1784,43 +1784,43 @@ events:
       variable: "HAS_GETHOSTBYNAME_R"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-vdcuxi'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-y7ik05'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_284e8.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_a55a2.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:47 AM.
+        Build started 2/27/2026 12:02:37 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\cmTC_284e8.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\cmTC_a55a2.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\Debug\\".
-          Creating directory "cmTC_284e8.dir\\Debug\\cmTC_284e8.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\Debug\\".
+          Creating directory "cmTC_a55a2.dir\\Debug\\cmTC_a55a2.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_284e8.dir\\Debug\\cmTC_284e8.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_284e8.dir\\Debug\\cmTC_284e8.tlog\\unsuccessfulbuild".
+          Creating "cmTC_a55a2.dir\\Debug\\cmTC_a55a2.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_a55a2.dir\\Debug\\cmTC_a55a2.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyname_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_284e8.dir\\Debug\\\\" /Fd"cmTC_284e8.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyname_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_a55a2.dir\\Debug\\\\" /Fd"cmTC_a55a2.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyname_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_284e8.dir\\Debug\\\\" /Fd"cmTC_284e8.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyname_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_a55a2.dir\\Debug\\\\" /Fd"cmTC_a55a2.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\Debug\\cmTC_284e8.exe" /INCREMENTAL /ILK:"cmTC_284e8.dir\\Debug\\cmTC_284e8.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-vdcuxi/Debug/cmTC_284e8.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-vdcuxi/Debug/cmTC_284e8.lib" /MACHINE:X64  /machine:x64 cmTC_284e8.dir\\Debug\\CheckFunctionExists.obj
-        CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyname_r referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\cmTC_284e8.vcxproj]
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\Debug\\cmTC_284e8.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\cmTC_284e8.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\cmTC_284e8.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\Debug\\cmTC_a55a2.exe" /INCREMENTAL /ILK:"cmTC_a55a2.dir\\Debug\\cmTC_a55a2.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-y7ik05/Debug/cmTC_a55a2.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-y7ik05/Debug/cmTC_a55a2.lib" /MACHINE:X64  /machine:x64 cmTC_a55a2.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyname_r referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\cmTC_a55a2.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\Debug\\cmTC_a55a2.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\cmTC_a55a2.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\cmTC_a55a2.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\cmTC_284e8.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\cmTC_a55a2.vcxproj" (default target) (1) ->
         (Link target) -> 
-          CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyname_r referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\cmTC_284e8.vcxproj]
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\Debug\\cmTC_284e8.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-vdcuxi\\cmTC_284e8.vcxproj]
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyname_r referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\cmTC_a55a2.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\Debug\\cmTC_a55a2.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-y7ik05\\cmTC_a55a2.vcxproj]
         
             0 Warning(s)
             2 Error(s)
         
-        Time Elapsed 00:00:00.29
+        Time Elapsed 00:00:00.28
         
       exitCode: 1
   -
@@ -1831,8 +1831,8 @@ events:
     checks:
       - "Looking for gethostbyaddr_r"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-q89u79"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-q89u79"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-avhjne"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-avhjne"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1841,43 +1841,43 @@ events:
       variable: "HAS_GETHOSTBYADDR_R"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-q89u79'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-avhjne'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_ad4b3.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_234f8.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:47 AM.
+        Build started 2/27/2026 12:02:37 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\cmTC_ad4b3.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\cmTC_234f8.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\Debug\\".
-          Creating directory "cmTC_ad4b3.dir\\Debug\\cmTC_ad4b3.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\Debug\\".
+          Creating directory "cmTC_234f8.dir\\Debug\\cmTC_234f8.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_ad4b3.dir\\Debug\\cmTC_ad4b3.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_ad4b3.dir\\Debug\\cmTC_ad4b3.tlog\\unsuccessfulbuild".
+          Creating "cmTC_234f8.dir\\Debug\\cmTC_234f8.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_234f8.dir\\Debug\\cmTC_234f8.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyaddr_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_ad4b3.dir\\Debug\\\\" /Fd"cmTC_ad4b3.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyaddr_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_234f8.dir\\Debug\\\\" /Fd"cmTC_234f8.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyaddr_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_ad4b3.dir\\Debug\\\\" /Fd"cmTC_ad4b3.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=gethostbyaddr_r /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_234f8.dir\\Debug\\\\" /Fd"cmTC_234f8.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\Debug\\cmTC_ad4b3.exe" /INCREMENTAL /ILK:"cmTC_ad4b3.dir\\Debug\\cmTC_ad4b3.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-q89u79/Debug/cmTC_ad4b3.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-q89u79/Debug/cmTC_ad4b3.lib" /MACHINE:X64  /machine:x64 cmTC_ad4b3.dir\\Debug\\CheckFunctionExists.obj
-        CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyaddr_r referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\cmTC_ad4b3.vcxproj]
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\Debug\\cmTC_ad4b3.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\cmTC_ad4b3.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\cmTC_ad4b3.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\Debug\\cmTC_234f8.exe" /INCREMENTAL /ILK:"cmTC_234f8.dir\\Debug\\cmTC_234f8.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-avhjne/Debug/cmTC_234f8.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-avhjne/Debug/cmTC_234f8.lib" /MACHINE:X64  /machine:x64 cmTC_234f8.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyaddr_r referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\cmTC_234f8.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\Debug\\cmTC_234f8.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\cmTC_234f8.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\cmTC_234f8.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\cmTC_ad4b3.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\cmTC_234f8.vcxproj" (default target) (1) ->
         (Link target) -> 
-          CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyaddr_r referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\cmTC_ad4b3.vcxproj]
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\Debug\\cmTC_ad4b3.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-q89u79\\cmTC_ad4b3.vcxproj]
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol gethostbyaddr_r referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\cmTC_234f8.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\Debug\\cmTC_234f8.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avhjne\\cmTC_234f8.vcxproj]
         
             0 Warning(s)
             2 Error(s)
         
-        Time Elapsed 00:00:00.29
+        Time Elapsed 00:00:00.34
         
       exitCode: 1
   -
@@ -1888,8 +1888,8 @@ events:
     checks:
       - "Looking for inet_pton"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-qe25gj"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-qe25gj"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-62eq5o"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-62eq5o"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1898,43 +1898,43 @@ events:
       variable: "HAS_INET_PTON"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-qe25gj'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-62eq5o'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_48a88.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_a33fa.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:48 AM.
+        Build started 2/27/2026 12:02:38 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\cmTC_48a88.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\cmTC_a33fa.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\Debug\\".
-          Creating directory "cmTC_48a88.dir\\Debug\\cmTC_48a88.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\Debug\\".
+          Creating directory "cmTC_a33fa.dir\\Debug\\cmTC_a33fa.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_48a88.dir\\Debug\\cmTC_48a88.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_48a88.dir\\Debug\\cmTC_48a88.tlog\\unsuccessfulbuild".
+          Creating "cmTC_a33fa.dir\\Debug\\cmTC_a33fa.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_a33fa.dir\\Debug\\cmTC_a33fa.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_pton /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_48a88.dir\\Debug\\\\" /Fd"cmTC_48a88.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_pton /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_a33fa.dir\\Debug\\\\" /Fd"cmTC_a33fa.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_pton /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_48a88.dir\\Debug\\\\" /Fd"cmTC_48a88.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_pton /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_a33fa.dir\\Debug\\\\" /Fd"cmTC_a33fa.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\Debug\\cmTC_48a88.exe" /INCREMENTAL /ILK:"cmTC_48a88.dir\\Debug\\cmTC_48a88.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-qe25gj/Debug/cmTC_48a88.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-qe25gj/Debug/cmTC_48a88.lib" /MACHINE:X64  /machine:x64 cmTC_48a88.dir\\Debug\\CheckFunctionExists.obj
-        CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_pton referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\cmTC_48a88.vcxproj]
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\Debug\\cmTC_48a88.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\cmTC_48a88.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\cmTC_48a88.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\Debug\\cmTC_a33fa.exe" /INCREMENTAL /ILK:"cmTC_a33fa.dir\\Debug\\cmTC_a33fa.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-62eq5o/Debug/cmTC_a33fa.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-62eq5o/Debug/cmTC_a33fa.lib" /MACHINE:X64  /machine:x64 cmTC_a33fa.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_pton referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\cmTC_a33fa.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\Debug\\cmTC_a33fa.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\cmTC_a33fa.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\cmTC_a33fa.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\cmTC_48a88.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\cmTC_a33fa.vcxproj" (default target) (1) ->
         (Link target) -> 
-          CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_pton referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\cmTC_48a88.vcxproj]
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\Debug\\cmTC_48a88.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-qe25gj\\cmTC_48a88.vcxproj]
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_pton referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\cmTC_a33fa.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\Debug\\cmTC_a33fa.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-62eq5o\\cmTC_a33fa.vcxproj]
         
             0 Warning(s)
             2 Error(s)
         
-        Time Elapsed 00:00:00.29
+        Time Elapsed 00:00:00.34
         
       exitCode: 1
   -
@@ -1945,8 +1945,8 @@ events:
     checks:
       - "Looking for inet_ntop"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-eetyqu"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-eetyqu"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-evtqqh"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-evtqqh"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1955,43 +1955,43 @@ events:
       variable: "HAS_INET_NTOP"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-eetyqu'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-evtqqh'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_3247f.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_f95e9.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:48 AM.
+        Build started 2/27/2026 12:02:39 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\cmTC_3247f.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\cmTC_f95e9.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\Debug\\".
-          Creating directory "cmTC_3247f.dir\\Debug\\cmTC_3247f.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\Debug\\".
+          Creating directory "cmTC_f95e9.dir\\Debug\\cmTC_f95e9.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_3247f.dir\\Debug\\cmTC_3247f.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_3247f.dir\\Debug\\cmTC_3247f.tlog\\unsuccessfulbuild".
+          Creating "cmTC_f95e9.dir\\Debug\\cmTC_f95e9.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_f95e9.dir\\Debug\\cmTC_f95e9.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_ntop /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_3247f.dir\\Debug\\\\" /Fd"cmTC_3247f.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_ntop /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_f95e9.dir\\Debug\\\\" /Fd"cmTC_f95e9.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_ntop /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_3247f.dir\\Debug\\\\" /Fd"cmTC_3247f.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=inet_ntop /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_f95e9.dir\\Debug\\\\" /Fd"cmTC_f95e9.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\Debug\\cmTC_3247f.exe" /INCREMENTAL /ILK:"cmTC_3247f.dir\\Debug\\cmTC_3247f.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-eetyqu/Debug/cmTC_3247f.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-eetyqu/Debug/cmTC_3247f.lib" /MACHINE:X64  /machine:x64 cmTC_3247f.dir\\Debug\\CheckFunctionExists.obj
-        CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_ntop referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\cmTC_3247f.vcxproj]
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\Debug\\cmTC_3247f.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\cmTC_3247f.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\cmTC_3247f.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\Debug\\cmTC_f95e9.exe" /INCREMENTAL /ILK:"cmTC_f95e9.dir\\Debug\\cmTC_f95e9.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-evtqqh/Debug/cmTC_f95e9.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-evtqqh/Debug/cmTC_f95e9.lib" /MACHINE:X64  /machine:x64 cmTC_f95e9.dir\\Debug\\CheckFunctionExists.obj
+        CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_ntop referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\cmTC_f95e9.vcxproj]
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\Debug\\cmTC_f95e9.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\cmTC_f95e9.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\cmTC_f95e9.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\cmTC_3247f.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\cmTC_f95e9.vcxproj" (default target) (1) ->
         (Link target) -> 
-          CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_ntop referenced in function main [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\cmTC_3247f.vcxproj]
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\Debug\\cmTC_3247f.exe : fatal error LNK1120: 1 unresolved externals [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-eetyqu\\cmTC_3247f.vcxproj]
+          CheckFunctionExists.obj : error LNK2019: unresolved external symbol inet_ntop referenced in function main [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\cmTC_f95e9.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\Debug\\cmTC_f95e9.exe : fatal error LNK1120: 1 unresolved externals [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-evtqqh\\cmTC_f95e9.vcxproj]
         
             0 Warning(s)
             2 Error(s)
         
-        Time Elapsed 00:00:00.29
+        Time Elapsed 00:00:00.35
         
       exitCode: 1
   -
@@ -2003,8 +2003,8 @@ events:
     checks:
       - "Performing Test HAS_OFFSETOF"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xra6ti"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xra6ti"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3pfwrw"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3pfwrw"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2013,39 +2013,39 @@ events:
       variable: "HAS_OFFSETOF"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xra6ti'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3pfwrw'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_63a5a.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_150dc.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:49 AM.
+        Build started 2/27/2026 12:02:39 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xra6ti\\cmTC_63a5a.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3pfwrw\\cmTC_150dc.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xra6ti\\Debug\\".
-          Creating directory "cmTC_63a5a.dir\\Debug\\cmTC_63a5a.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3pfwrw\\Debug\\".
+          Creating directory "cmTC_150dc.dir\\Debug\\cmTC_150dc.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_63a5a.dir\\Debug\\cmTC_63a5a.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_63a5a.dir\\Debug\\cmTC_63a5a.tlog\\unsuccessfulbuild".
+          Creating "cmTC_150dc.dir\\Debug\\cmTC_150dc.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_150dc.dir\\Debug\\cmTC_150dc.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_OFFSETOF /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_63a5a.dir\\Debug\\\\" /Fd"cmTC_63a5a.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xra6ti\\src.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_OFFSETOF /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_150dc.dir\\Debug\\\\" /Fd"cmTC_150dc.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3pfwrw\\src.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_OFFSETOF /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_63a5a.dir\\Debug\\\\" /Fd"cmTC_63a5a.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xra6ti\\src.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_OFFSETOF /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_150dc.dir\\Debug\\\\" /Fd"cmTC_150dc.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3pfwrw\\src.c"
           src.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xra6ti\\Debug\\cmTC_63a5a.exe" /INCREMENTAL /ILK:"cmTC_63a5a.dir\\Debug\\cmTC_63a5a.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xra6ti/Debug/cmTC_63a5a.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xra6ti/Debug/cmTC_63a5a.lib" /MACHINE:X64  /machine:x64 cmTC_63a5a.dir\\Debug\\src.obj
-          cmTC_63a5a.vcxproj -> C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xra6ti\\Debug\\cmTC_63a5a.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3pfwrw\\Debug\\cmTC_150dc.exe" /INCREMENTAL /ILK:"cmTC_150dc.dir\\Debug\\cmTC_150dc.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3pfwrw/Debug/cmTC_150dc.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-3pfwrw/Debug/cmTC_150dc.lib" /MACHINE:X64  /machine:x64 cmTC_150dc.dir\\Debug\\src.obj
+          cmTC_150dc.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3pfwrw\\Debug\\cmTC_150dc.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_63a5a.dir\\Debug\\cmTC_63a5a.tlog\\unsuccessfulbuild".
-          Touching "cmTC_63a5a.dir\\Debug\\cmTC_63a5a.tlog\\cmTC_63a5a.lastbuildstate".
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xra6ti\\cmTC_63a5a.vcxproj" (default targets).
+          Deleting file "cmTC_150dc.dir\\Debug\\cmTC_150dc.tlog\\unsuccessfulbuild".
+          Touching "cmTC_150dc.dir\\Debug\\cmTC_150dc.tlog\\cmTC_150dc.lastbuildstate".
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-3pfwrw\\cmTC_150dc.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.34
+        Time Elapsed 00:00:00.39
         
       exitCode: 0
   -
@@ -2058,8 +2058,8 @@ events:
     checks:
       - "Performing Test HAS_MSGHDR_FLAGS"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-0pkhla"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-0pkhla"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-2k6yuw"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-2k6yuw"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2068,39 +2068,39 @@ events:
       variable: "HAS_MSGHDR_FLAGS"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-0pkhla'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-2k6yuw'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_6c5bc.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_3a3a1.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:49 AM.
+        Build started 2/27/2026 12:02:40 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\cmTC_6c5bc.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\cmTC_3a3a1.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\Debug\\".
-          Creating directory "cmTC_6c5bc.dir\\Debug\\cmTC_6c5bc.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\Debug\\".
+          Creating directory "cmTC_3a3a1.dir\\Debug\\cmTC_3a3a1.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_6c5bc.dir\\Debug\\cmTC_6c5bc.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_6c5bc.dir\\Debug\\cmTC_6c5bc.tlog\\unsuccessfulbuild".
+          Creating "cmTC_3a3a1.dir\\Debug\\cmTC_3a3a1.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_3a3a1.dir\\Debug\\cmTC_3a3a1.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_MSGHDR_FLAGS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_6c5bc.dir\\Debug\\\\" /Fd"cmTC_6c5bc.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\src.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_MSGHDR_FLAGS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_3a3a1.dir\\Debug\\\\" /Fd"cmTC_3a3a1.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\src.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_MSGHDR_FLAGS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_6c5bc.dir\\Debug\\\\" /Fd"cmTC_6c5bc.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\src.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D HAS_MSGHDR_FLAGS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_3a3a1.dir\\Debug\\\\" /Fd"cmTC_3a3a1.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\src.c"
           src.c
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\src.c(3,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\cmTC_6c5bc.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\cmTC_6c5bc.vcxproj" (default targets) -- FAILED.
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\src.c(3,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\cmTC_3a3a1.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\cmTC_3a3a1.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\cmTC_6c5bc.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\cmTC_3a3a1.vcxproj" (default target) (1) ->
         (ClCompile target) -> 
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\src.c(3,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0pkhla\\cmTC_6c5bc.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\src.c(3,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2k6yuw\\cmTC_3a3a1.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.21
+        Time Elapsed 00:00:00.25
         
       exitCode: 1
   -
@@ -2112,8 +2112,8 @@ events:
     checks:
       - "Check size of socklen_t"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-avljwu"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-avljwu"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-psynxy"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-psynxy"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2122,39 +2122,39 @@ events:
       variable: "HAVE_HAS_SOCKLEN_T"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-avljwu'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-psynxy'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_11f37.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_6c152.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:49 AM.
+        Build started 2/27/2026 12:02:40 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\cmTC_11f37.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\cmTC_6c152.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\Debug\\".
-          Creating directory "cmTC_11f37.dir\\Debug\\cmTC_11f37.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\Debug\\".
+          Creating directory "cmTC_6c152.dir\\Debug\\cmTC_6c152.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_11f37.dir\\Debug\\cmTC_11f37.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_11f37.dir\\Debug\\cmTC_11f37.tlog\\unsuccessfulbuild".
+          Creating "cmTC_6c152.dir\\Debug\\cmTC_6c152.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_6c152.dir\\Debug\\cmTC_6c152.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_11f37.dir\\Debug\\\\" /Fd"cmTC_11f37.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\HAS_SOCKLEN_T.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_6c152.dir\\Debug\\\\" /Fd"cmTC_6c152.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\HAS_SOCKLEN_T.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_11f37.dir\\Debug\\\\" /Fd"cmTC_11f37.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\HAS_SOCKLEN_T.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_6c152.dir\\Debug\\\\" /Fd"cmTC_6c152.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\HAS_SOCKLEN_T.c"
           HAS_SOCKLEN_T.c
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\HAS_SOCKLEN_T.c(2,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\cmTC_11f37.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\cmTC_11f37.vcxproj" (default targets) -- FAILED.
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\HAS_SOCKLEN_T.c(2,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\cmTC_6c152.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\cmTC_6c152.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\cmTC_11f37.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\cmTC_6c152.vcxproj" (default target) (1) ->
         (ClCompile target) -> 
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\HAS_SOCKLEN_T.c(2,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-avljwu\\cmTC_11f37.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\HAS_SOCKLEN_T.c(2,10): error C1083: Cannot open include file: 'sys/socket.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-psynxy\\cmTC_6c152.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.20
+        Time Elapsed 00:00:00.25
         
       exitCode: 1
   -
@@ -2168,8 +2168,8 @@ events:
     checks:
       - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-ld3z1l"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-ld3z1l"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-6hes00"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-6hes00"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2178,39 +2178,39 @@ events:
       variable: "CMAKE_HAVE_LIBC_PTHREAD"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-ld3z1l'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-6hes00'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_ab7cb.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_6d352.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:50 AM.
+        Build started 2/27/2026 12:02:40 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\cmTC_ab7cb.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\cmTC_6d352.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\Debug\\".
-          Creating directory "cmTC_ab7cb.dir\\Debug\\cmTC_ab7cb.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\Debug\\".
+          Creating directory "cmTC_6d352.dir\\Debug\\cmTC_6d352.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_ab7cb.dir\\Debug\\cmTC_ab7cb.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_ab7cb.dir\\Debug\\cmTC_ab7cb.tlog\\unsuccessfulbuild".
+          Creating "cmTC_6d352.dir\\Debug\\cmTC_6d352.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_6d352.dir\\Debug\\cmTC_6d352.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_ab7cb.dir\\Debug\\\\" /Fd"cmTC_ab7cb.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\src.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_6d352.dir\\Debug\\\\" /Fd"cmTC_6d352.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\src.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_ab7cb.dir\\Debug\\\\" /Fd"cmTC_ab7cb.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\src.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_6d352.dir\\Debug\\\\" /Fd"cmTC_6d352.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\src.c"
           src.c
-        C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\cmTC_ab7cb.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\cmTC_ab7cb.vcxproj" (default targets) -- FAILED.
+        C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\cmTC_6d352.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\cmTC_6d352.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\cmTC_ab7cb.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\cmTC_6d352.vcxproj" (default target) (1) ->
         (ClCompile target) -> 
-          C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-ld3z1l\\cmTC_ab7cb.vcxproj]
+          C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6hes00\\cmTC_6d352.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.20
+        Time Elapsed 00:00:00.25
         
       exitCode: 1
   -
@@ -2223,8 +2223,8 @@ events:
     checks:
       - "Looking for pthread_create in pthreads"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-2hw7vf"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-2hw7vf"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-z0khyb"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-z0khyb"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2233,41 +2233,41 @@ events:
       variable: "CMAKE_HAVE_PTHREADS_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-2hw7vf'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-z0khyb'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_cdfb2.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_cb8fe.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:50 AM.
+        Build started 2/27/2026 12:02:41 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2hw7vf\\cmTC_cdfb2.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-z0khyb\\cmTC_cb8fe.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2hw7vf\\Debug\\".
-          Creating directory "cmTC_cdfb2.dir\\Debug\\cmTC_cdfb2.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-z0khyb\\Debug\\".
+          Creating directory "cmTC_cb8fe.dir\\Debug\\cmTC_cb8fe.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_cdfb2.dir\\Debug\\cmTC_cdfb2.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_cdfb2.dir\\Debug\\cmTC_cdfb2.tlog\\unsuccessfulbuild".
+          Creating "cmTC_cb8fe.dir\\Debug\\cmTC_cb8fe.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_cb8fe.dir\\Debug\\cmTC_cb8fe.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_cdfb2.dir\\Debug\\\\" /Fd"cmTC_cdfb2.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2hw7vf\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_cb8fe.dir\\Debug\\\\" /Fd"cmTC_cb8fe.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-z0khyb\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_cdfb2.dir\\Debug\\\\" /Fd"cmTC_cdfb2.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2hw7vf\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_cb8fe.dir\\Debug\\\\" /Fd"cmTC_cb8fe.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-z0khyb\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2hw7vf\\Debug\\cmTC_cdfb2.exe" /INCREMENTAL /ILK:"cmTC_cdfb2.dir\\Debug\\cmTC_cdfb2.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-2hw7vf/Debug/cmTC_cdfb2.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-2hw7vf/Debug/cmTC_cdfb2.lib" /MACHINE:X64  /machine:x64 cmTC_cdfb2.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2hw7vf\\cmTC_cdfb2.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2hw7vf\\cmTC_cdfb2.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-z0khyb\\Debug\\cmTC_cb8fe.exe" /INCREMENTAL /ILK:"cmTC_cb8fe.dir\\Debug\\cmTC_cb8fe.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-z0khyb/Debug/cmTC_cb8fe.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-z0khyb/Debug/cmTC_cb8fe.lib" /MACHINE:X64  /machine:x64 cmTC_cb8fe.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-z0khyb\\cmTC_cb8fe.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-z0khyb\\cmTC_cb8fe.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2hw7vf\\cmTC_cdfb2.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-z0khyb\\cmTC_cb8fe.vcxproj" (default target) (1) ->
         (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-2hw7vf\\cmTC_cdfb2.vcxproj]
+          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-z0khyb\\cmTC_cb8fe.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.26
+        Time Elapsed 00:00:00.31
         
       exitCode: 1
   -
@@ -2280,8 +2280,8 @@ events:
     checks:
       - "Looking for pthread_create in pthread"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-rp75xu"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-rp75xu"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7yxj2m"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7yxj2m"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2290,41 +2290,41 @@ events:
       variable: "CMAKE_HAVE_PTHREAD_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-rp75xu'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7yxj2m'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_cc120.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_8bd16.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:51 AM.
+        Build started 2/27/2026 12:02:41 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-rp75xu\\cmTC_cc120.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7yxj2m\\cmTC_8bd16.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-rp75xu\\Debug\\".
-          Creating directory "cmTC_cc120.dir\\Debug\\cmTC_cc120.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7yxj2m\\Debug\\".
+          Creating directory "cmTC_8bd16.dir\\Debug\\cmTC_8bd16.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_cc120.dir\\Debug\\cmTC_cc120.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_cc120.dir\\Debug\\cmTC_cc120.tlog\\unsuccessfulbuild".
+          Creating "cmTC_8bd16.dir\\Debug\\cmTC_8bd16.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_8bd16.dir\\Debug\\cmTC_8bd16.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_cc120.dir\\Debug\\\\" /Fd"cmTC_cc120.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-rp75xu\\CheckFunctionExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_8bd16.dir\\Debug\\\\" /Fd"cmTC_8bd16.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7yxj2m\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_cc120.dir\\Debug\\\\" /Fd"cmTC_cc120.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-rp75xu\\CheckFunctionExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_8bd16.dir\\Debug\\\\" /Fd"cmTC_8bd16.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7yxj2m\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-rp75xu\\Debug\\cmTC_cc120.exe" /INCREMENTAL /ILK:"cmTC_cc120.dir\\Debug\\cmTC_cc120.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-rp75xu/Debug/cmTC_cc120.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-rp75xu/Debug/cmTC_cc120.lib" /MACHINE:X64  /machine:x64 cmTC_cc120.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-rp75xu\\cmTC_cc120.vcxproj]
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-rp75xu\\cmTC_cc120.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7yxj2m\\Debug\\cmTC_8bd16.exe" /INCREMENTAL /ILK:"cmTC_8bd16.dir\\Debug\\cmTC_8bd16.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7yxj2m/Debug/cmTC_8bd16.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-7yxj2m/Debug/cmTC_8bd16.lib" /MACHINE:X64  /machine:x64 cmTC_8bd16.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7yxj2m\\cmTC_8bd16.vcxproj]
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7yxj2m\\cmTC_8bd16.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-rp75xu\\cmTC_cc120.vcxproj" (default target) (1) ->
+        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7yxj2m\\cmTC_8bd16.vcxproj" (default target) (1) ->
         (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-rp75xu\\cmTC_cc120.vcxproj]
+          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7yxj2m\\cmTC_8bd16.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.26
+        Time Elapsed 00:00:00.31
         
       exitCode: 1
   -
@@ -2336,8 +2336,8 @@ events:
     checks:
       - "Looking for _fwrite_nolock"
     directories:
-      source: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xjhagm"
-      binary: "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xjhagm"
+      source: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-dpbq98"
+      binary: "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-dpbq98"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2346,39 +2346,39 @@ events:
       variable: "HAVE_FWRITE_UNLOCKED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xjhagm'
+        Change Dir: 'C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-dpbq98'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_e231b.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_c34eb.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 3/3/2026 5:16:51 AM.
+        Build started 2/27/2026 12:02:42 AM.
         
-        Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xjhagm\\cmTC_e231b.vcxproj" on node 1 (default targets).
+        Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-dpbq98\\cmTC_c34eb.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xjhagm\\Debug\\".
-          Creating directory "cmTC_e231b.dir\\Debug\\cmTC_e231b.tlog\\".
+          Creating directory "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-dpbq98\\Debug\\".
+          Creating directory "cmTC_c34eb.dir\\Debug\\cmTC_c34eb.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_e231b.dir\\Debug\\cmTC_e231b.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_e231b.dir\\Debug\\cmTC_e231b.tlog\\unsuccessfulbuild".
+          Creating "cmTC_c34eb.dir\\Debug\\cmTC_c34eb.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_c34eb.dir\\Debug\\cmTC_c34eb.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_e231b.dir\\Debug\\\\" /Fd"cmTC_e231b.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xjhagm\\CheckSymbolExists.c"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_c34eb.dir\\Debug\\\\" /Fd"cmTC_c34eb.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-dpbq98\\CheckSymbolExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_e231b.dir\\Debug\\\\" /Fd"cmTC_e231b.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xjhagm\\CheckSymbolExists.c"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_c34eb.dir\\Debug\\\\" /Fd"cmTC_c34eb.dir\\Debug\\vc143.pdb" /external:W1 /TC /errorReport:queue "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-dpbq98\\CheckSymbolExists.c"
           CheckSymbolExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xjhagm\\Debug\\cmTC_e231b.exe" /INCREMENTAL /ILK:"cmTC_e231b.dir\\Debug\\cmTC_e231b.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xjhagm/Debug/cmTC_e231b.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/CMakeFiles/CMakeScratch/TryCompile-xjhagm/Debug/cmTC_e231b.lib" /MACHINE:X64  /machine:x64 cmTC_e231b.dir\\Debug\\CheckSymbolExists.obj
-          cmTC_e231b.vcxproj -> C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xjhagm\\Debug\\cmTC_e231b.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-dpbq98\\Debug\\cmTC_c34eb.exe" /INCREMENTAL /ILK:"cmTC_c34eb.dir\\Debug\\cmTC_c34eb.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-dpbq98/Debug/cmTC_c34eb.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/CMakeFiles/CMakeScratch/TryCompile-dpbq98/Debug/cmTC_c34eb.lib" /MACHINE:X64  /machine:x64 cmTC_c34eb.dir\\Debug\\CheckSymbolExists.obj
+          cmTC_c34eb.vcxproj -> C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-dpbq98\\Debug\\cmTC_c34eb.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_e231b.dir\\Debug\\cmTC_e231b.tlog\\unsuccessfulbuild".
-          Touching "cmTC_e231b.dir\\Debug\\cmTC_e231b.tlog\\cmTC_e231b.lastbuildstate".
-        Done Building Project "C:\\Users\\wilde\\Documents\\GitHub\\Kenshi-Online\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xjhagm\\cmTC_e231b.vcxproj" (default targets).
+          Deleting file "cmTC_c34eb.dir\\Debug\\cmTC_c34eb.tlog\\unsuccessfulbuild".
+          Touching "cmTC_c34eb.dir\\Debug\\cmTC_c34eb.tlog\\cmTC_c34eb.lastbuildstate".
+        Done Building Project "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiMP\\build\\CMakeFiles\\CMakeScratch\\TryCompile-dpbq98\\cmTC_c34eb.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.35
+        Time Elapsed 00:00:00.40
         
       exitCode: 0
 ...

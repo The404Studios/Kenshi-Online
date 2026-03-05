@@ -222,19 +222,22 @@ bool VTableScanner::IsInModule(uintptr_t addr) const {
 std::string VTableScanner::DemangleName(const char* mangledName) const {
     if (!mangledName || mangledName[0] == '\0') return "";
 
+    std::string mangled(mangledName);
+
+    // RTTI type info names: ".?AVClassName@@" or ".?AUStructName@@"
+    // Extract the class name directly — UnDecorateSymbolName often returns these as-is.
+    if (mangled.size() > 4 && (mangled.substr(0, 4) == ".?AV" || mangled.substr(0, 4) == ".?AU")) {
+        size_t end = mangled.find("@@");
+        if (end != std::string::npos && end > 4) {
+            return mangled.substr(4, end - 4);
+        }
+    }
+
+    // Try MSVC demangler for other decorated names
     char demangled[512] = {};
     DWORD result = UnDecorateSymbolName(mangledName, demangled, sizeof(demangled),
                                          UNDNAME_NAME_ONLY);
     if (result > 0) return demangled;
-
-    // Fallback: extract class name from ".?AVClassName@@" pattern
-    std::string mangled(mangledName);
-    if (mangled.substr(0, 4) == ".?AV" || mangled.substr(0, 4) == ".?AU") {
-        size_t end = mangled.find("@@");
-        if (end != std::string::npos) {
-            return mangled.substr(4, end - 4);
-        }
-    }
 
     if (mangled[0] == '.') return mangled.substr(1);
     return mangled;

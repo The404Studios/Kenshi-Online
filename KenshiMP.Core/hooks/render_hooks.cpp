@@ -35,10 +35,15 @@ static void SEH_OnGameTick(float dt) {
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         static int s_crashCount = 0;
         s_crashCount++;
-        if (s_crashCount <= 5 || s_crashCount % 100 == 0) {
-            char buf[128];
-            sprintf_s(buf, "KMP: OnGameTick SEH crash #%d (dt=%.4f)\n", s_crashCount, dt);
+        int lastStep = Core::Get().GetLastCompletedStep();
+        DWORD code = GetExceptionCode();
+        if (s_crashCount <= 10 || s_crashCount % 100 == 0) {
+            char buf[256];
+            sprintf_s(buf, "KMP: OnGameTick SEH crash #%d — exception 0x%08lX at step %d "
+                           "(dt=%.4f)\n", s_crashCount, code, lastStep, dt);
             OutputDebugStringA(buf);
+            spdlog::error("render_hooks: OnGameTick SEH crash #{} — exception 0x{:08X} "
+                          "at step {} (dt={:.4f})", s_crashCount, code, lastStep, dt);
         }
     }
 }
@@ -87,8 +92,9 @@ static LRESULT WndProcInner(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
     // Tab key: toggle player list on native HUD (ignore auto-repeat)
     if (uMsg == WM_KEYDOWN && wParam == VK_TAB && !(lParam & 0x40000000)) {
-        if (Core::Get().IsGameLoaded()) {
+        if (Core::Get().IsGameLoaded() && Core::Get().IsConnected()) {
             Core::Get().GetNativeHud().TogglePlayerList();
+            return 0; // consume — prevent Kenshi Tab action (inventory switch)
         }
     }
 
@@ -100,8 +106,9 @@ static LRESULT WndProcInner(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
     // Backtick key: toggle debug info on native HUD (ignore auto-repeat)
     if (uMsg == WM_KEYDOWN && wParam == VK_OEM_3 && !(lParam & 0x40000000)) {
-        if (Core::Get().IsGameLoaded()) {
+        if (Core::Get().IsGameLoaded() && Core::Get().IsConnected()) {
             Core::Get().GetNativeHud().ToggleDebugInfo();
+            return 0; // consume — prevent Kenshi console/debug action
         }
     }
 
@@ -134,42 +141,49 @@ static LRESULT WndProcInner(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         }
     }
 
-    // WM_CHAR: forward to chat input OR NativeMenu EditBoxes
-    // NOTE: Only handle here for chat. NativeMenu gets its own handler
-    // via WM_KEYDOWN for Backspace. WM_CHAR is for printable characters only.
+    // ── Modal input gates ──
+    // When chat or menu is active, consume ALL keyboard input to prevent
+    // the game (OIS/MyGUI/DirectInput) from also processing keystrokes.
+    // This fixes double-typing and prevents game actions while UI is open.
+    bool chatActive = Core::Get().GetNativeHud().IsChatInputActive();
+    bool menuVisible = Core::Get().GetOverlay().GetNativeMenu().IsVisible();
+
+    // WM_CHAR: forward printable characters to active UI, always consume when modal
     if (uMsg == WM_CHAR) {
-        auto& nativeHud = Core::Get().GetNativeHud();
-        if (nativeHud.IsChatInputActive()) {
-            nativeHud.OnChatChar(static_cast<wchar_t>(wParam));
+        if (chatActive) {
+            Core::Get().GetNativeHud().OnChatChar(static_cast<wchar_t>(wParam));
             return 0;
         }
-        auto& nativeMenu = Core::Get().GetOverlay().GetNativeMenu();
-        if (nativeMenu.IsVisible() && nativeMenu.HasActiveEditBox()) {
-            nativeMenu.OnChar(static_cast<wchar_t>(wParam));
-            return 0; // consume — don't let game also process this
+        if (menuVisible) {
+            auto& nativeMenu = Core::Get().GetOverlay().GetNativeMenu();
+            if (nativeMenu.HasActiveEditBox()) {
+                nativeMenu.OnChar(static_cast<wchar_t>(wParam));
+            }
+            return 0; // always consume when menu is visible (modal)
         }
     }
 
-    // WM_KEYDOWN: forward special keys to chat input or NativeMenu
+    // WM_KEYDOWN: forward control keys to active UI, always consume when modal
     if (uMsg == WM_KEYDOWN && wParam != VK_F1 && wParam != VK_ESCAPE) {
-        auto& nativeHud = Core::Get().GetNativeHud();
-        if (nativeHud.IsChatInputActive()) {
+        if (chatActive) {
             if (wParam == VK_BACK || wParam == VK_RETURN) {
-                nativeHud.OnChatKeyDown(static_cast<int>(wParam));
+                Core::Get().GetNativeHud().OnChatKeyDown(static_cast<int>(wParam));
             }
             return 0; // consume ALL keydowns when chat is active
         }
-        auto& nativeMenu = Core::Get().GetOverlay().GetNativeMenu();
-        if (nativeMenu.IsVisible()) {
+        if (menuVisible) {
+            auto& nativeMenu = Core::Get().GetOverlay().GetNativeMenu();
             if (wParam == VK_BACK || wParam == VK_RETURN || wParam == VK_TAB) {
                 nativeMenu.OnKeyDown(static_cast<int>(wParam));
             }
-            // When an EditBox is active, consume ALL keydowns to prevent
-            // OIS/MyGUI from also processing the character (double-typing fix)
-            if (nativeMenu.HasActiveEditBox()) {
-                return 0;
-            }
+            return 0; // consume ALL keydowns when menu is visible (modal)
         }
+    }
+
+    // WM_KEYUP: consume when chat or menu is active to prevent unpaired key-up
+    // events reaching OIS (which would desync its internal key state tracking)
+    if (uMsg == WM_KEYUP) {
+        if (chatActive || menuVisible) return 0;
     }
 
     // Mouse click handling
@@ -266,6 +280,13 @@ static HRESULT __stdcall HookPresent(IDXGISwapChain* swapChain, UINT syncInterva
         char buf[128];
         sprintf_s(buf, "KMP: HookPresent #%d\n", s_presentCount);
         OutputDebugStringA(buf);
+    }
+
+    // ── Periodic diagnostic: log loading state every ~2 seconds (300 frames) ──
+    if (s_presentCount % 300 == 1) {
+        auto& diag = Core::Get();
+        spdlog::info("render_hooks: frame={} gameLoaded={} connected={} loading={}",
+                     s_presentCount, diag.IsGameLoaded(), diag.IsConnected(), diag.IsLoading());
     }
 
     // One-time: grab HWND from the swap chain for WndProc hook

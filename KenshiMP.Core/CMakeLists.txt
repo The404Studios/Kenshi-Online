@@ -16,6 +16,7 @@ add_library(KenshiMP.Core SHARED
     hooks/faction_hooks.cpp
     hooks/building_hooks.cpp
     hooks/ai_hooks.cpp
+    hooks/resource_hooks.cpp
     # Game wrappers
     game/game_character.cpp
     game/game_squad.cpp
@@ -26,6 +27,8 @@ add_library(KenshiMP.Core SHARED
     game/game_stats.cpp
     game/spawn_manager.cpp
     game/player_controller.cpp
+    game/loading_orchestrator.cpp
+    game/asset_facilitator.cpp
     # Networking
     net/client.cpp
     net/packet_handler.cpp
@@ -35,6 +38,12 @@ add_library(KenshiMP.Core SHARED
     sync/interpolation.cpp
     sync/ownership.cpp
     sync/zone_interest.cpp
+    sync/entity_resolver.cpp
+    sync/zone_engine.cpp
+    sync/player_engine.cpp
+    sync/sync_orchestrator.cpp
+    sync/pipeline_orchestrator.cpp
+    sync/sync_facilitator.cpp
     # System / orchestrator
     sys/task_orchestrator.cpp
     sys/command_registry.cpp

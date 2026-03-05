@@ -2,6 +2,7 @@
 #include "game_types.h"
 #include "../core.h"
 #include "../hooks/entity_hooks.h"
+#include "../sync/pipeline_state.h"
 #include "kmp/hook_manager.h"
 #include <spdlog/spdlog.h>
 #include <Windows.h>
@@ -283,6 +284,9 @@ void SpawnManager::QueueSpawn(const SpawnRequest& request) {
     m_spawnQueue.push(request);
     spdlog::info("SpawnManager: Queued spawn for entity {} (template: '{}')",
                  request.netId, request.templateName);
+    Core::Get().GetPipelineOrch().RecordEvent(
+        PipelineEventType::SpawnQueued, 0, request.netId, request.owner,
+        "Queued: " + request.templateName);
 }
 
 void SpawnManager::ProcessSpawnQueue() {
@@ -479,6 +483,16 @@ void SpawnManager::ScanGameDataHeap() {
     // We look for the main GameDataManager pointer in memory.
 
     uintptr_t moduleBase = Memory::GetModuleBase();
+    // Get module image size from PE header for range checks
+    size_t moduleSize = 0x4000000; // 64MB fallback
+    {
+        auto* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(moduleBase);
+        if (dos->e_magic == IMAGE_DOS_SIGNATURE) {
+            auto* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(moduleBase + dos->e_lfanew);
+            if (nt->Signature == IMAGE_NT_SIGNATURE)
+                moduleSize = nt->OptionalHeader.SizeOfImage;
+        }
+    }
 
     // ── Strategy 1: Try hardcoded offsets (fast, works if version matches) ──
     uintptr_t gdmAddress = 0;
@@ -492,11 +506,16 @@ void SpawnManager::ScanGameDataHeap() {
     for (auto candAddr : hardcodedCandidates) {
         uintptr_t val = 0;
         if (Memory::Read(candAddr, val) && val != 0) {
-            if (val > moduleBase && val < moduleBase + 0x10000000) {
-                gdmAddress = candAddr;
-                gdmValue = val;
-                spdlog::info("SpawnManager: GameDataManager found via hardcoded offset 0x{:X}", candAddr);
-                break;
+            if (val > 0x10000 && val < 0x00007FFFFFFFFFFF &&
+                !(val >= moduleBase && val < moduleBase + moduleSize)) {
+                // Double-dereference: a real GameDataManager should be readable
+                uintptr_t check = 0;
+                if (Memory::Read(val, check) && check != 0) {
+                    gdmAddress = candAddr;
+                    gdmValue = val;
+                    spdlog::info("SpawnManager: GameDataManager found via hardcoded offset 0x{:X} -> 0x{:X}", candAddr, val);
+                    break;
+                }
             }
         }
     }
@@ -507,10 +526,12 @@ void SpawnManager::ScanGameDataHeap() {
         uintptr_t gwAddr = core.GetGameFunctions().GameWorldSingleton;
         if (gwAddr != 0) {
             uintptr_t gwPtr = 0;
-            if (Memory::Read(gwAddr, gwPtr) && gwPtr != 0) {
+            if (Memory::Read(gwAddr, gwPtr) && gwPtr != 0 &&
+                !(gwPtr >= moduleBase && gwPtr < moduleBase + moduleSize)) {
                 // GameWorld+0x20 = dataMgr1 (KenshiLib verified)
                 uintptr_t val = 0;
-                if (Memory::Read(gwPtr + 0x20, val) && val != 0 && val > moduleBase) {
+                if (Memory::Read(gwPtr + 0x20, val) && val != 0 && val > moduleBase &&
+                    !(val >= moduleBase && val < moduleBase + moduleSize)) {
                     gdmValue = val;
                     gdmAddress = gwPtr + 0x20;
                     spdlog::info("SpawnManager: GameDataManager found via GameWorld+0x20 = 0x{:X}", val);

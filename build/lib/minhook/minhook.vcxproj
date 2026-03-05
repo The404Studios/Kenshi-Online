@@ -22,7 +22,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{84C21807-CF18-3C01-96FB-62E731E5E3F2}</ProjectGuid>
+    <ProjectGuid>{D0FC6D13-2AC2-35D7-B887-E80CD15D04DF}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
@@ -59,26 +59,26 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\Debug\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\Debug\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">minhook.dir\Debug\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">minhook.x64d</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\Release\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">minhook.dir\Release\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">minhook.x64</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\MinSizeRel\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\MinSizeRel\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">minhook.dir\MinSizeRel\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">minhook.x64</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.lib</TargetExt>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\RelWithDebInfo\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\RelWithDebInfo\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">minhook.dir\RelWithDebInfo\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">minhook.x64</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.lib</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <BufferSecurityCheck></BufferSecurityCheck>
@@ -103,10 +103,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_ITERATOR_DEBUG_LEVEL=0;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -119,7 +119,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck></BufferSecurityCheck>
@@ -145,10 +145,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_ITERATOR_DEBUG_LEVEL=0;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -161,7 +161,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck></BufferSecurityCheck>
@@ -187,10 +187,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_ITERATOR_DEBUG_LEVEL=0;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -203,7 +203,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck></BufferSecurityCheck>
@@ -228,10 +228,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_ITERATOR_DEBUG_LEVEL=0;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\include;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\include;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src;C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -243,11 +243,11 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\CMakeLists.txt">
+    <CustomBuild Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\CMakeLists.txt">
       <UseUtf8Encoding>Always</UseUtf8Encoding>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/wilde/Documents/GitHub/Kenshi-Online/lib/minhook/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/minhook/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/wilde/Documents/GitHub/Kenshi-Online -BC:/Users/wilde/Documents/GitHub/Kenshi-Online/build --check-stamp-file C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP" "-BC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build" --check-stamp-file "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/generate.stamp"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -255,12 +255,12 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-4.2\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-4.2\Modules\WriteBasicConfigVersionFile.cmake;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\cmake\minhook-config.cmake.in;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\minhook\CMakeFiles\generate.stamp</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\cmake\minhook-config.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-4.2\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\minhook\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/wilde/Documents/GitHub/Kenshi-Online/lib/minhook/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/minhook/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/wilde/Documents/GitHub/Kenshi-Online -BC:/Users/wilde/Documents/GitHub/Kenshi-Online/build --check-stamp-file C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP" "-BC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build" --check-stamp-file "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/generate.stamp"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -268,12 +268,12 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files\CMake\share\cmake-4.2\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-4.2\Modules\WriteBasicConfigVersionFile.cmake;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\cmake\minhook-config.cmake.in;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\minhook\CMakeFiles\generate.stamp</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\cmake\minhook-config.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-4.2\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\minhook\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/wilde/Documents/GitHub/Kenshi-Online/lib/minhook/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/minhook/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/wilde/Documents/GitHub/Kenshi-Online -BC:/Users/wilde/Documents/GitHub/Kenshi-Online/build --check-stamp-file C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP" "-BC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build" --check-stamp-file "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/generate.stamp"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -281,12 +281,12 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files\CMake\share\cmake-4.2\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-4.2\Modules\WriteBasicConfigVersionFile.cmake;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\cmake\minhook-config.cmake.in;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\minhook\CMakeFiles\generate.stamp</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\cmake\minhook-config.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-4.2\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\minhook\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/wilde/Documents/GitHub/Kenshi-Online/lib/minhook/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/minhook/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/wilde/Documents/GitHub/Kenshi-Online -BC:/Users/wilde/Documents/GitHub/Kenshi-Online/build --check-stamp-file C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP" "-BC:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build" --check-stamp-file "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/generate.stamp"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -294,21 +294,21 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files\CMake\share\cmake-4.2\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-4.2\Modules\WriteBasicConfigVersionFile.cmake;C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\cmake\minhook-config.cmake.in;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\lib\minhook\CMakeFiles\generate.stamp</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\cmake\minhook-config.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-4.2\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-4.2\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\minhook\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\buffer.c" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hook.c" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\trampoline.c" />
-    <ClCompile Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\lib\minhook\src\hde\hde64.c" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\buffer.c" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hook.c" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\trampoline.c" />
+    <ClCompile Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\minhook\src\hde\hde64.c" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="C:\Users\wilde\Documents\GitHub\Kenshi-Online\build\ZERO_CHECK.vcxproj">
-      <Project>{BB70B1F7-5E66-3519-8096-26E01B99BFC1}</Project>
+    <ProjectReference Include="C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\ZERO_CHECK.vcxproj">
+      <Project>{23EA5D88-F382-371A-8204-F7BD0C924362}</Project>
       <Name>ZERO_CHECK</Name>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>

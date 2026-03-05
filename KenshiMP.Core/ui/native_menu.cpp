@@ -61,6 +61,14 @@ bool NativeMenu::Init() {
     bridge.SetCaption(m_settingsNameEdit, config.playerName);
     m_autoConnectChecked = config.autoConnect;
 
+    // Disable MyGUI keyboard focus on our edit widgets — we handle all text input
+    // manually via WndProc (OnChar/OnKeyDown). Without this, MyGUI's injectKeyPress
+    // would also deliver keystrokes to focused widgets, causing double-typing.
+    bridge.SetProperty(m_serverIPEdit, "NeedKeyFocus", "false");
+    bridge.SetProperty(m_serverPortEdit, "NeedKeyFocus", "false");
+    bridge.SetProperty(m_playerNameEdit, "NeedKeyFocus", "false");
+    bridge.SetProperty(m_settingsNameEdit, "NeedKeyFocus", "false");
+
     // Store the values we set so we have reliable fallbacks if GetCaption fails
     m_storedIP = config.lastServer;
     m_storedPort = std::to_string(config.lastPort);
@@ -171,6 +179,7 @@ void NativeMenu::Hide() {
     auto& bridge = MyGuiBridge::Get();
     bridge.SetVisible(m_root, false);
     m_visible = false;
+    m_activeField = ActiveField::None; // Clear focus state so no ghost input
     spdlog::info("NativeMenu: Hidden");
 }
 

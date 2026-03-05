@@ -40,26 +40,38 @@ public:
     // Scans the function containing the string xref for MOV reg, [RIP+disp32]
     // instructions that point into the .data section. Returns the address of
     // the global (not its value).
-    uintptr_t FindGlobalNearString(const char* searchStr, int searchLen, int nth = 0) const {
-        if (!m_textBase || !m_rdataBase || !m_dataBase) return 0;
+    uintptr_t FindGlobalNearString(const char* searchStr, int searchLen,
+                                    int nth = 0, bool includeReadOnly = false) const {
+        if (!m_textBase || !m_rdataBase) return 0;
 
         uintptr_t strAddr = FindStringInMemory(searchStr, searchLen);
-        if (!strAddr) return 0;
+        if (!strAddr) {
+            spdlog::debug("FindGlobalNearString('{}', nth={}): string not found", searchStr, nth);
+            return 0;
+        }
 
         uintptr_t xref = FindStringXref(strAddr);
-        if (!xref) return 0;
+        if (!xref) {
+            spdlog::debug("FindGlobalNearString('{}', nth={}): no xref for str@0x{:X}", searchStr, nth, strAddr);
+            return 0;
+        }
 
         uintptr_t funcStart = FindFunctionStart(xref);
-        if (!funcStart) return 0;
+        if (!funcStart) {
+            spdlog::debug("FindGlobalNearString('{}', nth={}): no prologue found near xref@0x{:X}", searchStr, nth, xref);
+            return 0;
+        }
 
-        // Scan a window around the string xref for MOV reg, [RIP+disp32]
-        // These load global pointers from .data section
-        uintptr_t scanStart = (funcStart > xref - 512) ? funcStart : xref - 512;
+        // Scan the entire function (from func start through 512 past the xref)
+        // for MOV/LEA reg, [RIP+disp32] pointing to data sections
+        uintptr_t scanStart = funcStart;
         uintptr_t scanEnd = xref + 512;
         if (scanEnd > m_textBase + m_textSize) scanEnd = m_textBase + m_textSize;
 
-        int found = 0;
-        return ScanForGlobalLoad(scanStart, scanEnd, nth);
+        uintptr_t result = ScanForGlobalLoadImpl(scanStart, scanEnd, nth, includeReadOnly);
+        spdlog::debug("FindGlobalNearString('{}', nth={}, ro={}): str@0x{:X} xref@0x{:X} func@0x{:X} scan[0x{:X}..0x{:X}] => 0x{:X}",
+                      searchStr, nth, includeReadOnly, strAddr, xref, funcStart, scanStart, scanEnd, result);
+        return result;
     }
 
     // Getters for section info
@@ -74,6 +86,12 @@ public:
     // Diagnostic: find code xref to string (public for logging)
     uintptr_t FindStringXref(uintptr_t stringAddr) const {
         return FindStringXrefImpl(stringAddr);
+    }
+
+    // Public: scan a code range for RIP-relative loads from data sections
+    uintptr_t ScanForGlobalLoad(uintptr_t start, uintptr_t end, int nth,
+                                bool includeReadOnly = false) const {
+        return ScanForGlobalLoadImpl(start, end, nth, includeReadOnly);
     }
 
 private:
@@ -117,6 +135,16 @@ private:
         if (addr >= m_textBase && addr < m_textBase + m_textSize) return false;
         if (addr >= m_rdataBase && addr < m_rdataBase + m_rdataSize) return false;
         // Everything else in the module is potentially writable (.data, .bss, etc.)
+        return true;
+    }
+
+    // Check if an address is in ANY data section (including .rdata)
+    // Used for finding globals like PlayerBase which MSVC can place in .rdata
+    // (static const pointers initialized at startup, read-only after that)
+    bool IsInDataSection(uintptr_t addr) const {
+        if (addr < m_base || addr >= m_base + m_size) return false;
+        // Exclude .text (code) only
+        if (addr >= m_textBase && addr < m_textBase + m_textSize) return false;
         return true;
     }
 
@@ -198,21 +226,23 @@ private:
         return 0;
     }
 
-    uintptr_t ScanForGlobalLoad(uintptr_t start, uintptr_t end, int nth) const {
-        // Look for MOV reg, [RIP+disp32] (REX.W prefix: 48 8B xx)
-        // or LEA reg, [RIP+disp32] (48 8D xx) pointing to writable sections
+    uintptr_t ScanForGlobalLoadImpl(uintptr_t start, uintptr_t end, int nth,
+                                    bool includeReadOnly = false) const {
+        // Look for MOV reg, [RIP+disp32] (REX.W prefix: 48 8B/4C 8B)
+        // and LEA reg, [RIP+disp32] (48 8D/4C 8D) pointing to data sections.
+        // includeReadOnly=true also accepts .rdata targets (for const globals like PlayerBase)
         __try {
             int found = 0;
             auto* code = reinterpret_cast<const uint8_t*>(start);
             size_t len = end - start;
 
             for (size_t i = 0; i + 7 < len; i++) {
-                // 48 8B xx where mod=0, rm=5 (RIP-relative)
-                bool isMovRIP = (code[i] == 0x48 && code[i + 1] == 0x8B);
-                // 4C 8B xx (REX.WR MOV)
-                bool isMovRIP2 = (code[i] == 0x4C && code[i + 1] == 0x8B);
+                // REX.W (48) or REX.WR (4C) prefix
+                bool hasRex = (code[i] == 0x48 || code[i] == 0x4C);
+                // MOV (8B) or LEA (8D) opcode
+                bool isMemOp = (code[i + 1] == 0x8B || code[i + 1] == 0x8D);
 
-                if (isMovRIP || isMovRIP2) {
+                if (hasRex && isMemOp) {
                     uint8_t modrm = code[i + 2];
                     uint8_t mod = (modrm >> 6) & 3;
                     uint8_t rm = modrm & 7;
@@ -222,8 +252,10 @@ private:
                         uintptr_t instrAddr = start + i;
                         uintptr_t target = instrAddr + 7 + disp;
 
-                        // Check if target is in any writable section (.data, .bss, etc.)
-                        if (IsInWritableSection(target)) {
+                        bool accepted = includeReadOnly
+                            ? IsInDataSection(target)
+                            : IsInWritableSection(target);
+                        if (accepted) {
                             if (found == nth) return target;
                             found++;
                         }
@@ -269,6 +301,8 @@ private:
             if (p[0] == 0x53 && p[1] == 0x48) return true;
             // push r12/r13/r14/r15: 41 5x
             if (p[0] == 0x41 && (p[1] >= 0x54 && p[1] <= 0x57)) return true;
+            // mov rax, rsp: 48 8B C4 (common MSVC prologue in Kenshi)
+            if (p[0] == 0x48 && p[1] == 0x8B && p[2] == 0xC4) return true;
         } __except (EXCEPTION_EXECUTE_HANDLER) {
             return false;
         }
@@ -292,9 +326,49 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
         }
         auto result = scanner.Find(pattern);
         if (result) {
-            target = reinterpret_cast<void*>(result.address);
+            uintptr_t addr = result.address;
+
+            // Validate pattern match is a real function entry using .pdata
+            // Some patterns match inside a DIFFERENT function on Steam.
+            // Auto-correcting to that function's start would hook the WRONG function → crash.
+            // Only accept corrections within 16 bytes (alignment/prefix instructions).
+            DWORD64 imageBase = 0;
+            auto* rtFunc = RtlLookupFunctionEntry(
+                static_cast<DWORD64>(addr), &imageBase, nullptr);
+            if (rtFunc) {
+                uintptr_t funcStart = static_cast<uintptr_t>(imageBase) + rtFunc->BeginAddress;
+                if (funcStart != addr) {
+                    uintptr_t offset = addr - funcStart;
+                    if (offset <= 0x10) {
+                        // Small offset — likely alignment padding or prefix instruction
+                        spdlog::warn("ResolveGameFunctions: '{}' pattern at 0x{:X} (offset +0x{:X}). "
+                                     "Auto-correcting to function start 0x{:X}",
+                                     name, addr, offset, funcStart);
+                        addr = funcStart;
+                    } else {
+                        // Large offset — pattern matched inside a WRONG function
+                        spdlog::error("ResolveGameFunctions: '{}' pattern at 0x{:X} is +0x{:X} bytes into "
+                                      "function 0x{:X} — WRONG FUNCTION, nulling",
+                                      name, addr, offset, funcStart);
+                        target = nullptr;
+                        return;
+                    }
+                }
+            }
+
+            // Final alignment check — MSVC function entries are always 16-byte aligned.
+            // SEH handler blocks get their own .pdata entries but aren't hookable functions.
+            if ((addr & 0xF) != 0) {
+                spdlog::error("ResolveGameFunctions: '{}' at 0x{:X} NOT 16-byte aligned "
+                              "(low nibble 0x{:X}) — SEH handler block, nulling",
+                              name, addr, addr & 0xF);
+                target = nullptr;
+                return;
+            }
+
+            target = reinterpret_cast<void*>(addr);
             resolved++;
-            spdlog::info("ResolveGameFunctions: '{}' = 0x{:X} (pattern)", name, result.address);
+            spdlog::info("ResolveGameFunctions: '{}' = 0x{:X} (pattern)", name, addr);
         } else {
             spdlog::warn("ResolveGameFunctions: '{}' pattern not found", name);
         }
@@ -391,7 +465,9 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
         {"CharacterKO",          "knockout",                                             8, &funcs.CharacterKO},
         // Movement
         {"CharacterSetPosition", "HavokCharacter::setPosition moved someone off the world", 55, &funcs.CharacterSetPosition},
-        {"CharacterMoveTo",      "pathfind",                                             8, &funcs.CharacterMoveTo},
+        // CharacterMoveTo: "pathfind" is too generic — finds wrong function on Steam.
+        // Resolved via vtable discovery or remains null (position polling handles sync).
+        // {"CharacterMoveTo",   "pathfind",                                             8, &funcs.CharacterMoveTo},
         // Combat
         {"ApplyDamage",          "Attack damage effect",                                20, &funcs.ApplyDamage},
         {"StartAttack",          "Cutting damage",                                      14, &funcs.StartAttack},
@@ -413,7 +489,9 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
         {"CharacterStats",       "CharacterStats_Attributes",                            25, &funcs.CharacterStats},
         // Squad / Platoon
         {"SquadCreate",          "Reset squad positions",                                21, &funcs.SquadCreate},
-        {"SquadAddMember",       "delayedSpawningChecks",                               21, &funcs.SquadAddMember},
+        // SquadAddMember: "delayedSpawningChecks" finds wrong function on Steam.
+        // Resolved via vtable discovery (Squad vtable+0x10) in core.cpp instead.
+        // {"SquadAddMember",    "delayedSpawningChecks",                               21, &funcs.SquadAddMember},
         // Inventory / Items
         {"ItemPickup",           "addItem",                                               7, &funcs.ItemPickup},
         {"ItemDrop",             "removeItem",                                           10, &funcs.ItemDrop},
@@ -435,6 +513,26 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
 
         uintptr_t addr = rss.FindFunctionByString(fb.searchStr, fb.searchLen);
         if (addr) {
+            // Cross-check with .pdata to ensure we found the real function entry
+            DWORD64 imageBase = 0;
+            auto* rtFunc = RtlLookupFunctionEntry(
+                static_cast<DWORD64>(addr), &imageBase, nullptr);
+            if (rtFunc) {
+                uintptr_t funcStart = static_cast<uintptr_t>(imageBase) + rtFunc->BeginAddress;
+                if (funcStart != addr) {
+                    uintptr_t offset = addr - funcStart;
+                    if (offset <= 0x10) {
+                        spdlog::warn("ResolveGameFunctions: '{}' string fallback at 0x{:X} (offset +0x{:X}). "
+                                     "Correcting to 0x{:X}", fb.label, addr, offset, funcStart);
+                        addr = funcStart;
+                    } else {
+                        spdlog::error("ResolveGameFunctions: '{}' string fallback at 0x{:X} is +0x{:X} into "
+                                      "function 0x{:X} — wrong function, skipping",
+                                      fb.label, addr, offset, funcStart);
+                        continue;
+                    }
+                }
+            }
             *fb.target = reinterpret_cast<void*>(addr);
             fallbackResolved++;
             spdlog::info("ResolveGameFunctions: '{}' = 0x{:X} (string fallback)", fb.label, addr);
@@ -472,35 +570,78 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
                val != 0xCDCDCDCDCDCDCDCD;
     };
 
+    // ── Function-disassembly global discovery ──
+    // The pattern scanner already resolved exact function addresses. We can scan
+    // their code for MOV/LEA reg,[RIP+disp32] pointing into .data to find globals
+    // like PlayerBase and GameWorld without hardcoded RVAs. This is the most
+    // reliable approach since it works identically on GOG and Steam.
+    auto findGlobalInFunction = [&](uintptr_t funcAddr, int nth) -> uintptr_t {
+        if (!funcAddr) return 0;
+        return rss.ScanForGlobalLoad(funcAddr, funcAddr + 1024, nth, true);
+    };
+
+    // ── Semantic validation: does this look like a real PlayerBase? ──
+    // PlayerBase is a pointer-to-pointer: *PlayerBase -> object with vtable.
+    // After game loads, the object should have a valid faction list at known offsets.
+    // CRITICAL: The object must be HEAP-allocated (outside module image range).
+    // .data addresses containing .text pointers (function ptrs, vtables) are NOT PlayerBase.
+    auto validatePlayerBase = [&](uintptr_t candidateAddr) -> bool {
+        if (candidateAddr == 0) return false;
+        uintptr_t val = 0;
+        if (!Memory::Read(candidateAddr, val)) return false;
+        // Value=0 means game not loaded yet — NOT validated, but may be correct.
+        // Don't accept zero as valid — wait for re-check after game loads.
+        if (val == 0) return false;
+        if (!isValidUserPtr(val)) return false;
+        // MUST be outside module image — real game objects are heap-allocated.
+        // .data globals containing .text/.rdata pointers are false positives.
+        if (val >= base && val < base + moduleSize) return false;
+        // Double-deref: object should have a readable vtable in .text range
+        uintptr_t vtable = 0;
+        if (!Memory::Read(val, vtable)) return false;
+        // vtable should point into the module's .text section
+        uintptr_t textStart = base + 0x1000; // .text is typically at base+0x1000
+        uintptr_t textEnd = base + moduleSize;
+        if (vtable < textStart || vtable >= textEnd) return false;
+        return true;
+    };
+
     // PlayerBase: Find the global pointer that the squad/player code loads.
-    // The CharacterStats_Attributes function accesses the player interface,
-    // and RootObjectFactory::process accesses the factory singleton.
-    // Try multiple anchors for PlayerBase discovery.
+    // Priority: 1) function disassembly, 2) string-xref, 3) hardcoded (GOG only)
     if (funcs.PlayerBase == 0) {
-        // Try hardcoded offset first (fast, works if version matches).
-        // Only accept if the value is 0 (not loaded yet) or a valid user pointer.
-        // Reject garbage values (wrong offset for this game version).
-        uintptr_t hardcoded = base + 0x01AC8A90;
-        uintptr_t testRead = 0;
-        bool readable = Memory::Read(hardcoded, testRead);
-        if (readable && isValidUserPtr(testRead)) {
-            funcs.PlayerBase = hardcoded;
-            spdlog::info("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (hardcoded, -> 0x{:X})",
-                         hardcoded, testRead);
-        } else if (readable && testRead == 0) {
-            // Address reads as 0 — might be correct address but game not loaded yet.
-            // Accept tentatively; will be re-validated lazily.
-            funcs.PlayerBase = hardcoded;
-            spdlog::warn("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (hardcoded, value=0 — game not loaded yet)",
-                         hardcoded);
-        } else {
-            // Hardcoded offset reads garbage — wrong version (GOG vs Steam).
-            // Fall through to runtime discovery.
-            spdlog::info("ResolveGameFunctions: Hardcoded PlayerBase at 0x{:X} reads 0x{:X} (garbage) — wrong version, trying runtime discovery...",
-                         hardcoded, testRead);
+        // Method 1: Scan resolved functions for .data globals (most reliable)
+        // CharacterSpawn (RootObjectFactory::process) loads the factory singleton
+        // which is often near or is PlayerBase.
+        uintptr_t funcCandidates[] = {
+            reinterpret_cast<uintptr_t>(funcs.CharacterSpawn),
+            reinterpret_cast<uintptr_t>(funcs.CharacterStats),
+            reinterpret_cast<uintptr_t>(funcs.SaveGame),
+            reinterpret_cast<uintptr_t>(funcs.LoadGame),
+        };
+        const char* funcNames[] = { "CharacterSpawn", "CharacterStats", "SaveGame", "LoadGame" };
+
+        for (int fi = 0; fi < 4 && funcs.PlayerBase == 0; fi++) {
+            if (!funcCandidates[fi]) continue;
+            for (int nth = 0; nth < 16 && funcs.PlayerBase == 0; nth++) {
+                uintptr_t candidate = findGlobalInFunction(funcCandidates[fi], nth);
+                if (!candidate) continue;
+                uintptr_t val = 0;
+                Memory::Read(candidate, val);
+                if (validatePlayerBase(candidate)) {
+                    funcs.PlayerBase = candidate;
+                    spdlog::info("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (func-disasm via '{}', nth={}, -> 0x{:X})",
+                                 candidate, funcNames[fi], nth, val);
+                } else {
+                    spdlog::debug("ResolveGameFunctions: PlayerBase candidate 0x{:X} rejected "
+                                  "(func='{}', nth={}, val=0x{:X}, {})",
+                                  candidate, funcNames[fi], nth, val,
+                                  (val == 0) ? "zero" :
+                                  (val >= base && val < base + moduleSize) ? "in-module" : "vtable-fail");
+                }
+            }
         }
 
-        // Runtime string-xref discovery (works on any version)
+        // Method 2: Runtime string-xref discovery (works on any version)
         if (funcs.PlayerBase == 0) {
             const char* playerAnchors[] = {
                 "CharacterStats_Attributes",
@@ -511,74 +652,115 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
             int playerAnchorLens[] = { 25, 21, 33, 38 };
 
             for (int a = 0; a < 4 && funcs.PlayerBase == 0; a++) {
-                for (int n = 0; n < 8 && funcs.PlayerBase == 0; n++) {
+                for (int n = 0; n < 12 && funcs.PlayerBase == 0; n++) {
                     uintptr_t globalAddr = rss.FindGlobalNearString(
-                        playerAnchors[a], playerAnchorLens[a], n);
-                    if (globalAddr) {
+                        playerAnchors[a], playerAnchorLens[a], n, true);
+                    if (globalAddr && validatePlayerBase(globalAddr)) {
                         uintptr_t val = 0;
-                        if (Memory::Read(globalAddr, val)) {
-                            if (isValidUserPtr(val)) {
-                                funcs.PlayerBase = globalAddr;
-                                spdlog::info("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (discovered via '{}', nth={}, -> 0x{:X})",
-                                             globalAddr, playerAnchors[a], n, val);
-                            } else if (val == 0) {
-                                // Null value — might be right address but game not loaded.
-                                // Accept tentatively for deferred re-check.
-                                funcs.PlayerBase = globalAddr;
-                                spdlog::warn("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (discovered via '{}', nth={}, value=0 — deferred)",
-                                             globalAddr, playerAnchors[a], n);
-                            }
-                        }
+                        Memory::Read(globalAddr, val);
+                        funcs.PlayerBase = globalAddr;
+                        spdlog::info("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (string-xref via '{}', nth={}, -> 0x{:X})",
+                                     globalAddr, playerAnchors[a], n, val);
                     }
                 }
             }
         }
 
+        // Method 3: Hardcoded GOG offset (last resort)
         if (funcs.PlayerBase == 0) {
-            spdlog::warn("ResolveGameFunctions: PlayerBase not found — will retry after game loads");
+            uintptr_t hardcoded = base + 0x01AC8A90;
+            if (validatePlayerBase(hardcoded)) {
+                uintptr_t val = 0;
+                Memory::Read(hardcoded, val);
+                funcs.PlayerBase = hardcoded;
+                spdlog::info("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (hardcoded GOG, -> 0x{:X})",
+                             hardcoded, val);
+            } else {
+                spdlog::warn("ResolveGameFunctions: PlayerBase not found — will retry after game loads");
+            }
         }
     }
 
     // GameWorld singleton: referenced by time/speed/world management functions.
+    // Priority: 1) function disassembly, 2) string-xref, 3) hardcoded (GOG only)
+    auto validateGameWorld = [&](uintptr_t candidateAddr) -> bool {
+        if (candidateAddr == 0) return false;
+        uintptr_t val = 0;
+        if (!Memory::Read(candidateAddr, val)) return false;
+        if (val == 0) return false; // Game not loaded — don't accept yet
+        if (!isValidUserPtr(val)) return false;
+        // MUST be outside module image — real game objects are heap-allocated
+        if (val >= base && val < base + moduleSize) return false;
+        uintptr_t vtable = 0;
+        if (!Memory::Read(val, vtable)) return false;
+        uintptr_t textStart = base + 0x1000;
+        uintptr_t textEnd = base + moduleSize;
+        if (vtable < textStart || vtable >= textEnd) return false;
+        return true;
+    };
+
     if (funcs.GameWorldSingleton == 0) {
-        uintptr_t hardcoded = base + 0x2133040;
-        uintptr_t testRead = 0;
-        bool readable = Memory::Read(hardcoded, testRead);
-        if (readable && isValidUserPtr(testRead)) {
-            funcs.GameWorldSingleton = hardcoded;
-            spdlog::info("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (hardcoded, -> 0x{:X})",
-                         hardcoded, testRead);
-        } else if (readable && testRead == 0) {
-            funcs.GameWorldSingleton = hardcoded;
-            spdlog::warn("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (hardcoded, value=0 — deferred)", hardcoded);
-        } else {
-            spdlog::info("ResolveGameFunctions: Hardcoded GameWorld at 0x{:X} reads 0x{:X} (garbage) — trying runtime discovery...",
-                         hardcoded, testRead);
+        // Method 1: Scan resolved functions for .data globals
+        uintptr_t gwFuncCandidates[] = {
+            reinterpret_cast<uintptr_t>(funcs.TimeUpdate),
+            reinterpret_cast<uintptr_t>(funcs.ZoneLoad),
+            reinterpret_cast<uintptr_t>(funcs.GameFrameUpdate),
+            reinterpret_cast<uintptr_t>(funcs.SaveGame),
+        };
+        const char* gwFuncNames[] = { "TimeUpdate", "ZoneLoad", "GameFrameUpdate", "SaveGame" };
+
+        for (int fi = 0; fi < 4 && funcs.GameWorldSingleton == 0; fi++) {
+            if (!gwFuncCandidates[fi]) continue;
+            for (int nth = 0; nth < 16 && funcs.GameWorldSingleton == 0; nth++) {
+                uintptr_t candidate = findGlobalInFunction(gwFuncCandidates[fi], nth);
+                if (!candidate) continue;
+                uintptr_t val = 0;
+                Memory::Read(candidate, val);
+                if (validateGameWorld(candidate)) {
+                    funcs.GameWorldSingleton = candidate;
+                    spdlog::info("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (func-disasm via '{}', nth={}, -> 0x{:X})",
+                                 candidate, gwFuncNames[fi], nth, val);
+                } else {
+                    spdlog::debug("ResolveGameFunctions: GameWorld candidate 0x{:X} rejected "
+                                  "(func='{}', nth={}, val=0x{:X}, {})",
+                                  candidate, gwFuncNames[fi], nth, val,
+                                  (val == 0) ? "zero" :
+                                  (val >= base && val < base + moduleSize) ? "in-module" : "vtable-fail");
+                }
+            }
         }
 
+        // Method 2: Runtime string-xref discovery
         if (funcs.GameWorldSingleton == 0) {
             const char* worldAnchors[] = { "dayTime", "zone.%d.%d.zone", "Kenshi 1.0." };
             int worldAnchorLens[] = { 7, 15, 11 };
 
             for (int a = 0; a < 3 && funcs.GameWorldSingleton == 0; a++) {
-                for (int n = 0; n < 8 && funcs.GameWorldSingleton == 0; n++) {
+                for (int n = 0; n < 12 && funcs.GameWorldSingleton == 0; n++) {
                     uintptr_t globalAddr = rss.FindGlobalNearString(
-                        worldAnchors[a], worldAnchorLens[a], n);
-                    if (globalAddr) {
+                        worldAnchors[a], worldAnchorLens[a], n, true);
+                    if (globalAddr && validateGameWorld(globalAddr)) {
                         uintptr_t val = 0;
-                        if (Memory::Read(globalAddr, val)) {
-                            if (isValidUserPtr(val)) {
-                                funcs.GameWorldSingleton = globalAddr;
-                                spdlog::info("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (discovered via '{}', nth={}, -> 0x{:X})",
-                                             globalAddr, worldAnchors[a], n, val);
-                            } else if (val == 0) {
-                                funcs.GameWorldSingleton = globalAddr;
-                                spdlog::warn("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (discovered via '{}', nth={}, value=0 — deferred)",
-                                             globalAddr, worldAnchors[a], n);
-                            }
-                        }
+                        Memory::Read(globalAddr, val);
+                        funcs.GameWorldSingleton = globalAddr;
+                        spdlog::info("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (string-xref via '{}', nth={}, -> 0x{:X})",
+                                     globalAddr, worldAnchors[a], n, val);
                     }
                 }
+            }
+        }
+
+        // Method 3: Hardcoded GOG offset (last resort)
+        if (funcs.GameWorldSingleton == 0) {
+            uintptr_t hardcoded = base + 0x2133040;
+            if (validateGameWorld(hardcoded)) {
+                uintptr_t val = 0;
+                Memory::Read(hardcoded, val);
+                funcs.GameWorldSingleton = hardcoded;
+                spdlog::info("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (hardcoded GOG, -> 0x{:X})",
+                             hardcoded, val);
+            } else {
+                spdlog::warn("ResolveGameFunctions: GameWorld not found — will retry after game loads");
             }
         }
     }
@@ -603,49 +785,94 @@ bool RetryGlobalDiscovery(const PatternScanner& scanner, GameFunctions& funcs) {
                val != 0xCDCDCDCDCDCDCDCD;
     };
 
-    // Re-check existing PlayerBase address first
-    if (funcs.PlayerBase != 0) {
+    // Semantic validation: heap-allocated object with vtable in .text
+    auto validateGlobal = [&](uintptr_t candidateAddr) -> bool {
+        if (candidateAddr == 0) return false;
         uintptr_t val = 0;
-        if (Memory::Read(funcs.PlayerBase, val) && isValidUserPtr(val)) {
+        if (!Memory::Read(candidateAddr, val)) return false;
+        if (!isValidUserPtr(val)) return false;
+        // MUST be outside module image — real game objects are heap-allocated
+        if (val >= base && val < base + moduleSize) return false;
+        uintptr_t vtable = 0;
+        if (!Memory::Read(val, vtable)) return false;
+        uintptr_t textStart = base + 0x1000;
+        uintptr_t textEnd = base + moduleSize;
+        return (vtable >= textStart && vtable < textEnd);
+    };
+
+    auto findGlobalInFunction = [&](uintptr_t funcAddr, int nth) -> uintptr_t {
+        if (!funcAddr) return 0;
+        return rss.ScanForGlobalLoad(funcAddr, funcAddr + 1024, nth, true);
+    };
+
+    // ── PlayerBase retry ──
+    if (funcs.PlayerBase != 0) {
+        if (validateGlobal(funcs.PlayerBase)) {
+            uintptr_t val = 0;
+            Memory::Read(funcs.PlayerBase, val);
             spdlog::info("RetryGlobalDiscovery: PlayerBase 0x{:X} now valid -> 0x{:X}", funcs.PlayerBase, val);
-            return true; // Already good
+        } else {
+            spdlog::info("RetryGlobalDiscovery: PlayerBase 0x{:X} still invalid — re-scanning...", funcs.PlayerBase);
+            funcs.PlayerBase = 0;
         }
-        // Still invalid — clear it and re-discover
-        spdlog::info("RetryGlobalDiscovery: PlayerBase 0x{:X} still reads 0x{:X} — re-scanning...",
-                     funcs.PlayerBase, val);
-        funcs.PlayerBase = 0;
     }
 
-    // Full re-scan with more anchors and wider search
-    const char* playerAnchors[] = {
-        "CharacterStats_Attributes",
-        "Reset squad positions",
-        "[Character::serialise] Character '",
-        "[RootObjectFactory::process] Character",
-        "quicksave",
-    };
-    int playerAnchorLens[] = { 25, 21, 33, 38, 9 };
+    if (funcs.PlayerBase == 0) {
+        // Method 1: Function disassembly (most reliable after game load)
+        uintptr_t funcCandidates[] = {
+            reinterpret_cast<uintptr_t>(funcs.CharacterSpawn),
+            reinterpret_cast<uintptr_t>(funcs.CharacterStats),
+            reinterpret_cast<uintptr_t>(funcs.SaveGame),
+            reinterpret_cast<uintptr_t>(funcs.LoadGame),
+        };
+        const char* funcNames[] = { "CharacterSpawn", "CharacterStats", "SaveGame", "LoadGame" };
 
-    for (int a = 0; a < 5 && funcs.PlayerBase == 0; a++) {
-        for (int n = 0; n < 12 && funcs.PlayerBase == 0; n++) {
-            uintptr_t globalAddr = rss.FindGlobalNearString(
-                playerAnchors[a], playerAnchorLens[a], n);
-            if (globalAddr) {
-                uintptr_t val = 0;
-                if (Memory::Read(globalAddr, val) && isValidUserPtr(val)) {
-                    funcs.PlayerBase = globalAddr;
+        for (int fi = 0; fi < 4 && funcs.PlayerBase == 0; fi++) {
+            if (!funcCandidates[fi]) continue;
+            for (int nth = 0; nth < 16 && funcs.PlayerBase == 0; nth++) {
+                uintptr_t candidate = findGlobalInFunction(funcCandidates[fi], nth);
+                if (candidate && validateGlobal(candidate)) {
+                    uintptr_t val = 0;
+                    Memory::Read(candidate, val);
+                    funcs.PlayerBase = candidate;
                     found = true;
-                    spdlog::info("RetryGlobalDiscovery: 'PlayerBase' = 0x{:X} (via '{}', nth={}, -> 0x{:X})",
-                                 globalAddr, playerAnchors[a], n, val);
+                    spdlog::info("RetryGlobalDiscovery: 'PlayerBase' = 0x{:X} (func-disasm via '{}', nth={}, -> 0x{:X})",
+                                 candidate, funcNames[fi], nth, val);
+                }
+            }
+        }
+
+        // Method 2: String-xref fallback
+        if (funcs.PlayerBase == 0) {
+            const char* playerAnchors[] = {
+                "CharacterStats_Attributes",
+                "Reset squad positions",
+                "[Character::serialise] Character '",
+                "[RootObjectFactory::process] Character",
+                "quicksave",
+            };
+            int playerAnchorLens[] = { 25, 21, 33, 38, 9 };
+
+            for (int a = 0; a < 5 && funcs.PlayerBase == 0; a++) {
+                for (int n = 0; n < 12 && funcs.PlayerBase == 0; n++) {
+                    uintptr_t globalAddr = rss.FindGlobalNearString(
+                        playerAnchors[a], playerAnchorLens[a], n, true);
+                    if (globalAddr && validateGlobal(globalAddr)) {
+                        uintptr_t val = 0;
+                        Memory::Read(globalAddr, val);
+                        funcs.PlayerBase = globalAddr;
+                        found = true;
+                        spdlog::info("RetryGlobalDiscovery: 'PlayerBase' = 0x{:X} (string-xref via '{}', nth={}, -> 0x{:X})",
+                                     globalAddr, playerAnchors[a], n, val);
+                    }
                 }
             }
         }
     }
 
-    // Re-check GameWorldSingleton too
+    // ── GameWorld retry ──
     if (funcs.GameWorldSingleton != 0) {
-        uintptr_t val = 0;
-        if (Memory::Read(funcs.GameWorldSingleton, val) && isValidUserPtr(val)) {
+        if (validateGlobal(funcs.GameWorldSingleton)) {
             // Already good
         } else {
             funcs.GameWorldSingleton = 0;
@@ -653,18 +880,43 @@ bool RetryGlobalDiscovery(const PatternScanner& scanner, GameFunctions& funcs) {
     }
 
     if (funcs.GameWorldSingleton == 0) {
-        const char* worldAnchors[] = { "dayTime", "zone.%d.%d.zone", "Kenshi 1.0." };
-        int worldAnchorLens[] = { 7, 15, 11 };
+        // Method 1: Function disassembly
+        uintptr_t gwFuncCandidates[] = {
+            reinterpret_cast<uintptr_t>(funcs.TimeUpdate),
+            reinterpret_cast<uintptr_t>(funcs.ZoneLoad),
+            reinterpret_cast<uintptr_t>(funcs.GameFrameUpdate),
+            reinterpret_cast<uintptr_t>(funcs.SaveGame),
+        };
+        const char* gwFuncNames[] = { "TimeUpdate", "ZoneLoad", "GameFrameUpdate", "SaveGame" };
 
-        for (int a = 0; a < 3 && funcs.GameWorldSingleton == 0; a++) {
-            for (int n = 0; n < 12 && funcs.GameWorldSingleton == 0; n++) {
-                uintptr_t globalAddr = rss.FindGlobalNearString(
-                    worldAnchors[a], worldAnchorLens[a], n);
-                if (globalAddr) {
+        for (int fi = 0; fi < 4 && funcs.GameWorldSingleton == 0; fi++) {
+            if (!gwFuncCandidates[fi]) continue;
+            for (int nth = 0; nth < 16 && funcs.GameWorldSingleton == 0; nth++) {
+                uintptr_t candidate = findGlobalInFunction(gwFuncCandidates[fi], nth);
+                if (candidate && validateGlobal(candidate)) {
                     uintptr_t val = 0;
-                    if (Memory::Read(globalAddr, val) && isValidUserPtr(val)) {
+                    Memory::Read(candidate, val);
+                    funcs.GameWorldSingleton = candidate;
+                    spdlog::info("RetryGlobalDiscovery: 'GameWorldSingleton' = 0x{:X} (func-disasm via '{}', nth={}, -> 0x{:X})",
+                                 candidate, gwFuncNames[fi], nth, val);
+                }
+            }
+        }
+
+        // Method 2: String-xref fallback
+        if (funcs.GameWorldSingleton == 0) {
+            const char* worldAnchors[] = { "dayTime", "zone.%d.%d.zone", "Kenshi 1.0." };
+            int worldAnchorLens[] = { 7, 15, 11 };
+
+            for (int a = 0; a < 3 && funcs.GameWorldSingleton == 0; a++) {
+                for (int n = 0; n < 12 && funcs.GameWorldSingleton == 0; n++) {
+                    uintptr_t globalAddr = rss.FindGlobalNearString(
+                        worldAnchors[a], worldAnchorLens[a], n, true);
+                    if (globalAddr && validateGlobal(globalAddr)) {
+                        uintptr_t val = 0;
+                        Memory::Read(globalAddr, val);
                         funcs.GameWorldSingleton = globalAddr;
-                        spdlog::info("RetryGlobalDiscovery: 'GameWorldSingleton' = 0x{:X} (via '{}', nth={}, -> 0x{:X})",
+                        spdlog::info("RetryGlobalDiscovery: 'GameWorldSingleton' = 0x{:X} (string-xref via '{}', nth={}, -> 0x{:X})",
                                      globalAddr, worldAnchors[a], n, val);
                     }
                 }
@@ -672,7 +924,7 @@ bool RetryGlobalDiscovery(const PatternScanner& scanner, GameFunctions& funcs) {
         }
     }
 
-    return found;
+    return found || (funcs.PlayerBase != 0);
 }
 
 } // namespace kmp

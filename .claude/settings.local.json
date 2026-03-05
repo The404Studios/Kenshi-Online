@@ -22,7 +22,10 @@
       "Bash(head:*)",
       "Bash(export:*)",
       "Bash(where cl:*)",
-      "Bash(do:*)"
+      "Bash(do:*)",
+      "Bash(mkdir:*)",
+      "Bash(where gh:*)",
+      "Bash(winget install:*)"
     ]
   }
 }

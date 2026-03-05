@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 #include <Windows.h>
 #include <algorithm>
+#include <cctype>
 
 namespace kmp {
 
@@ -108,7 +109,7 @@ std::vector<const PatternEntry*> PatternOrchestrator::GetByCategory(
 void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
     auto reg = [&](const char* id, const char* cat, const char* desc,
                    const char* pat, const char* str, int strLen,
-                   uint32_t rva, void** target) {
+                   uint32_t rva, void** target, bool crit = false) {
         PatternEntry e;
         e.id = id;
         e.category = cat;
@@ -118,6 +119,7 @@ void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
         e.stringAnchorLen = strLen;
         e.hardcodedRVA = rva;
         e.targetPtr = target;
+        e.critical = crit;
         Register(std::move(e));
     };
 
@@ -133,13 +135,13 @@ void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
         Register(std::move(e));
     };
 
-    // ── Entity Lifecycle ──
+    // ── Entity Lifecycle ── (CharacterSpawn/Destroy are CRITICAL for multiplayer)
     reg("CharacterSpawn", "entity", "RootObjectFactory::process",
         patterns::CHARACTER_SPAWN, "[RootObjectFactory::process] Character", 38,
-        0x00581770, &funcs.CharacterSpawn);
+        0x00581770, &funcs.CharacterSpawn, true);
     reg("CharacterDestroy", "entity", "NodeList destroy / character cleanup",
         patterns::CHARACTER_DESTROY, "NodeList::destroyNodesByBuilding", 31,
-        0x0038A720, &funcs.CharacterDestroy);
+        0x0038A720, &funcs.CharacterDestroy, true);
     reg("CreateRandomSquad", "entity", "RootObjectFactory::createRandomSquad",
         patterns::CREATE_RANDOM_SQUAD,
         "[RootObjectFactory::createRandomSquad] Missing squad leader", 59,
@@ -204,13 +206,13 @@ void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
         patterns::SPAWN_CHECK, " tried to spawn inside walls!", 29,
         0x004FFAD0, &funcs.SpawnCheck);
 
-    // ── Game Loop / Time ──
+    // ── Game Loop / Time ── (CRITICAL for multiplayer tick)
     reg("GameFrameUpdate", "core", "Main game frame tick",
         patterns::GAME_FRAME_UPDATE, "Kenshi 1.0.", 11,
-        0x00123A10, &funcs.GameFrameUpdate);
+        0x00123A10, &funcs.GameFrameUpdate, true);
     reg("TimeUpdate", "core", "Time scale handler",
         patterns::TIME_UPDATE, "timeScale", 9,
-        0x00214B50, &funcs.TimeUpdate);
+        0x00214B50, &funcs.TimeUpdate, true);
 
     // ── Save / Load ──
     reg("SaveGame", "save", "Save game function",
@@ -230,9 +232,25 @@ void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
     reg("SquadCreate", "squad", "Squad position reset / management",
         patterns::SQUAD_CREATE, "Reset squad positions", 21,
         0x00480B50, &funcs.SquadCreate);
-    reg("SquadAddMember", "squad", "Delayed spawning / member additions",
-        patterns::SQUAD_ADD_MEMBER, "delayedSpawningChecks", 21,
-        0x00928423, &funcs.SquadAddMember);
+
+    // SquadAddMember: resolved via RTTI vtable scan.
+    // The addMember function is at vtable slot 2 (offset +0x10) of the ActivePlatoon class.
+    // String anchor "delayedSpawningChecks" is REMOVED — finds wrong function on Steam.
+    // vtableClass uses "|"-separated candidates for fuzzy RTTI name matching.
+    {
+        PatternEntry e;
+        e.id = "SquadAddMember";
+        e.category = "squad";
+        e.description = "ActivePlatoon::addMember (vtable slot 2)";
+        e.pattern = patterns::SQUAD_ADD_MEMBER;
+        e.stringAnchor = nullptr;
+        e.stringAnchorLen = 0;
+        e.hardcodedRVA = 0x00928423;
+        e.targetPtr = &funcs.SquadAddMember;
+        e.vtableClass = "ActivePlatoon|Platoon|Squad";
+        e.vtableSlot = 2;
+        Register(std::move(e));
+    }
 
     // ── Inventory / Items ──
     reg("ItemPickup", "inventory", "Inventory addItem",
@@ -250,10 +268,10 @@ void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
         patterns::FACTION_RELATION, "faction relation", 16,
         0x00872E00, &funcs.FactionRelation);
 
-    // ── AI System ──
+    // ── AI System ── (AICreate is CRITICAL — needed to suppress remote AI)
     reg("AICreate", "ai", "AI controller creation",
         patterns::AI_CREATE, "[AI::create] No faction for", 27,
-        0x00622110, &funcs.AICreate);
+        0x00622110, &funcs.AICreate, true);
     reg("AIPackages", "ai", "AI behavior package loader",
         patterns::AI_PACKAGES, "AI packages", 11,
         0x00271620, &funcs.AIPackages);
@@ -277,9 +295,14 @@ void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
         patterns::BUILDING_REPAIR, nullptr, 0,
         0x00555650, &funcs.BuildingRepair);
 
-    // ── Global Pointers ──
-    regGlobal("PlayerBase", "global", "Player data base pointer",
-              0x01AC8A90, &funcs.PlayerBase);
+    // ── Global Pointers ── (PlayerBase is CRITICAL for entity iteration)
+    {
+        PatternEntry e;
+        e.id = "PlayerBase"; e.category = "global"; e.description = "Player data base pointer";
+        e.hardcodedRVA = 0x01AC8A90; e.isGlobalPointer = true; e.critical = true;
+        e.targetUintptr = &funcs.PlayerBase;
+        Register(std::move(e));
+    }
     regGlobal("GameWorldSingleton", "global", "GameWorld singleton pointer",
               0x02133040, &funcs.GameWorldSingleton);
 
@@ -450,6 +473,18 @@ void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
 
 void PatternOrchestrator::ResolveEntry(PatternEntry& entry, uintptr_t address,
                                         ResolutionMethod method, float confidence) {
+    // MSVC x64 functions are 16-byte aligned. A non-aligned address from pattern scan
+    // or string xref is a mid-function hit (SEH handler block etc.) — reject it so
+    // later phases (vtable resolution, call graph) can still try.
+    if (!entry.isGlobalPointer && (address & 0xF) != 0 &&
+        (method == ResolutionMethod::PatternScan || method == ResolutionMethod::StringXref ||
+         method == ResolutionMethod::HardcodedOffset)) {
+        spdlog::warn("  Rejecting '{}' = 0x{:X} via {} — NOT 16-byte aligned (0x{:X}), "
+                     "likely mid-function hit",
+                     entry.id, address, ResolutionMethodName(method), address & 0xF);
+        return; // Don't mark resolved — let later phases try
+    }
+
     entry.resolvedAddress = address;
     entry.resolvedMethod = method;
     entry.confidence = confidence;
@@ -501,7 +536,18 @@ bool PatternOrchestrator::TryStringXref(PatternEntry& entry) {
                 ResolveEntry(entry, funcAddr, ResolutionMethod::StringXref, 0.8f);
                 return true;
             }
-            spdlog::warn("  StringXref '{}': xref exists but funcAddress=0 (no .pdata?)", entry.id);
+            // .pdata couldn't map this xref to a function — try prologue walk-back
+            uintptr_t codeAddr = matchingStrings[0]->xrefs[0].codeAddress;
+            if (codeAddr) {
+                uintptr_t funcStart = WalkBackToPrologue(codeAddr);
+                if (funcStart) {
+                    spdlog::info("  StringXref '{}': prologue walk-back from 0x{:X} → 0x{:X}",
+                                 entry.id, codeAddr, funcStart);
+                    ResolveEntry(entry, funcStart, ResolutionMethod::StringXref, 0.7f);
+                    return true;
+                }
+            }
+            spdlog::warn("  StringXref '{}': xref exists but funcAddress=0 and walk-back failed", entry.id);
         } else {
             spdlog::warn("  StringXref '{}': string found at 0x{:X} but no code xrefs "
                          "(no LEA referencing it)", entry.id, matchingStrings[0]->address);
@@ -516,10 +562,28 @@ bool PatternOrchestrator::TryStringXref(PatternEntry& entry) {
 
 bool PatternOrchestrator::TryVTableSlot(PatternEntry& entry) {
     if (entry.vtableClass.empty() || entry.vtableSlot < 0) return false;
-    uintptr_t func = m_vtables.GetVirtualFunction(entry.vtableClass, entry.vtableSlot);
-    if (!func) return false;
-    ResolveEntry(entry, func, ResolutionMethod::VTableSlot, 0.9f);
-    return true;
+
+    // Support "|"-separated candidate class names (e.g. "ActivePlatoon|Platoon|Squad")
+    // Try each candidate in order; first match wins.
+    std::string candidates = entry.vtableClass;
+    size_t pos = 0;
+    while (pos < candidates.size()) {
+        size_t delim = candidates.find('|', pos);
+        std::string name = candidates.substr(pos, delim == std::string::npos ? std::string::npos : delim - pos);
+        pos = (delim == std::string::npos) ? candidates.size() : delim + 1;
+
+        if (name.empty()) continue;
+
+        uintptr_t func = m_vtables.GetVirtualFunction(name, entry.vtableSlot);
+        if (func) {
+            spdlog::info("  VTableSlot '{}': resolved via RTTI class '{}' slot {} -> 0x{:X}",
+                         entry.id, name, entry.vtableSlot, func);
+            ResolveEntry(entry, func, ResolutionMethod::VTableSlot, 0.9f);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool PatternOrchestrator::TryHardcodedOffset(PatternEntry& entry) {
@@ -530,12 +594,24 @@ bool PatternOrchestrator::TryHardcodedOffset(PatternEntry& entry) {
         // Validate that we can read through the pointer
         uintptr_t val = 0;
         if (Memory::Read(addr, val)) {
-            // Accept if value is 0 (game not loaded yet) or a valid user-mode pointer
-            if (val == 0 || (val > 0x10000 && val < 0x00007FFFFFFFFFFF &&
-                             val != 0xFFFFFFFFFFFFFFFF && val != 0xCCCCCCCCCCCCCCCC)) {
-                ResolveEntry(entry, addr, ResolutionMethod::HardcodedOffset,
-                             val == 0 ? 0.5f : 0.95f);
+            // Accept if value is 0 (game not loaded yet) or a valid heap/stack pointer.
+            // Additional checks: a valid Kenshi object pointer should be page-aligned-ish
+            // and readable (not just a random number in user-mode range).
+            if (val == 0) {
+                ResolveEntry(entry, addr, ResolutionMethod::HardcodedOffset, 0.5f);
                 return true;
+            }
+            if (val > 0x10000 && val < 0x00007FFFFFFFFFFF &&
+                val != 0xFFFFFFFFFFFFFFFF && val != 0xCCCCCCCCCCCCCCCC &&
+                val != 0xCDCDCDCDCDCDCDCD) {
+                // Double-dereference check: a real object pointer should itself be readable
+                uintptr_t vtable = 0;
+                if (Memory::Read(val, vtable) && vtable > 0x10000 && vtable < 0x00007FFFFFFFFFFF) {
+                    ResolveEntry(entry, addr, ResolutionMethod::HardcodedOffset, 0.95f);
+                    return true;
+                }
+                spdlog::debug("  Hardcoded global 0x{:X} for '{}' reads 0x{:X} but deref failed — rejecting",
+                              addr, entry.id, val);
             }
         }
         return false;
@@ -593,6 +669,215 @@ bool PatternOrchestrator::TryCallGraphTrace(PatternEntry& entry) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  PROLOGUE WALK-BACK
+// ═══════════════════════════════════════════════════════════════════════════
+
+uintptr_t PatternOrchestrator::WalkBackToPrologue(uintptr_t codeAddr, int maxDistance) const {
+    // Walk backwards from a code address looking for common x64 function prologues.
+    // Kenshi (MSVC-compiled) uses these consistently:
+    //   48 8B C4       mov rax, rsp
+    //   40 55          push rbp (with REX)
+    //   40 53          push rbx (with REX)
+    //   40 56          push rsi (with REX)
+    //   40 57          push rdi (with REX)
+    //   48 89 5C 24    mov [rsp+xx], rbx
+    //   48 83 EC       sub rsp, xx
+    //   CC             int3 padding (function boundary marker)
+    //
+    // Strategy: walk back byte-by-byte. When we hit CC padding (int3),
+    // the next non-CC byte is the function start. Also check for known
+    // prologue patterns at each position.
+
+    uintptr_t textBase = m_scanner.GetBase();
+    uintptr_t textEnd = textBase + m_scanner.GetSize();
+    uintptr_t searchStart = codeAddr - maxDistance;
+    if (searchStart < textBase) searchStart = textBase;
+
+    // Strategy 1: Walk back looking for CC padding → function start
+    for (uintptr_t addr = codeAddr - 1; addr >= searchStart; addr--) {
+        uint8_t byte = 0;
+        if (!Memory::Read(addr, byte)) break;
+
+        if (byte == 0xCC) {
+            // Found int3 padding — function starts at next byte
+            uintptr_t funcStart = addr + 1;
+
+            // Validate: check the bytes at funcStart look like a prologue
+            uint32_t dword = 0;
+            if (Memory::Read(funcStart, dword)) {
+                uint8_t p0 = dword & 0xFF, p1 = (dword >> 8) & 0xFF, p2 = (dword >> 16) & 0xFF;
+                // Common MSVC prologues
+                if (p0 == 0x48 && p1 == 0x8B && p2 == 0xC4) return funcStart;
+                if (p0 == 0x48 && p1 == 0x89 && p2 == 0x5C) return funcStart;
+                if (p0 == 0x48 && p1 == 0x83 && p2 == 0xEC) return funcStart;
+                if (p0 == 0x40 && (p1 >= 0x53 && p1 <= 0x57)) return funcStart;
+                if (p0 == 0x55 || p0 == 0x53) return funcStart; // push rbp/rbx
+                if (p0 == 0x41 && (p1 >= 0x54 && p1 <= 0x57)) return funcStart;
+                if (p0 == 0x48 && p1 == 0x81 && p2 == 0xEC) return funcStart;
+            }
+            // CC but no recognized prologue — keep going (might be data)
+        }
+    }
+
+    // Strategy 2: Walk back checking for prologue patterns at aligned addresses
+    // Functions are often (but not always) 16-byte aligned
+    for (uintptr_t addr = codeAddr & ~0xF; addr >= searchStart; addr -= 16) {
+        uint32_t dw = 0;
+        if (!Memory::Read(addr, dw)) break;
+        uint8_t p0 = dw & 0xFF, p1 = (dw >> 8) & 0xFF, p2 = (dw >> 16) & 0xFF;
+
+        if (p0 == 0x48 && p1 == 0x8B && p2 == 0xC4) return addr;
+        if (p0 == 0x40 && (p1 >= 0x53 && p1 <= 0x57)) return addr;
+    }
+
+    return 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DIRECT STRING SEARCH (emergency fallback)
+// ═══════════════════════════════════════════════════════════════════════════
+
+bool PatternOrchestrator::TryDirectStringSearch(PatternEntry& entry) {
+    if (!entry.stringAnchor || entry.stringAnchorLen <= 0) return false;
+
+    uintptr_t moduleBase = m_scanner.GetBase();
+    size_t moduleSize = m_scanner.GetSize();
+
+    // Step 1: Find the string in .rdata by scanning for its bytes
+    const auto* rdata = m_scanner.FindSection(".rdata");
+    if (!rdata) return false;
+
+    std::string needle(entry.stringAnchor, entry.stringAnchorLen);
+    uintptr_t stringAddr = 0;
+
+    for (uintptr_t addr = rdata->base; addr < rdata->base + rdata->size - needle.size(); addr++) {
+        bool match = true;
+        for (size_t i = 0; i < needle.size(); i++) {
+            uint8_t byte = 0;
+            if (!Memory::Read(addr + i, byte) || byte != static_cast<uint8_t>(needle[i])) {
+                match = false;
+                break;
+            }
+        }
+        if (match) {
+            stringAddr = addr;
+            break;
+        }
+    }
+
+    if (!stringAddr) {
+        spdlog::debug("  DirectStringSearch '{}': string not found in .rdata", entry.id);
+        return false;
+    }
+
+    spdlog::info("  DirectStringSearch '{}': string found at 0x{:X}", entry.id, stringAddr);
+
+    // Step 2: Scan .text for LEA instructions that reference this string
+    // LEA reg, [rip+disp32] = 48 8D xx yy yy yy yy (7 bytes)
+    // or without REX: 8D xx yy yy yy yy (6 bytes)
+    const auto* text = m_scanner.FindSection(".text");
+    if (!text) return false;
+
+    for (uintptr_t addr = text->base; addr < text->base + text->size - 7; addr++) {
+        uint8_t b0 = 0, b1 = 0, b2 = 0;
+        Memory::Read(addr, b0);
+        Memory::Read(addr + 1, b1);
+        Memory::Read(addr + 2, b2);
+
+        // Check for LEA with REX.W prefix: 48 8D xx [disp32]
+        // ModRM byte: xx where mod=00, rm=101 (RIP-relative) → (b2 & 0xC7) == 0x05
+        if (b0 == 0x48 && b1 == 0x8D && (b2 & 0xC7) == 0x05) {
+            int32_t disp = 0;
+            if (!Memory::Read(addr + 3, disp)) continue;
+
+            uintptr_t target = addr + 7 + disp; // RIP-relative: next instruction + displacement
+            if (target == stringAddr) {
+                spdlog::info("  DirectStringSearch '{}': LEA xref at 0x{:X}", entry.id, addr);
+
+                // Step 3: Walk back from LEA to find function start
+                uintptr_t funcStart = WalkBackToPrologue(addr);
+                if (funcStart) {
+                    spdlog::info("  DirectStringSearch '{}': prologue at 0x{:X}", entry.id, funcStart);
+                    ResolveEntry(entry, funcStart, ResolutionMethod::StringXref, 0.75f);
+                    return true;
+                }
+
+                // Try .pdata as alternative
+                auto* func = m_pdata.FindFunction(addr);
+                if (func) {
+                    spdlog::info("  DirectStringSearch '{}': .pdata func at 0x{:X}", entry.id, func->startVA);
+                    ResolveEntry(entry, func->startVA, ResolutionMethod::StringXref, 0.8f);
+                    return true;
+                }
+            }
+        }
+
+        // Also check 4C 8D (LEA r8-r15, [rip+disp32])
+        if (b0 == 0x4C && b1 == 0x8D && (b2 & 0xC7) == 0x05) {
+            int32_t disp = 0;
+            if (!Memory::Read(addr + 3, disp)) continue;
+
+            uintptr_t target = addr + 7 + disp;
+            if (target == stringAddr) {
+                spdlog::info("  DirectStringSearch '{}': LEA r8+ xref at 0x{:X}", entry.id, addr);
+                uintptr_t funcStart = WalkBackToPrologue(addr);
+                if (funcStart) {
+                    ResolveEntry(entry, funcStart, ResolutionMethod::StringXref, 0.75f);
+                    return true;
+                }
+                auto* func = m_pdata.FindFunction(addr);
+                if (func) {
+                    ResolveEntry(entry, func->startVA, ResolutionMethod::StringXref, 0.8f);
+                    return true;
+                }
+            }
+        }
+    }
+
+    spdlog::warn("  DirectStringSearch '{}': string at 0x{:X} but no LEA xref found", entry.id, stringAddr);
+    return false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PROLOGUE-VALIDATED RVA (emergency fallback for critical functions)
+// ═══════════════════════════════════════════════════════════════════════════
+
+bool PatternOrchestrator::TryPrologueValidatedRVA(PatternEntry& entry) {
+    if (entry.hardcodedRVA == 0) return false;
+
+    uintptr_t addr = m_scanner.GetBase() + entry.hardcodedRVA;
+
+    // Read 4 bytes at the target and check for a valid function prologue
+    uint32_t dword = 0;
+    if (!Memory::Read(addr, dword)) return false;
+    uint8_t p0 = dword & 0xFF, p1 = (dword >> 8) & 0xFF;
+    uint8_t p2 = (dword >> 16) & 0xFF, p3 = (dword >> 24) & 0xFF;
+
+    bool validPrologue =
+        (p0 == 0x48 && p1 == 0x8B && p2 == 0xC4) ||  // mov rax, rsp
+        (p0 == 0x48 && p1 == 0x89 && p2 == 0x5C) ||  // mov [rsp+xx], rbx
+        (p0 == 0x48 && p1 == 0x83 && p2 == 0xEC) ||  // sub rsp, xx
+        (p0 == 0x48 && p1 == 0x81 && p2 == 0xEC) ||  // sub rsp, large
+        (p0 == 0x40 && p1 >= 0x53 && p1 <= 0x57) ||  // push r with REX
+        (p0 == 0x41 && p1 >= 0x54 && p1 <= 0x57) ||  // push r8-r15
+        (p0 == 0x55) ||  // push rbp
+        (p0 == 0x53) ||  // push rbx
+        (p0 == 0x56) ||  // push rsi
+        (p0 == 0x57);    // push rdi
+
+    if (!validPrologue) {
+        spdlog::debug("  PrologueRVA '{}': 0x{:X} has bytes {:02X} {:02X} {:02X} {:02X} — not a prologue",
+                       entry.id, addr, p0, p1, p2, p3);
+        return false;
+    }
+
+    spdlog::warn("  PrologueRVA '{}': EMERGENCY accepting 0x{:X} (prologue {:02X} {:02X} {:02X} {:02X})",
+                 entry.id, addr, p0, p1, p2, p3);
+    ResolveEntry(entry, addr, ResolutionMethod::HardcodedOffset, 0.55f);
+    return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  PIPELINE PHASES
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -645,6 +930,25 @@ void PatternOrchestrator::RunPhase3_VTables() {
     spdlog::info("Orchestrator Phase 3: VTable scanning + RTTI");
     m_vtables.Init(m_scanner.GetBase(), m_scanner.GetSize(), &m_pdata);
     m_vtables.ScanVTables();
+
+    // Diagnostic: dump all RTTI classes related to squad/platoon for SquadAddMember discovery
+    m_vtables.ForEach([](const VTableInfo& vt) {
+        // Case-insensitive substring check for diagnostic keywords
+        std::string lower = vt.className;
+        for (auto& c : lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+        if (lower.find("platoon") != std::string::npos ||
+            lower.find("squad") != std::string::npos ||
+            lower.find("active") != std::string::npos) {
+            spdlog::info("  RTTI class '{}' (mangled: {}) — {} slots, vtable@0x{:X}",
+                         vt.className, vt.mangledName, vt.slotCount, vt.address);
+            // Log first 5 slots for identification
+            for (size_t i = 0; i < vt.slots.size() && i < 5; i++) {
+                spdlog::info("    slot[{}] = 0x{:X} {}", i, vt.slots[i].funcAddress,
+                             vt.slots[i].funcLabel.empty() ? "" : vt.slots[i].funcLabel);
+            }
+        }
+    });
 
     m_lastReport.vtablesFound = m_vtables.GetVTableCount();
     m_lastReport.timing.vtables = ElapsedMs(start);
@@ -806,6 +1110,47 @@ void PatternOrchestrator::RunPhase7_GlobalPointers() {
     m_lastReport.timing.globalPtrs = ElapsedMs(start);
 }
 
+void PatternOrchestrator::RunPhase8_EmergencyCritical() {
+    // Emergency resolution for critical patterns that survived all 7 phases unresolved.
+    // Uses aggressive fallbacks that are slower but more portable:
+    //   1. Direct string search in .rdata + LEA xref scan in .text
+    //   2. Prologue-validated hardcoded RVA acceptance
+
+    int unresolvedCritical = 0;
+    for (const auto& entry : m_entries) {
+        if (!entry.isResolved && entry.critical) unresolvedCritical++;
+    }
+
+    if (unresolvedCritical == 0) return;
+
+    spdlog::warn("Orchestrator Phase 8: EMERGENCY — {} critical entries unresolved", unresolvedCritical);
+
+    int resolved = 0;
+    for (auto& entry : m_entries) {
+        if (entry.isResolved || !entry.critical) continue;
+
+        spdlog::warn("  Emergency resolution for CRITICAL entry '{}'", entry.id);
+
+        // Attempt 1: Direct brute-force string search + LEA scan
+        if (TryDirectStringSearch(entry)) {
+            resolved++;
+            continue;
+        }
+
+        // Attempt 2: Prologue-validated hardcoded RVA
+        if (TryPrologueValidatedRVA(entry)) {
+            resolved++;
+            continue;
+        }
+
+        spdlog::error("  CRITICAL ENTRY '{}' UNRESOLVED — hook will NOT be installed", entry.id);
+    }
+
+    if (resolved > 0) {
+        spdlog::info("  Phase 8 emergency resolved {} critical entries", resolved);
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  FULL PIPELINE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -831,6 +1176,7 @@ OrchestratorReport PatternOrchestrator::Run() {
     RunPhase5_StringFallback();
     RunPhase6_CallGraph();
     RunPhase7_GlobalPointers();
+    RunPhase8_EmergencyCritical();
 
     // Compile final stats
     m_lastReport.totalResolved = CountResolved();

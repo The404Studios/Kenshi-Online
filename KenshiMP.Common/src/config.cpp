@@ -36,6 +36,7 @@ bool ClientConfig::Load(const std::string& path) {
         }
         if (j.contains("masterServer")) masterServer = j["masterServer"].get<std::string>();
         if (j.contains("masterPort"))   masterPort   = j["masterPort"].get<uint16_t>();
+        if (j.contains("useSyncOrchestrator")) useSyncOrchestrator = j["useSyncOrchestrator"].get<bool>();
         return true;
     } catch (...) {
         return false;
@@ -52,6 +53,7 @@ bool ClientConfig::Save(const std::string& path) const {
     j["favoriteServers"] = favoriteServers;
     j["masterServer"] = masterServer;
     j["masterPort"]   = masterPort;
+    j["useSyncOrchestrator"] = useSyncOrchestrator;
 
     std::ofstream file(path);
     if (!file.is_open()) return false;

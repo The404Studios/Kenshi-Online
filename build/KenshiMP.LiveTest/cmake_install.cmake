@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/wilde/Documents/GitHub/Kenshi-Online/KenshiMP.LiveTest
+# Install script for directory: C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.LiveTest
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -35,6 +35,6 @@ endif()
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/KenshiMP.LiveTest/install_local_manifest.txt"
+  file(WRITE "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/KenshiMP.LiveTest/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

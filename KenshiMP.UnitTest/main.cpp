@@ -16,6 +16,7 @@
 #include "sync/entity_registry.h"
 #include "sync/interpolation.h"
 #include "kmp/types.h"
+#include "kmp/constants.h"
 #include "kmp/protocol.h"
 #include "kmp/messages.h"
 #include "kmp/memory.h"
@@ -334,29 +335,41 @@ static void Test_Interpolation() {
 
     kmp::Interpolation interp;
 
-    // Simulate server sending positions at 100ms intervals
-    kmp::Vec3 pos1{0.0f, 0.0f, 0.0f};
-    kmp::Vec3 pos2{10.0f, 0.0f, 0.0f};
-    kmp::Vec3 pos3{20.0f, 0.0f, 0.0f};
+    // Simulate server sending positions at 50ms intervals (matching KMP_TICK_RATE=20Hz).
+    // Use small deltas (2 units) so the snap correction system doesn't activate
+    // (KMP_SNAP_THRESHOLD_MIN=5.0). First snapshot establishes velocity baseline.
+    kmp::Vec3 pos0{0.0f, 0.0f, 0.0f};
+    kmp::Vec3 pos1{2.0f, 0.0f, 0.0f};
+    kmp::Vec3 pos2{4.0f, 0.0f, 0.0f};
+    kmp::Vec3 pos3{6.0f, 0.0f, 0.0f};
     kmp::Quat rot{};
 
-    interp.AddSnapshot(1, 1.0f, pos1, rot);
-    interp.AddSnapshot(1, 1.1f, pos2, rot);
-    interp.AddSnapshot(1, 1.2f, pos3, rot);
+    // Warm-up snapshot establishes velocity so snap correction doesn't fire on pos1
+    interp.AddSnapshot(1, 1.00f, pos0, rot);
+    interp.AddSnapshot(1, 1.05f, pos1, rot);
+    interp.AddSnapshot(1, 1.10f, pos2, rot);
+    interp.AddSnapshot(1, 1.15f, pos3, rot);
 
-    // Query at midpoint between pos1 and pos2 (t=1.05)
+    // The interpolation system subtracts an adaptive delay (~50ms when jitter is zero)
+    // from renderTime before interpolating. So to get interpTime at the midpoint of
+    // [pos1(t=1.05), pos2(t=1.10)], we need interpTime=1.075 → renderTime=1.075+0.05=1.125
+    const float delay = kmp::KMP_INTERP_DELAY_MIN; // 50ms — expected with zero-jitter snapshots
+
+    // Query at midpoint between pos1 (x=2) and pos2 (x=4) → expect x≈3.0
     kmp::Vec3 result;
     kmp::Quat resultRot;
-    bool ok = interp.GetInterpolated(1, 1.05f, result, resultRot);
+    float queryTime1 = 1.075f + delay;
+    bool ok = interp.GetInterpolated(1, queryTime1, result, resultRot);
     TestAssert(ok, "GetInterpolated returns true");
-    TestAssert(FloatEq(result.x, 5.0f, 1.0f), "Interpolated X is ~5.0 (midpoint)");
-    printf("    At t=1.05: interpolated X = %.2f (expected ~5.0)\n", result.x);
+    TestAssert(FloatEq(result.x, 3.0f, 0.5f), "Interpolated X is ~3.0 (midpoint)");
+    printf("    At renderTime=%.3f: interpolated X = %.2f (expected ~3.0)\n", queryTime1, result.x);
 
-    // Query at midpoint between pos2 and pos3 (t=1.15)
-    ok = interp.GetInterpolated(1, 1.15f, result, resultRot);
-    TestAssert(ok, "GetInterpolated at t=1.15 returns true");
-    TestAssert(FloatEq(result.x, 15.0f, 1.0f), "Interpolated X is ~15.0");
-    printf("    At t=1.15: interpolated X = %.2f (expected ~15.0)\n", result.x);
+    // Query at midpoint between pos2 (x=4) and pos3 (x=6) → expect x≈5.0
+    float queryTime2 = 1.125f + delay;
+    ok = interp.GetInterpolated(1, queryTime2, result, resultRot);
+    TestAssert(ok, "GetInterpolated at midpoint returns true");
+    TestAssert(FloatEq(result.x, 5.0f, 0.5f), "Interpolated X is ~5.0");
+    printf("    At renderTime=%.3f: interpolated X = %.2f (expected ~5.0)\n", queryTime2, result.x);
 
     // Remove entity
     interp.RemoveEntity(1);

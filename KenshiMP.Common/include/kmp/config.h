@@ -15,6 +15,7 @@ struct ClientConfig {
     std::string masterServer   = "127.0.0.1";   // Master server address
     uint16_t    masterPort     = 27801;          // Master server port
     std::vector<std::string> favoriteServers = {"127.0.0.1:27800"};
+    bool        useSyncOrchestrator = false; // New 7-stage sync pipeline (set true to test)
 
     bool Load(const std::string& path);
     bool Save(const std::string& path) const;

@@ -73,6 +73,18 @@ public:
         case MessageType::S2C_TradeResult:
             HandleTradeResult(reader);
             return;
+        case MessageType::S2C_PipelineSnapshot: {
+            PlayerID sender;
+            if (!reader.ReadU32(sender)) return;
+            Core::Get().GetPipelineOrch().OnRemoteSnapshot(sender, reader.Current(), reader.Remaining());
+            return;
+        }
+        case MessageType::S2C_PipelineEvent: {
+            PlayerID sender;
+            if (!reader.ReadU32(sender)) return;
+            Core::Get().GetPipelineOrch().OnRemoteEvent(sender, reader.Current(), reader.Remaining());
+            return;
+        }
         default:
             break; // Fall through to game-world-dependent messages below
         }
@@ -203,6 +215,17 @@ private:
         // Initialize the player controller with our ID and name
         core.GetPlayerController().InitializeLocalPlayer(msg.playerId, core.GetConfig().playerName);
 
+        // Initialize sync orchestrator
+        if (auto* so = core.GetSyncOrchestrator()) {
+            so->Initialize(msg.playerId, core.GetConfig().playerName);
+        }
+
+        // Re-initialize pipeline debugger with correct player ID
+        // (it was constructed with ID=0 during Core::Initialize before handshake)
+        core.GetPipelineOrch().Shutdown();
+        core.GetPipelineOrch().Initialize(msg.playerId, core.GetEntityRegistry(),
+            core.GetSpawnManager(), core.GetLoadingOrch(), core.GetClient(), core.GetNativeHud());
+
         // Re-enable entity hooks that were suspended during game loading
         entity_hooks::ResumeForNetwork();
 
@@ -254,6 +277,11 @@ private:
         core.GetNativeHud().AddSystemMessage(std::string(msg.playerName) + " joined the game");
         core.GetOverlay().AddPlayer({msg.playerId, msg.playerName, 0, false});
         core.GetPlayerController().RegisterRemotePlayer(msg.playerId, msg.playerName);
+
+        // Register with sync orchestrator engines
+        if (auto* so = core.GetSyncOrchestrator()) {
+            so->GetPlayerEngine().OnRemotePlayerJoined(msg.playerId, msg.playerName);
+        }
     }
 
     static void HandlePlayerLeft(PacketReader& reader) {
@@ -269,6 +297,13 @@ private:
         core.GetNativeHud().AddSystemMessage(leftName + " left the game");
         core.GetOverlay().RemovePlayer(msg.playerId);
         core.GetPlayerController().RemoveRemotePlayer(msg.playerId);
+
+        // Notify sync orchestrator engines
+        if (auto* so = core.GetSyncOrchestrator()) {
+            so->GetPlayerEngine().OnRemotePlayerLeft(msg.playerId);
+            so->GetZoneEngine().RemovePlayer(msg.playerId);
+            so->GetResolver().ClearInterest(msg.playerId);
+        }
 
         // Clean up all entities owned by the disconnected player.
         // Since CharacterDestroy hook is disabled (pattern found wrong function),
@@ -459,6 +494,11 @@ private:
 
             interp.AddSnapshot(pos.entityId, now, position, rotation,
                                pos.moveSpeed, pos.animStateId);
+        }
+
+        // Update player engine with position + activity
+        if (auto* so = Core::Get().GetSyncOrchestrator()) {
+            so->GetPlayerEngine().RecordActivity(sourcePlayer);
         }
     }
 
@@ -765,6 +805,11 @@ private:
         }
 
         spdlog::info("PacketHandler: World snapshot processed");
+
+        // Notify sync orchestrator
+        if (auto* so = core.GetSyncOrchestrator()) {
+            so->GetPlayerEngine().OnWorldSnapshotReceived(static_cast<int>(entityCount));
+        }
     }
 
     // ── Build Placed ──

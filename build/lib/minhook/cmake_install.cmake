@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/wilde/Documents/GitHub/Kenshi-Online/lib/minhook
+# Install script for directory: C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/minhook
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,20 +34,20 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES
-    "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/minhook-config.cmake"
-    "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/minhook-config-version.cmake"
+    "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/minhook-config.cmake"
+    "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/minhook-config-version.cmake"
     )
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/Debug/minhook.x64d.lib")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/Debug/minhook.x64d.lib")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/Release/minhook.x64.lib")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/Release/minhook.x64.lib")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/MinSizeRel/minhook.x64.lib")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/MinSizeRel/minhook.x64.lib")
   elseif(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ww][Ii][Tt][Hh][Dd][Ee][Bb][Ii][Nn][Ff][Oo])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/RelWithDebInfo/minhook.x64.lib")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/RelWithDebInfo/minhook.x64.lib")
   endif()
 endif()
 
@@ -55,7 +55,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/minhook/minhook-targets.cmake")
     file(DIFFERENT _cmake_export_file_changed FILES
          "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/minhook/minhook-targets.cmake"
-         "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets.cmake")
+         "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets.cmake")
     if(_cmake_export_file_changed)
       file(GLOB _cmake_old_config_files "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/minhook/minhook-targets-*.cmake")
       if(_cmake_old_config_files)
@@ -68,28 +68,28 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
     endif()
     unset(_cmake_export_file_changed)
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets.cmake")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets.cmake")
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets-debug.cmake")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets-debug.cmake")
   endif()
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets-minsizerel.cmake")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets-minsizerel.cmake")
   endif()
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ww][Ii][Tt][Hh][Dd][Ee][Bb][Ii][Nn][Ff][Oo])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets-relwithdebinfo.cmake")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets-relwithdebinfo.cmake")
   endif()
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets-release.cmake")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/minhook" TYPE FILE FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/CMakeFiles/Export/91d61109391215ee40978023d68aad4d/minhook-targets-release.cmake")
   endif()
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/." TYPE DIRECTORY FILES "C:/Users/wilde/Documents/GitHub/Kenshi-Online/lib/minhook/include")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/." TYPE DIRECTORY FILES "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/minhook/include")
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/wilde/Documents/GitHub/Kenshi-Online/build/lib/minhook/install_local_manifest.txt"
+  file(WRITE "C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/minhook/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

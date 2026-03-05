@@ -9,14 +9,19 @@
 #include "sync/interpolation.h"
 #include "game/spawn_manager.h"
 #include "game/player_controller.h"
+#include "game/loading_orchestrator.h"
 #include "ui/overlay.h"
 #include "ui/native_hud.h"
+#include "sync/sync_orchestrator.h"
+#include "sync/sync_facilitator.h"
+#include "sync/pipeline_orchestrator.h"
 #include "sys/task_orchestrator.h"
 #include "sys/frame_data.h"
 #include <spdlog/spdlog.h>
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <memory>
 
 namespace kmp {
 
@@ -34,14 +39,16 @@ public:
     NetworkClient&    GetClient()          { return m_client; }
     EntityRegistry&   GetEntityRegistry()  { return m_entityRegistry; }
     Interpolation&    GetInterpolation()   { return m_interpolation; }
-    SpawnManager&     GetSpawnManager()    { return m_spawnManager; }
-    PlayerController& GetPlayerController(){ return m_playerController; }
+    SpawnManager&        GetSpawnManager()       { return m_spawnManager; }
+    PlayerController&    GetPlayerController()  { return m_playerController; }
+    LoadingOrchestrator& GetLoadingOrch()       { return m_loadingOrch; }
     Overlay&          GetOverlay()         { return m_overlay; }
     NativeHud&        GetNativeHud()       { return m_nativeHud; }
     ClientConfig&     GetConfig()          { return m_config; }
 
     bool IsConnected() const { return m_connected; }
     bool IsHost() const { return m_isHost; }
+    bool IsSteamVersion() const { return m_isSteamVersion; }
     bool IsGameLoaded() const { return m_gameLoaded; }
     bool IsLoading() const { return m_isLoading; }
     void SetLoading(bool loading) { m_isLoading = loading; }
@@ -67,6 +74,14 @@ public:
             m_pipelineStarted = false;
             m_frameData[0].Clear();
             m_frameData[1].Clear();
+
+            // Reset sync orchestrator state
+            if (m_syncOrchestrator) {
+                m_syncOrchestrator->Reset();
+            }
+
+            // Reset pipeline debugger state
+            m_pipelineOrch.Shutdown();
 
             // Reset overlay auto-connect state so user can reconnect
             m_overlay.ResetForReconnect();
@@ -104,6 +119,16 @@ public:
     // Task orchestrator access
     TaskOrchestrator& GetOrchestrator() { return m_orchestrator; }
 
+    // Crash breadcrumb: last completed pipeline step (for SEH crash diagnostics)
+    int GetLastCompletedStep() const { return m_lastCompletedStep.load(std::memory_order_relaxed); }
+    void SetLastCompletedStep(int step) { m_lastCompletedStep.store(step, std::memory_order_relaxed); }
+
+    // Sync orchestrator (new engine pipeline)
+    SyncOrchestrator* GetSyncOrchestrator() { return m_syncOrchestrator.get(); }
+
+    // Pipeline debugger (network-replicated pipeline state)
+    PipelineOrchestrator& GetPipelineOrch() { return m_pipelineOrch; }
+
 private:
     // Staged pipeline methods (called from OnGameTick)
     void ApplyRemotePositions();
@@ -135,17 +160,20 @@ private:
     NetworkClient   m_client;
     EntityRegistry  m_entityRegistry;
     Interpolation   m_interpolation;
-    SpawnManager      m_spawnManager;
-    PlayerController  m_playerController;
+    SpawnManager       m_spawnManager;
+    PlayerController   m_playerController;
+    LoadingOrchestrator m_loadingOrch;
     Overlay           m_overlay;
     NativeHud         m_nativeHud;
     ClientConfig    m_config;
 
+    std::atomic<int>  m_lastCompletedStep{-1}; // Crash breadcrumb for SEH diagnostics
     std::atomic<bool> m_running{false};
     std::atomic<bool> m_connected{false};
     std::atomic<bool> m_gameLoaded{false};
     std::atomic<bool> m_isLoading{false};  // Set true by CharacterCreate burst, false by OnGameLoaded()
     bool              m_isHost = false;
+    bool              m_isSteamVersion = false;
     bool              m_timeHookActive = false;
     std::atomic<PlayerID> m_localPlayerId{0};
 
@@ -168,6 +196,13 @@ private:
     int               m_writeBuffer = 0; // Workers fill this
     int               m_readBuffer  = 1; // Game thread reads this
     bool              m_pipelineStarted = false; // True after first KickBackgroundWork
+
+    // Sync orchestrator (owns EntityResolver, ZoneEngine, PlayerEngine)
+    std::unique_ptr<SyncOrchestrator> m_syncOrchestrator;
+    bool              m_useSyncOrchestrator = false; // Feature flag for incremental rollout
+
+    // Pipeline debugger (network-replicated pipeline state)
+    PipelineOrchestrator m_pipelineOrch;
 };
 
 } // namespace kmp

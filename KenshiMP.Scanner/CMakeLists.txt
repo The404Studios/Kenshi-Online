@@ -4,6 +4,7 @@ add_library(KenshiMP.Scanner STATIC
     src/patterns.cpp
     src/memory.cpp
     src/hook_manager.cpp
+    src/mov_rax_rsp_fix.cpp
     src/function_analyzer.cpp
     src/pdata_enumerator.cpp
     src/string_analyzer.cpp

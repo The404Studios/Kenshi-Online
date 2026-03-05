@@ -571,8 +571,23 @@ void CharacterIterator::Reset() {
     m_count = 0;
     m_listBase = 0;
 
-    auto isValidUserPtr = [](uintptr_t val) -> bool {
-        return val > 0x10000 && val < 0x00007FFFFFFFFFFF;
+    // Get module range for heap-vs-module discrimination
+    uintptr_t modBase = Memory::GetModuleBase();
+    size_t modSize = 0x4000000; // 64MB fallback
+    {
+        auto* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(modBase);
+        if (dos->e_magic == IMAGE_DOS_SIGNATURE) {
+            auto* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(modBase + dos->e_lfanew);
+            if (nt->Signature == IMAGE_NT_SIGNATURE)
+                modSize = nt->OptionalHeader.SizeOfImage;
+        }
+    }
+
+    auto isValidHeapPtr = [modBase, modSize](uintptr_t val) -> bool {
+        if (val < 0x10000 || val >= 0x00007FFFFFFFFFFF) return false;
+        // Must be outside module image — game objects are heap-allocated
+        if (val >= modBase && val < modBase + modSize) return false;
+        return true;
     };
 
     // ── Strategy 1: PlayerBase ──
@@ -580,7 +595,7 @@ void CharacterIterator::Reset() {
     uintptr_t playerBaseAddr = GetResolvedPlayerBase();
     if (playerBaseAddr != 0) {
         uintptr_t playerBase = 0;
-        if (Memory::Read(playerBaseAddr, playerBase) && isValidUserPtr(playerBase)) {
+        if (Memory::Read(playerBaseAddr, playerBase) && isValidHeapPtr(playerBase)) {
             m_listBase = playerBase;
         }
     }
@@ -602,7 +617,7 @@ void CharacterIterator::Reset() {
             // (b) The address of GameWorld directly (static object)
             // Try (a) first: dereference to get GameWorld*
             uintptr_t gameWorld = 0;
-            if (Memory::Read(gameWorldAddr, gameWorld) && isValidUserPtr(gameWorld)) {
+            if (Memory::Read(gameWorldAddr, gameWorld) && isValidHeapPtr(gameWorld)) {
                 // Got a valid pointer — this is case (a)
                 // Read lektor at gameWorld + characterList offset
                 // Try lektor format: +0x00 = pointer array, count derived by walking
@@ -613,7 +628,7 @@ void CharacterIterator::Reset() {
                 // Lektor format 1: count at +0x00, array at +0x08
                 Memory::Read(lektorBase, lektorCount);
                 Memory::Read(lektorBase + 0x08, arrayPtr);
-                if (lektorCount > 0 && lektorCount < 10000 && isValidUserPtr(arrayPtr)) {
+                if (lektorCount > 0 && lektorCount < 10000 && isValidHeapPtr(arrayPtr)) {
                     m_listBase = arrayPtr;
                     m_count = lektorCount;
                     spdlog::info("CharacterIterator: Using GameWorld lektor (format1) — {} characters at 0x{:X}",
@@ -624,7 +639,7 @@ void CharacterIterator::Reset() {
                 // Lektor format 2: array at +0x00, count at +0x08
                 Memory::Read(lektorBase, arrayPtr);
                 Memory::Read(lektorBase + 0x08, lektorCount);
-                if (lektorCount > 0 && lektorCount < 10000 && isValidUserPtr(arrayPtr)) {
+                if (lektorCount > 0 && lektorCount < 10000 && isValidHeapPtr(arrayPtr)) {
                     m_listBase = arrayPtr;
                     m_count = lektorCount;
                     spdlog::info("CharacterIterator: Using GameWorld lektor (format2) — {} characters at 0x{:X}",
@@ -641,7 +656,7 @@ void CharacterIterator::Reset() {
             // Lektor format 1
             Memory::Read(lektorBase, lektorCount);
             Memory::Read(lektorBase + 0x08, arrayPtr);
-            if (lektorCount > 0 && lektorCount < 10000 && isValidUserPtr(arrayPtr)) {
+            if (lektorCount > 0 && lektorCount < 10000 && isValidHeapPtr(arrayPtr)) {
                 m_listBase = arrayPtr;
                 m_count = lektorCount;
                 spdlog::info("CharacterIterator: Using GameWorld-direct lektor (format1) — {} characters at 0x{:X}",
@@ -652,7 +667,7 @@ void CharacterIterator::Reset() {
             // Lektor format 2
             Memory::Read(lektorBase, arrayPtr);
             Memory::Read(lektorBase + 0x08, lektorCount);
-            if (lektorCount > 0 && lektorCount < 10000 && isValidUserPtr(arrayPtr)) {
+            if (lektorCount > 0 && lektorCount < 10000 && isValidHeapPtr(arrayPtr)) {
                 m_listBase = arrayPtr;
                 m_count = lektorCount;
                 spdlog::info("CharacterIterator: Using GameWorld-direct lektor (format2) — {} characters at 0x{:X}",
@@ -686,7 +701,7 @@ void CharacterIterator::Reset() {
             if (!Memory::Read(m_listBase + j * sizeof(uintptr_t), charPtr) || charPtr == 0) {
                 break;
             }
-            if (!isValidUserPtr(charPtr)) {
+            if (!isValidHeapPtr(charPtr)) {
                 break;
             }
             estimatedCount++;

@@ -43,7 +43,6 @@
             </Widget>
 
             <!-- BACK button -->
-            <!-- BACK button -->
             <Widget type="Button" skin="Kenshi_Button1" position_real="0.1 0.61 0.8 0.09" align="HStretch Top" name="MPBackButton">
                 <Property key="Caption" value="BACK"/>
                 <Property key="FontName" value="Kenshi_PaintedTextFont_Large"/>
@@ -60,6 +59,7 @@
                 </Widget>
                 <Widget type="EditBox" skin="Kenshi_EditBox" position_real="0.32 0.0 0.66 0.1" align="HStretch Top" name="MPServerIP">
                     <Property key="Caption" value="127.0.0.1"/>
+                    <Property key="NeedKeyFocus" value="false"/>
                 </Widget>
 
                 <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.14 0.3 0.1" align="Left Top">
@@ -69,6 +69,7 @@
                 </Widget>
                 <Widget type="EditBox" skin="Kenshi_EditBox" position_real="0.32 0.14 0.3 0.1" align="Left Top" name="MPServerPort">
                     <Property key="Caption" value="27800"/>
+                    <Property key="NeedKeyFocus" value="false"/>
                 </Widget>
 
                 <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.28 0.3 0.1" align="Left Top">
@@ -78,6 +79,7 @@
                 </Widget>
                 <Widget type="EditBox" skin="Kenshi_EditBox" position_real="0.32 0.28 0.66 0.1" align="HStretch Top" name="MPPlayerName">
                     <Property key="Caption" value="Player"/>
+                    <Property key="NeedKeyFocus" value="false"/>
                 </Widget>
 
                 <Widget type="Button" skin="Kenshi_Button1" position_real="0.05 0.5 0.42 0.14" align="Left Bottom" name="MPConnectButton">
@@ -108,6 +110,7 @@
                 </Widget>
                 <Widget type="EditBox" skin="Kenshi_EditBox" position_real="0.42 0.0 0.56 0.1" align="HStretch Top" name="MPSettingsName">
                     <Property key="Caption" value="Player"/>
+                    <Property key="NeedKeyFocus" value="false"/>
                 </Widget>
 
                 <Widget type="TextBox" skin="Kenshi_TextboxStandardText" position_real="0.0 0.14 0.4 0.1" align="Left Top">

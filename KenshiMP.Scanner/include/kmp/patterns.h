@@ -149,7 +149,8 @@ constexpr const char* SPAWN_CHECK = "40 55 56 57 41 54 41 55 41 56 41 57 48 8D A
 // Game frame update / initialization
 // Found via "Kenshi 1.0."
 // RVA: 0x00123A10
-constexpr const char* GAME_FRAME_UPDATE = "48 8B C4 55 41 54 41 55 41 56 41 57 48 8D 68 88 48 81 EC 50 01 00 00 48 C7 44 24 38 FE FF FF FF";
+// Extended to 45 tokens for uniqueness (false positive at 0x00788100 shares first 32 bytes)
+constexpr const char* GAME_FRAME_UPDATE = "48 8B C4 55 41 54 41 55 41 56 41 57 48 8D 68 88 48 81 EC 50 01 00 00 48 C7 44 24 38 FE FF FF FF 48 89 58 10 48 89 70 18 48 89 78 20 48";
 
 // Time scale handler - processes game speed changes
 // Found via "timeScale"
@@ -239,7 +240,8 @@ constexpr const char* FACTION_RELATION = "48 8B C4 55 41 54 41 55 41 56 41 57 48
 // AI::create - creates AI controller for a character
 // Found via "[AI::create] No faction for"
 // RVA: 0x00622110
-constexpr const char* AI_CREATE = "40 57 48 81 EC 90 00 00 00 48 C7 44 24 28 FE FF FF FF 48 89 9C 24 B0 00 00 00 48 8B 05 ? ? ? ?";
+// Extended to 41 tokens for uniqueness (false positive at 0x000AF870 shares first 29 fixed bytes)
+constexpr const char* AI_CREATE = "40 57 48 81 EC 90 00 00 00 48 C7 44 24 28 FE FF FF FF 48 89 9C 24 B0 00 00 00 48 8B 05 ? ? ? ? 48 33 C4 48 89 84 24 80";
 
 // AI packages loader - loads and assigns AI behavior packages
 // Found via "AI packages"

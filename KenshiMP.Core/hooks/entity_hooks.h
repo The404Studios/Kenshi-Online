@@ -34,6 +34,12 @@ bool HasRecentInPlaceSpawn(int withinSeconds = 30);
 // Get total number of successful in-place spawns
 int GetInPlaceSpawnCount();
 
+// Diagnostic getters (for PipelineOrchestrator snapshot collection)
+int  GetTotalCreates();
+int  GetTotalDestroys();
+bool IsInBurst();
+bool IsLoadingComplete();
+
 // ── Loading-phase character cache (fallback for CharacterIterator) ──
 // Returns the faction pointer captured from the first character during loading.
 // This is available BEFORE connection and works even when PlayerBase fails.

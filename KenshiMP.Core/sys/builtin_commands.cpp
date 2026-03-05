@@ -348,6 +348,527 @@ void CommandRegistry::RegisterBuiltins() {
         return "Announcement sent.";
     });
 
+    // ═══════════════════════════════════════════════════════════════════
+    // DEBUG / REVERSE ENGINEERING TOOLS
+    // ═══════════════════════════════════════════════════════════════════
+
+    // /offsets — Dump all known offsets with verification status
+    Register("offsets", "Dump all game offsets and their status", [](const CommandArgs&) -> std::string {
+        auto& co = game::GetOffsets().character;
+        auto& wo = game::GetOffsets().world;
+
+        auto fmtOff = [](const char* name, int val) -> std::string {
+            char buf[64];
+            if (val >= 0)
+                snprintf(buf, sizeof(buf), "\n  %-22s 0x%03X  OK", name, val);
+            else
+                snprintf(buf, sizeof(buf), "\n  %-22s  -1    UNKNOWN", name);
+            return buf;
+        };
+
+        std::string r = "--- Character Offsets ---";
+        r += fmtOff("name", co.name);
+        r += fmtOff("faction", co.faction);
+        r += fmtOff("position (read)", co.position);
+        r += fmtOff("rotation", co.rotation);
+        r += fmtOff("gameDataPtr", co.gameDataPtr);
+        r += fmtOff("inventory", co.inventory);
+        r += fmtOff("stats", co.stats);
+        r += fmtOff("animClassOffset", co.animClassOffset);
+        r += fmtOff("charMovementOffset", co.charMovementOffset);
+        r += fmtOff("writablePosOffset", co.writablePosOffset);
+        r += fmtOff("writablePosVecOff", co.writablePosVecOffset);
+        r += fmtOff("squad", co.squad);
+        r += fmtOff("equipment", co.equipment);
+        r += fmtOff("isPlayerControlled", co.isPlayerControlled);
+        r += fmtOff("health (direct)", co.health);
+        r += fmtOff("healthChain1", co.healthChain1);
+        r += fmtOff("healthChain2", co.healthChain2);
+        r += fmtOff("healthBase", co.healthBase);
+        r += fmtOff("moneyChain1", co.moneyChain1);
+        r += fmtOff("moneyChain2", co.moneyChain2);
+        r += fmtOff("moneyBase", co.moneyBase);
+        r += fmtOff("sceneNode", co.sceneNode);
+        r += fmtOff("aiPackage", co.aiPackage);
+        r += "\n--- World Offsets ---";
+        r += fmtOff("gameSpeed", wo.gameSpeed);
+        r += fmtOff("characterList", wo.characterList);
+        r += fmtOff("zoneManager", wo.zoneManager);
+        r += fmtOff("timeOfDay", wo.timeOfDay);
+
+        int known = 0, unknown = 0;
+        auto count = [&](int v) { if (v >= 0) known++; else unknown++; };
+        count(co.name); count(co.faction); count(co.position); count(co.rotation);
+        count(co.animClassOffset); count(co.squad); count(co.equipment);
+        count(co.isPlayerControlled); count(co.health); count(co.sceneNode);
+        count(co.aiPackage);
+
+        char summary[128];
+        snprintf(summary, sizeof(summary), "\n--- %d known | %d unknown ---", known, unknown);
+        r += summary;
+        return r;
+    });
+
+    // /dump <hex_addr> [lines] — Hex dump memory at address
+    Register("dump", "Hex dump memory (/dump <addr> [lines])", [](const CommandArgs& args) -> std::string {
+        if (args.args.empty()) return "Usage: /dump <hex_address> [lines=4]";
+
+        uintptr_t addr = 0;
+        try {
+            addr = std::stoull(args.args[0], nullptr, 16);
+        } catch (...) {
+            return "Invalid hex address.";
+        }
+
+        int lines = 4;
+        if (args.args.size() >= 2) {
+            try { lines = std::stoi(args.args[1]); } catch (...) {}
+        }
+        if (lines < 1) lines = 1;
+        if (lines > 32) lines = 32;
+
+        std::string r = "--- Memory dump at 0x" + args.args[0] + " ---";
+        for (int line = 0; line < lines; line++) {
+            uintptr_t lineAddr = addr + line * 16;
+            char hexPart[80] = {};
+            char asciiPart[20] = {};
+            bool anyFail = false;
+
+            for (int b = 0; b < 16; b++) {
+                uint8_t byte = 0;
+                if (Memory::Read(lineAddr + b, byte)) {
+                    sprintf_s(hexPart + b * 3, 4, "%02X ", byte);
+                    asciiPart[b] = (byte >= 0x20 && byte <= 0x7E) ? (char)byte : '.';
+                } else {
+                    sprintf_s(hexPart + b * 3, 4, "?? ");
+                    asciiPart[b] = '?';
+                    anyFail = true;
+                }
+            }
+            asciiPart[16] = '\0';
+
+            char lineBuf[160];
+            snprintf(lineBuf, sizeof(lineBuf), "\n  %012llX  %s |%s|",
+                     (unsigned long long)lineAddr, hexPart, asciiPart);
+            r += lineBuf;
+
+            if (anyFail) { r += " [READ FAIL]"; break; }
+        }
+        return r;
+    });
+
+    // /probe — Read all known fields of the primary character
+    Register("probe", "Probe primary character's memory fields", [](const CommandArgs&) -> std::string {
+        auto& core = Core::Get();
+        void* primaryChar = core.GetPlayerController().GetPrimaryCharacter();
+        if (!primaryChar) return "No primary character found.";
+
+        uintptr_t ptr = reinterpret_cast<uintptr_t>(primaryChar);
+        game::CharacterAccessor accessor(primaryChar);
+        auto& co = game::GetOffsets().character;
+
+        char buf[128];
+        std::string r = "--- Primary Character Probe ---";
+        snprintf(buf, sizeof(buf), "\n  Address:  0x%012llX", (unsigned long long)ptr);
+        r += buf;
+
+        // Name
+        std::string name = accessor.GetName();
+        r += "\n  Name:     " + (name.empty() ? "(empty)" : name);
+
+        // Position
+        Vec3 pos = accessor.GetPosition();
+        snprintf(buf, sizeof(buf), "\n  Position: (%.1f, %.1f, %.1f)", pos.x, pos.y, pos.z);
+        r += buf;
+
+        // Rotation
+        Quat rot = accessor.GetRotation();
+        snprintf(buf, sizeof(buf), "\n  Rotation: (%.2f, %.2f, %.2f, %.2f)", rot.w, rot.x, rot.y, rot.z);
+        r += buf;
+
+        // Faction
+        uintptr_t factionPtr = accessor.GetFactionPtr();
+        if (factionPtr) {
+            game::FactionAccessor faction(reinterpret_cast<void*>(factionPtr));
+            std::string factionName = faction.GetName();
+            snprintf(buf, sizeof(buf), "\n  Faction:  0x%llX '%s'",
+                     (unsigned long long)factionPtr, factionName.c_str());
+        } else {
+            snprintf(buf, sizeof(buf), "\n  Faction:  (null)");
+        }
+        r += buf;
+
+        // GameData
+        uintptr_t gdPtr = accessor.GetGameDataPtr();
+        if (gdPtr) {
+            std::string gdName = SpawnManager::ReadKenshiString(gdPtr + 0x28);
+            snprintf(buf, sizeof(buf), "\n  GameData: 0x%llX '%s'",
+                     (unsigned long long)gdPtr, gdName.c_str());
+        } else {
+            snprintf(buf, sizeof(buf), "\n  GameData: (null)");
+        }
+        r += buf;
+
+        // Squad
+        uintptr_t squadPtr = accessor.GetSquadPtr();
+        snprintf(buf, sizeof(buf), "\n  Squad:    0x%llX", (unsigned long long)squadPtr);
+        r += buf;
+
+        // Health chain
+        float hp = accessor.GetHealth(BodyPart::Head);
+        snprintf(buf, sizeof(buf), "\n  Health:   %.1f (head)", hp);
+        r += buf;
+
+        // Money
+        int money = accessor.GetMoney();
+        snprintf(buf, sizeof(buf), "\n  Money:    %d cats", money);
+        r += buf;
+
+        // AnimClass offset
+        snprintf(buf, sizeof(buf), "\n  AnimClass offset: %s",
+                 co.animClassOffset >= 0 ? std::to_string(co.animClassOffset).c_str() : "UNKNOWN");
+        r += buf;
+
+        // isPlayerControlled offset
+        snprintf(buf, sizeof(buf), "\n  PlayerControlled offset: %s",
+                 co.isPlayerControlled >= 0 ? std::to_string(co.isPlayerControlled).c_str() : "UNKNOWN");
+        r += buf;
+
+        // Write-position chain test
+        if (co.animClassOffset >= 0) {
+            uintptr_t animClass = 0;
+            Memory::Read(ptr + co.animClassOffset, animClass);
+            uintptr_t charMov = 0;
+            if (animClass) Memory::Read(animClass + co.charMovementOffset, charMov);
+            snprintf(buf, sizeof(buf), "\n  WritePos chain: animClass=0x%llX charMov=0x%llX",
+                     (unsigned long long)animClass, (unsigned long long)charMov);
+            r += buf;
+            if (charMov) {
+                uintptr_t posAddr = charMov + co.writablePosOffset + co.writablePosVecOffset;
+                float wx = 0, wy = 0, wz = 0;
+                Memory::Read(posAddr, wx);
+                Memory::Read(posAddr + 4, wy);
+                Memory::Read(posAddr + 8, wz);
+                snprintf(buf, sizeof(buf), "\n  WritablePos:    (%.1f, %.1f, %.1f)", wx, wy, wz);
+                r += buf;
+            }
+        }
+
+        return r;
+    });
+
+    // /chars — List all characters visible to the mod
+    Register("chars", "List all known characters", [](const CommandArgs&) -> std::string {
+        auto& core = Core::Get();
+        auto& registry = core.GetEntityRegistry();
+        std::string r = "--- Registry Entities ---";
+
+        auto localEntities = registry.GetPlayerEntities(core.GetLocalPlayerId());
+        auto remoteEntities = registry.GetRemoteEntities();
+
+        char buf[256];
+        snprintf(buf, sizeof(buf), "\n  Local: %d  Remote: %d",
+                 (int)localEntities.size(), (int)remoteEntities.size());
+        r += buf;
+
+        // Local entities
+        for (EntityID eid : localEntities) {
+            void* obj = registry.GetGameObject(eid);
+            auto* info = registry.GetInfo(eid);
+            if (obj) {
+                game::CharacterAccessor accessor(obj);
+                Vec3 pos = accessor.GetPosition();
+                std::string name = accessor.GetName();
+                snprintf(buf, sizeof(buf), "\n  [L] #%u 0x%llX '%s' (%.0f,%.0f,%.0f)",
+                         eid, (unsigned long long)obj, name.c_str(), pos.x, pos.y, pos.z);
+            } else {
+                snprintf(buf, sizeof(buf), "\n  [L] #%u (no game object)", eid);
+            }
+            r += buf;
+        }
+
+        // Remote entities
+        for (EntityID eid : remoteEntities) {
+            void* obj = registry.GetGameObject(eid);
+            auto* info = registry.GetInfo(eid);
+            PlayerID owner = info ? info->ownerPlayerId : 0;
+            if (obj) {
+                game::CharacterAccessor accessor(obj);
+                Vec3 pos = accessor.GetPosition();
+                std::string name = accessor.GetName();
+                snprintf(buf, sizeof(buf), "\n  [R] #%u owner=%u 0x%llX '%s' (%.0f,%.0f,%.0f)",
+                         eid, owner, (unsigned long long)obj, name.c_str(), pos.x, pos.y, pos.z);
+            } else {
+                snprintf(buf, sizeof(buf), "\n  [R] #%u owner=%u (no game object — pending spawn)",
+                         eid, owner);
+            }
+            r += buf;
+        }
+
+        // CharacterIterator count
+        game::CharacterIterator iter;
+        snprintf(buf, sizeof(buf), "\n--- CharacterIterator: %d characters in world ---", iter.Count());
+        r += buf;
+
+        // Loading cache
+        auto& cache = entity_hooks::GetLoadingCharacters();
+        snprintf(buf, sizeof(buf), "\n--- Loading cache: %d characters ---", (int)cache.size());
+        r += buf;
+
+        return r;
+    });
+
+    // /spawn — SpawnManager readiness and state
+    Register("spawn", "Show spawn system status", [](const CommandArgs&) -> std::string {
+        auto& core = Core::Get();
+        auto& sm = core.GetSpawnManager();
+
+        char buf[256];
+        std::string r = "--- Spawn System Status ---";
+
+        snprintf(buf, sizeof(buf), "\n  Factory ready:     %s", sm.IsReady() ? "YES" : "NO");
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Pre-call data:     %s", sm.HasPreCallData() ? "YES" : "NO");
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Request struct:    %s", sm.HasRequestStruct() ? "YES" : "NO");
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Pending spawns:    %d", (int)sm.GetPendingSpawnCount());
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Total templates:   %d", (int)sm.GetTemplateCount());
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Factory templates: %d", (int)sm.GetFactoryTemplateCount());
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Char templates:    %d", (int)sm.GetCharacterTemplateCount());
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  GDM pointer:       0x%llX",
+                 (unsigned long long)sm.GetManagerPointer());
+        r += buf;
+
+        // Spawn path readiness
+        bool inPlace = sm.IsReady() && sm.HasPreCallData();
+        bool direct = sm.HasPreCallData();
+        snprintf(buf, sizeof(buf), "\n  --- Spawn Paths ---");
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  In-place replay:   %s", inPlace ? "READY" : "NOT READY");
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Direct spawn:      %s", direct ? "READY" : "NOT READY");
+        r += buf;
+
+        // In-place spawn stats
+        int inPlaceCount = entity_hooks::GetInPlaceSpawnCount();
+        bool recentSpawn = entity_hooks::HasRecentInPlaceSpawn(30);
+        snprintf(buf, sizeof(buf), "\n  In-place spawns:   %d (recent: %s)",
+                 inPlaceCount, recentSpawn ? "yes" : "no");
+        r += buf;
+
+        // Game loaded state
+        snprintf(buf, sizeof(buf), "\n  Game loaded:       %s", core.IsGameLoaded() ? "YES" : "NO");
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Connected:         %s", core.IsConnected() ? "YES" : "NO");
+        r += buf;
+
+        return r;
+    });
+
+    // /verify — Cross-verify offsets by reading a live character
+    Register("verify", "Verify offsets against live character data", [](const CommandArgs&) -> std::string {
+        auto& core = Core::Get();
+        void* primaryChar = core.GetPlayerController().GetPrimaryCharacter();
+        if (!primaryChar) return "No primary character — load a game first.";
+
+        uintptr_t ptr = reinterpret_cast<uintptr_t>(primaryChar);
+        auto& co = game::GetOffsets().character;
+        std::string r = "--- Offset Verification ---";
+        char buf[256];
+        int pass = 0, fail = 0, skip = 0;
+
+        auto check = [&](const char* name, int offset, auto validator) {
+            if (offset < 0) { skip++; r += "\n  SKIP " + std::string(name); return; }
+            if (validator(ptr + offset)) {
+                pass++;
+                snprintf(buf, sizeof(buf), "\n  PASS %-20s +0x%03X", name, offset);
+            } else {
+                fail++;
+                snprintf(buf, sizeof(buf), "\n  FAIL %-20s +0x%03X", name, offset);
+            }
+            r += buf;
+        };
+
+        // Position: should be non-zero
+        check("position", co.position, [](uintptr_t addr) {
+            float x = 0, y = 0, z = 0;
+            Memory::Read(addr, x); Memory::Read(addr + 4, y); Memory::Read(addr + 8, z);
+            return (x != 0.f || y != 0.f || z != 0.f);
+        });
+
+        // Rotation: w should be near 1.0 for identity, and magnitude ~1
+        check("rotation", co.rotation, [](uintptr_t addr) {
+            float w = 0, x = 0, y = 0, z = 0;
+            Memory::Read(addr, w); Memory::Read(addr + 4, x);
+            Memory::Read(addr + 8, y); Memory::Read(addr + 12, z);
+            float mag = w * w + x * x + y * y + z * z;
+            return (mag > 0.5f && mag < 1.5f);
+        });
+
+        // Faction: should be a valid pointer
+        check("faction", co.faction, [](uintptr_t addr) {
+            uintptr_t val = 0;
+            Memory::Read(addr, val);
+            return (val > 0x10000 && val < 0x00007FFFFFFFFFFF);
+        });
+
+        // Name: should be a readable string (check SSO layout)
+        check("name", co.name, [](uintptr_t addr) {
+            uint64_t length = 0, capacity = 0;
+            Memory::Read(addr + 0x10, length);
+            Memory::Read(addr + 0x18, capacity);
+            return (length > 0 && length < 200 && capacity >= length);
+        });
+
+        // GameData: should be a valid pointer
+        check("gameDataPtr", co.gameDataPtr, [](uintptr_t addr) {
+            uintptr_t val = 0;
+            Memory::Read(addr, val);
+            return (val > 0x10000 && val < 0x00007FFFFFFFFFFF);
+        });
+
+        // Inventory: should be a valid pointer
+        check("inventory", co.inventory, [](uintptr_t addr) {
+            uintptr_t val = 0;
+            Memory::Read(addr, val);
+            return (val > 0x10000 && val < 0x00007FFFFFFFFFFF);
+        });
+
+        // Stats: pointer or inline — should be non-zero region
+        check("stats", co.stats, [](uintptr_t addr) {
+            uintptr_t val = 0;
+            Memory::Read(addr, val);
+            return (val != 0);
+        });
+
+        // Health chain: follow pointer chain
+        {
+            r += "\n  --- Health Chain ---";
+            uintptr_t step1 = 0, step2 = 0;
+            float hp = 0;
+            bool ok = false;
+            Memory::Read(ptr + co.healthChain1, step1);
+            if (step1 > 0x10000 && step1 < 0x00007FFFFFFFFFFF) {
+                Memory::Read(step1 + co.healthChain2, step2);
+                if (step2 > 0x10000 && step2 < 0x00007FFFFFFFFFFF) {
+                    Memory::Read(step2 + co.healthBase, hp);
+                    ok = (hp >= -100.f && hp <= 200.f);
+                }
+            }
+            snprintf(buf, sizeof(buf), "\n  %s health chain: +%X -> 0x%llX -> +%X -> 0x%llX -> +%X -> %.1f",
+                     ok ? "PASS" : "FAIL",
+                     co.healthChain1, (unsigned long long)step1,
+                     co.healthChain2, (unsigned long long)step2,
+                     co.healthBase, hp);
+            r += buf;
+            if (ok) pass++; else fail++;
+        }
+
+        // AnimClass chain
+        if (co.animClassOffset >= 0) {
+            uintptr_t animClass = 0, charMov = 0;
+            Memory::Read(ptr + co.animClassOffset, animClass);
+            bool ok = false;
+            if (animClass > 0x10000 && animClass < 0x00007FFFFFFFFFFF) {
+                Memory::Read(animClass + co.charMovementOffset, charMov);
+                if (charMov > 0x10000 && charMov < 0x00007FFFFFFFFFFF) {
+                    float wx = 0;
+                    Memory::Read(charMov + co.writablePosOffset + co.writablePosVecOffset, wx);
+                    ok = (wx != 0.f); // writable position should match cached
+                }
+            }
+            snprintf(buf, sizeof(buf), "\n  %s writePos chain: anim=0x%llX charMov=0x%llX",
+                     ok ? "PASS" : "FAIL",
+                     (unsigned long long)animClass, (unsigned long long)charMov);
+            r += buf;
+            if (ok) pass++; else fail++;
+        } else {
+            r += "\n  SKIP writePos chain (animClassOffset unknown)";
+            skip++;
+        }
+
+        snprintf(buf, sizeof(buf), "\n--- %d PASS | %d FAIL | %d SKIP ---", pass, fail, skip);
+        r += buf;
+        return r;
+    });
+
+    // /scan <charptr> [start] [end] — Scan character memory for pointers/values
+    Register("scan", "Scan char struct for pointers (/scan <addr> [start] [end])", [](const CommandArgs& args) -> std::string {
+        if (args.args.empty()) return "Usage: /scan <hex_addr> [start_offset=0] [end_offset=0x200]";
+
+        uintptr_t addr = 0;
+        try { addr = std::stoull(args.args[0], nullptr, 16); }
+        catch (...) { return "Invalid hex address."; }
+
+        int startOff = 0, endOff = 0x200;
+        if (args.args.size() >= 2)
+            try { startOff = std::stoi(args.args[1], nullptr, 16); } catch (...) {}
+        if (args.args.size() >= 3)
+            try { endOff = std::stoi(args.args[2], nullptr, 16); } catch (...) {}
+
+        if (endOff > 0x1000) endOff = 0x1000;
+        if (endOff - startOff > 0x400) endOff = startOff + 0x400; // Max 64 lines
+
+        std::string r = "--- Pointer scan 0x" + args.args[0] + " ---";
+        char buf[256];
+
+        for (int off = startOff; off < endOff; off += 8) {
+            uintptr_t val = 0;
+            if (!Memory::Read(addr + off, val)) {
+                snprintf(buf, sizeof(buf), "\n  +0x%03X: READ FAIL", off);
+                r += buf;
+                break;
+            }
+
+            // Classify the value
+            const char* tag = "";
+            if (val == 0) {
+                tag = "(null)";
+            } else if (val > 0x10000 && val < 0x00007FFFFFFFFFFF) {
+                // Looks like a pointer — try to read a string at val+0x28 (GameData name)
+                std::string name = SpawnManager::ReadKenshiString(val + 0x28);
+                if (!name.empty() && name.length() > 1 && name.length() < 100) {
+                    snprintf(buf, sizeof(buf), "\n  +0x%03X: 0x%012llX  PTR -> name='%s'",
+                             off, (unsigned long long)val, name.c_str());
+                    r += buf;
+                    continue;
+                }
+                // Try reading name at val+0x10 (Kenshi std::string at different layout)
+                name = SpawnManager::ReadKenshiString(val + 0x10);
+                if (!name.empty() && name.length() > 1 && name.length() < 100) {
+                    snprintf(buf, sizeof(buf), "\n  +0x%03X: 0x%012llX  PTR -> +10='%s'",
+                             off, (unsigned long long)val, name.c_str());
+                    r += buf;
+                    continue;
+                }
+                tag = "PTR";
+            } else {
+                // Try interpreting as float pair
+                float f1 = 0, f2 = 0;
+                memcpy(&f1, &val, 4);
+                memcpy(&f2, reinterpret_cast<const char*>(&val) + 4, 4);
+                if (std::abs(f1) > 0.001f && std::abs(f1) < 1e6f &&
+                    std::abs(f2) > 0.001f && std::abs(f2) < 1e6f) {
+                    snprintf(buf, sizeof(buf), "\n  +0x%03X: 0x%016llX  float(%.2f, %.2f)",
+                             off, (unsigned long long)val, f1, f2);
+                    r += buf;
+                    continue;
+                }
+                tag = "";
+            }
+
+            snprintf(buf, sizeof(buf), "\n  +0x%03X: 0x%016llX  %s",
+                     off, (unsigned long long)val, tag);
+            r += buf;
+        }
+        return r;
+    });
+
     // /hooks — Hook status dashboard (debug tool)
     Register("hooks", "Show all hook status and prologue bytes", [](const CommandArgs&) -> std::string {
         auto diags = HookManager::Get().GetDiagnostics();
@@ -389,6 +910,32 @@ void CommandRegistry::RegisterBuiltins() {
         result += summary;
         return result;
     });
+
+    // ── Pipeline debugger ──
+    Register("pipeline", "Pipeline debugger (/pipeline [status|entity <id>])",
+        [](const CommandArgs& args) -> std::string {
+            auto& pipe = Core::Get().GetPipelineOrch();
+
+            if (args.args.empty()) {
+                pipe.ToggleHud();
+                return pipe.IsHudVisible() ? "Pipeline HUD enabled." : "Pipeline HUD disabled.";
+            }
+
+            if (args.args[0] == "status") {
+                return pipe.FormatStatusDump();
+            }
+
+            if (args.args[0] == "entity" && args.args.size() >= 2) {
+                try {
+                    EntityID eid = static_cast<EntityID>(std::stoul(args.args[1]));
+                    return pipe.FormatEntityTrack(eid);
+                } catch (...) {
+                    return "Invalid entity ID. Usage: /pipeline entity <id>";
+                }
+            }
+
+            return "Usage: /pipeline [status|entity <id>]";
+        });
 
     spdlog::info("CommandRegistry: {} built-in commands registered", GetAll().size());
 }
