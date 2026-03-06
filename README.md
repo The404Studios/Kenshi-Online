@@ -5,6 +5,9 @@
 [![Latest Release](https://img.shields.io/github/v/release/The404Studios/Kenshi-Online?style=flat-square)](https://github.com/The404Studios/Kenshi-Online/releases/latest)
 [![License](https://img.shields.io/github/license/The404Studios/Kenshi-Online?style=flat-square)](LICENSE)
 
+https://discord.gg/JJcJZxE4ma
+
+
 Kenshi-Online adds seamless multiplayer to Kenshi using native MyGUI integration, ENet networking, and Ogre plugin injection. Players can explore, fight, build, and trade together in the open world of Kenshi.
 
 > **v1.0.2 — Stability Update** (March 2026): Major crash fixes for zone loading, spawn pipeline, and disconnect handling. See [CHANGELOG.md](CHANGELOG.md) for details.
