@@ -81,6 +81,37 @@ static BGReadResult SEH_ReadCharacterBG(void* gameObj) {
     return r;
 }
 
+// Fix stale faction pointer on a spawned character by copying the LIVE
+// faction from the host's primary character.  Must be called BEFORE the
+// game engine's next character-update tick to prevent a use-after-free
+// crash at game+0x927E94 (reads faction+0x250 on every character).
+static bool SEH_FixUpFaction(void* spawnedChar) {
+    __try {
+        void* primaryChar = Core::Get().GetPlayerController().GetPrimaryCharacter();
+        if (!primaryChar) return false;
+
+        uintptr_t primaryPtr = reinterpret_cast<uintptr_t>(primaryChar);
+        uintptr_t spawnedPtr = reinterpret_cast<uintptr_t>(spawnedChar);
+
+        // Read LIVE faction from the host's primary character (always in a loaded zone)
+        uintptr_t faction = 0;
+        Memory::Read(primaryPtr + 0x10, faction);
+        if (faction == 0 || faction < 0x10000 || faction > 0x00007FFFFFFFFFFF)
+            return false;
+
+        // Validate: the faction object should be readable (not freed)
+        uintptr_t vtable = 0;
+        Memory::Read(faction, vtable);
+        if (vtable == 0) return false;
+
+        // Write to spawned character
+        Memory::Write(spawnedPtr + 0x10, faction);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 static bool SEH_FallbackPostSpawnSetup(void* character, EntityID netId,
                                         PlayerID owner, Vec3 pos) {
     __try {
@@ -194,25 +225,40 @@ void SyncOrchestrator::Reset() {
 bool SyncOrchestrator::Tick(float deltaTime) {
     if (!m_active || m_localPlayerId == INVALID_PLAYER) return false;
 
+    // Debug: log every tick for first 50, then every 100th
+    if (m_tickCount <= 50 || m_tickCount % 100 == 0) {
+        spdlog::debug("SyncOrch::Tick #{} dt={:.4f} entities={} active={}",
+                      m_tickCount, deltaTime,
+                      m_registry.GetPlayerEntities(m_localPlayerId).size(),
+                      m_active);
+    }
+
     // Stage 1: Update zone state
+    if (m_tickCount <= 5) spdlog::debug("SyncOrch: Stage1 UpdateZones");
     StageUpdateZones();
 
     // Stage 2: Wait for previous frame's background work + swap buffers
+    if (m_tickCount <= 5) spdlog::debug("SyncOrch: Stage2 SwapBuffers");
     StageSwapBuffers();
 
     // Stage 3: Apply interpolated positions to remote game objects
+    if (m_tickCount <= 5) spdlog::debug("SyncOrch: Stage3 ApplyRemotePositions");
     StageApplyRemotePositions();
 
     // Stage 4: Poll local entity positions and send updates
+    if (m_tickCount <= 5) spdlog::debug("SyncOrch: Stage4 PollAndSendPositions");
     StagePollAndSendPositions();
 
     // Stage 5: Process spawn queue
+    if (m_tickCount <= 5) spdlog::debug("SyncOrch: Stage5 ProcessSpawns");
     StageProcessSpawns();
 
     // Stage 6: Kick background work for this frame
+    if (m_tickCount <= 5) spdlog::debug("SyncOrch: Stage6 KickBackgroundWork");
     StageKickBackgroundWork();
 
     // Stage 7: Update player states + diagnostics
+    if (m_tickCount <= 5) spdlog::debug("SyncOrch: Stage7 UpdatePlayers");
     StageUpdatePlayers(deltaTime);
 
     m_tickCount++;
@@ -415,53 +461,24 @@ void SyncOrchestrator::StageProcessSpawns() {
                      m_spawnManager.IsReady(), m_spawnManager.HasPreCallData());
     }
 
-    // Direct spawn fallback (after 10s) — only when AssetFacilitator says it's safe
-    if (pending > 0 && m_hasPendingTimer && m_spawnManager.HasPreCallData()
-        && AssetFacilitator::Get().CanSpawn()) {
+    // SpawnCharacterDirect DISABLED — it copies a stale pre-call struct from
+    // loading time whose faction pointer (char+0x10) becomes a use-after-free
+    // when the source NPC's zone unloads.  The game crashes at game+0x927E94
+    // reading faction+0x250 on every character update tick.
+    //
+    // Remote characters are spawned ONLY via in-place replay in entity_hooks:
+    // when the host walks near NPCs, Hook_CharacterCreate fires and piggybacks
+    // on the natural NPC creation to replay the spawn with valid game state.
+    // The "walk near a town" messages guide the player.
+    if (pending > 0 && m_hasPendingTimer) {
         auto pendingDuration = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - m_firstPendingTime);
-
-        if (pendingDuration.count() >= 10 && m_directSpawnAttempts < 10) {
-            auto sinceLast = std::chrono::duration_cast<std::chrono::seconds>(
-                std::chrono::steady_clock::now() - m_lastDirectAttempt);
-
-            if (m_directSpawnAttempts == 0 || sinceLast.count() >= 3) {
-                m_lastDirectAttempt = std::chrono::steady_clock::now();
-                m_directSpawnAttempts++;
-
-                spdlog::info("SyncOrch: FALLBACK DIRECT SPAWN attempt #{} ({} pending, {}s)",
-                             m_directSpawnAttempts, pending, pendingDuration.count());
-                nativeHud.LogStep("GAME", "Fallback spawn attempt #" +
-                                  std::to_string(m_directSpawnAttempts) + "...");
-
-                SpawnRequest req;
-                if (m_spawnManager.PopNextSpawn(req)) {
-                    void* character = m_spawnManager.SpawnCharacterDirect(&req.position);
-                    if (character) {
-                        spdlog::info("SyncOrch: FALLBACK SPAWN SUCCESS! entity={} char=0x{:X}",
-                                     req.netId, reinterpret_cast<uintptr_t>(character));
-
-                        m_registry.SetGameObject(req.netId, character);
-                        m_registry.UpdatePosition(req.netId, req.position);
-
-                        if (SEH_FallbackPostSpawnSetup(character, req.netId,
-                                                        req.owner, req.position)) {
-                            nativeHud.LogStep("OK", "Remote player spawned!");
-                            nativeHud.AddSystemMessage("Remote player spawned nearby!");
-                        } else {
-                            nativeHud.LogStep("WARN", "Spawn partial — setup crashed (SEH caught)");
-                            nativeHud.AddSystemMessage("Remote player spawned (partial — setup error)");
-                        }
-                    } else {
-                        spdlog::warn("SyncOrch: FALLBACK SPAWN FAILED entity={} attempt #{}",
-                                     req.netId, m_directSpawnAttempts);
-                        req.retryCount++;
-                        if (req.retryCount < MAX_SPAWN_RETRIES) {
-                            m_spawnManager.RequeueSpawn(req);
-                        }
-                        nativeHud.LogStep("WARN", "Spawn attempt failed, retrying...");
-                    }
-                }
+        if (pendingDuration.count() >= 10 && pendingDuration.count() % 10 == 0) {
+            static int64_t s_lastLogSec = 0;
+            if (pendingDuration.count() != s_lastLogSec) {
+                s_lastLogSec = pendingDuration.count();
+                spdlog::info("SyncOrch: {} spawns pending for {}s — waiting for in-place replay "
+                             "(walk near NPCs to trigger)", pending, pendingDuration.count());
             }
         }
     }

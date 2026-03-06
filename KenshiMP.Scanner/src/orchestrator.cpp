@@ -296,15 +296,32 @@ void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
         0x00555650, &funcs.BuildingRepair);
 
     // ── Global Pointers ── (PlayerBase is CRITICAL for entity iteration)
+    // NOTE: These have string anchors so the orchestrator can discover them
+    // via FindGlobalNearString on BOTH GOG and Steam versions.
+    // The hardcoded RVAs are GOG-only fallbacks.
     {
         PatternEntry e;
         e.id = "PlayerBase"; e.category = "global"; e.description = "Player data base pointer";
         e.hardcodedRVA = 0x01AC8A90; e.isGlobalPointer = true; e.critical = true;
         e.targetUintptr = &funcs.PlayerBase;
+        // PlayerBase is loaded by functions referencing these unique debug strings.
+        // The global is accessed via MOV/LEA reg,[RIP+disp32] in the same function.
+        // Multiple anchors for robustness (first match wins).
+        e.stringAnchor = "CharacterStats_Attributes";
+        e.stringAnchorLen = 25;
         Register(std::move(e));
     }
-    regGlobal("GameWorldSingleton", "global", "GameWorld singleton pointer",
-              0x02133040, &funcs.GameWorldSingleton);
+    {
+        PatternEntry e;
+        e.id = "GameWorldSingleton"; e.category = "global";
+        e.description = "GameWorld singleton pointer";
+        e.hardcodedRVA = 0x02133040; e.isGlobalPointer = true; e.critical = true;
+        e.targetUintptr = &funcs.GameWorldSingleton;
+        // GameWorld is loaded by functions referencing time/speed/zone strings.
+        e.stringAnchor = "dayTime";
+        e.stringAnchorLen = 7;
+        Register(std::move(e));
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     //  EXPANDED PATTERNS — New game systems discovered via RE
@@ -1084,25 +1101,203 @@ void PatternOrchestrator::RunPhase6_CallGraph() {
                  m_lastReport.resolvedByCallGraph, m_lastReport.timing.callGraph);
 }
 
+// SEH-safe code scanner for global pointer discovery (extracted from RunPhase7 to avoid C2712).
+// Scans function code bytes for RIP-relative MOV/LEA instructions targeting .data section.
+// Uses raw pointer validation instead of std::function to allow __try.
+// Returns true if a valid global pointer candidate was found (result in outTarget/outInstr).
+static bool SEH_ScanCodeForGlobalPtr(
+    const uint8_t* code, size_t codeLen, uintptr_t funcAddr,
+    uintptr_t dataSectionBase, size_t dataSectionSize,
+    uintptr_t textSectionBase, size_t textSectionSize,
+    uintptr_t rdataSectionBase, size_t rdataSectionSize,
+    uintptr_t moduleBase, size_t moduleSize,
+    uintptr_t& outTarget, uintptr_t& outInstr)
+{
+    __try {
+        for (size_t i = 0; i + 7 < codeLen; i++) {
+            bool hasRex = (code[i] == 0x48 || code[i] == 0x4C);
+            bool isMemOp = (code[i + 1] == 0x8B || code[i + 1] == 0x8D);
+            if (!hasRex || !isMemOp) continue;
+
+            uint8_t modrm = code[i + 2];
+            if ((modrm & 0xC7) != 0x05) continue;
+
+            int32_t disp;
+            std::memcpy(&disp, &code[i + 3], 4);
+            uintptr_t instrAddr = funcAddr + i;
+            uintptr_t target = instrAddr + 7 + disp;
+
+            // Check if target is in .data section (writable globals)
+            bool inData = (dataSectionBase != 0) &&
+                          target >= dataSectionBase &&
+                          target < dataSectionBase + dataSectionSize;
+            // Also accept any in-module address OUTSIDE .text and .rdata
+            if (!inData && target >= moduleBase && target < moduleBase + moduleSize) {
+                bool inText = (textSectionBase != 0) &&
+                              target >= textSectionBase &&
+                              target < textSectionBase + textSectionSize;
+                bool inRdata = (rdataSectionBase != 0) &&
+                               target >= rdataSectionBase &&
+                               target < rdataSectionBase + rdataSectionSize;
+                inData = !inText && !inRdata;
+            }
+            if (!inData) continue;
+
+            // Quick validation: read the pointer value
+            uintptr_t val = 0;
+            if (!Memory::Read(target, val)) continue;
+            // Accept null (game not loaded) or heap pointer (outside module)
+            if (val == 0) {
+                outTarget = target;
+                outInstr = instrAddr;
+                return true;
+            }
+            if (val < 0x10000 || val >= 0x00007FFFFFFFFFFF) continue;
+            if (val == 0xFFFFFFFFFFFFFFFF || val == 0xCCCCCCCCCCCCCCCC ||
+                val == 0xCDCDCDCDCDCDCDCD) continue;
+            if (val >= moduleBase && val < moduleBase + moduleSize) continue;
+            // Double-deref: check vtable points into module
+            uintptr_t vtable = 0;
+            if (!Memory::Read(val, vtable)) continue;
+            if (vtable >= moduleBase && vtable < moduleBase + moduleSize) {
+                outTarget = target;
+                outInstr = instrAddr;
+                return true;
+            }
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // Code read faulted — skip this function
+    }
+    return false;
+}
+
 void PatternOrchestrator::RunPhase7_GlobalPointers() {
     auto start = Clock::now();
 
-    spdlog::info("Orchestrator Phase 7: Global pointer validation");
+    spdlog::info("Orchestrator Phase 7: Global pointer discovery + validation");
 
-    // Re-validate global pointers
+    uintptr_t moduleBase = m_scanner.GetBase();
+    size_t moduleSize = m_scanner.GetSize();
+
+    // Helper: check if a .data address looks like a valid global singleton pointer.
+    // During init the value may be 0 (game not loaded) — accept 0 as tentative.
+    // After game load, the value should be a heap-allocated object with a vtable.
+    auto isValidGlobalPtr = [moduleBase, moduleSize](uintptr_t addr, bool allowNull) -> bool {
+        if (addr == 0) return false;
+        uintptr_t val = 0;
+        if (!Memory::Read(addr, val)) return false;
+        if (val == 0) return allowNull; // Null = game not loaded; accept if caller allows
+        if (val < 0x10000 || val >= 0x00007FFFFFFFFFFF) return false;
+        if (val == 0xFFFFFFFFFFFFFFFF || val == 0xCCCCCCCCCCCCCCCC ||
+            val == 0xCDCDCDCDCDCDCDCD) return false;
+        // Must be outside module image (heap-allocated object, not a function pointer)
+        if (val >= moduleBase && val < moduleBase + moduleSize) return false;
+        // Double-deref: a real singleton should point to a readable object (vtable)
+        uintptr_t vtable = 0;
+        if (!Memory::Read(val, vtable)) return false;
+        // vtable should point into the module (likely .rdata vtable area or .text)
+        if (vtable < moduleBase || vtable >= moduleBase + moduleSize) return false;
+        return true;
+    };
+
+    // ── Phase 7a: Discover unresolved global pointers via string xref ──
+    // For global pointer entries that have a stringAnchor but weren't resolved
+    // by hardcoded RVA (Phase 5), find the function referencing the string,
+    // then scan its code for MOV/LEA reg,[RIP+disp32] pointing to .data.
+    for (auto& entry : m_entries) {
+        if (!entry.isGlobalPointer || entry.isResolved) continue;
+        if (!entry.stringAnchor || entry.stringAnchorLen <= 0) continue;
+
+        spdlog::info("  Global '{}': attempting string-xref discovery via '{}'",
+                     entry.id, std::string(entry.stringAnchor, entry.stringAnchorLen));
+
+        // Find functions referencing this string
+        std::string searchStr(entry.stringAnchor, entry.stringAnchorLen);
+        auto funcsReferencing = m_strings.FindFunctionsReferencingString(searchStr);
+        if (funcsReferencing.empty()) {
+            spdlog::warn("  Global '{}': no functions reference anchor string", entry.id);
+            continue;
+        }
+
+        // For each referencing function, scan its code for data section loads
+        bool found = false;
+        for (uintptr_t funcAddr : funcsReferencing) {
+            if (found) break;
+
+            // Get function end from .pdata
+            uintptr_t funcEnd = funcAddr + 4096; // Default scan 4KB
+            auto* pdataEntry = m_pdata.FindFunction(funcAddr);
+            if (pdataEntry) {
+                funcEnd = pdataEntry->endVA;
+                // But cap at reasonable max to avoid scanning too far
+                if (funcEnd - funcAddr > 16384) funcEnd = funcAddr + 16384;
+            }
+
+            // Scan for RIP-relative MOV/LEA into .data sections
+            const uint8_t* code = reinterpret_cast<const uint8_t*>(funcAddr);
+            size_t codeLen = funcEnd - funcAddr;
+            const auto* dataSection = m_scanner.FindSection(".data");
+
+            // SEH scan is done in a separate plain function (SEH_ScanCodeForGlobalPtr)
+            // to avoid MSVC C2712 (can't use __try with object unwinding in this function)
+            uintptr_t discoveredTarget = 0;
+            uintptr_t discoveredInstr = 0;
+            uintptr_t dsBase = dataSection ? dataSection->base : 0;
+            size_t dsSize = dataSection ? dataSection->size : 0;
+            const auto* textSection = m_scanner.FindSection(".text");
+            const auto* rdataSection = m_scanner.FindSection(".rdata");
+            uintptr_t tsBase = textSection ? textSection->base : 0;
+            size_t tsSize = textSection ? textSection->size : 0;
+            uintptr_t rsBase = rdataSection ? rdataSection->base : 0;
+            size_t rsSize = rdataSection ? rdataSection->size : 0;
+            if (SEH_ScanCodeForGlobalPtr(code, codeLen, funcAddr, dsBase, dsSize,
+                                          tsBase, tsSize, rsBase, rsSize,
+                                          moduleBase, moduleSize,
+                                          discoveredTarget, discoveredInstr)) {
+                uintptr_t val = 0;
+                Memory::Read(discoveredTarget, val);
+                spdlog::info("  Global '{}': DISCOVERED at 0x{:X} via func 0x{:X} "
+                             "(instr 0x{:X}, val=0x{:X})",
+                             entry.id, discoveredTarget, funcAddr, discoveredInstr, val);
+                ResolveEntry(entry, discoveredTarget, ResolutionMethod::StringXref,
+                             val == 0 ? 0.6f : 0.9f);
+                found = true;
+            }
+        }
+
+        if (!found) {
+            spdlog::warn("  Global '{}': string-xref discovery failed ({} candidate functions checked)",
+                         entry.id, funcsReferencing.size());
+        }
+    }
+
+    // ── Phase 7b: Validate existing global pointers ──
     for (auto& entry : m_entries) {
         if (!entry.isGlobalPointer || !entry.isResolved) continue;
 
         uintptr_t val = 0;
         if (Memory::Read(entry.resolvedAddress, val)) {
-            if (val > 0x10000 && val < 0x00007FFFFFFFFFFF) {
-                entry.confidence = 1.0f;
-                spdlog::info("  Global '{}' validated: 0x{:X} → 0x{:X}",
-                             entry.id, entry.resolvedAddress, val);
+            if (val > 0x10000 && val < 0x00007FFFFFFFFFFF &&
+                !(val >= moduleBase && val < moduleBase + moduleSize)) {
+                uintptr_t vtable = 0;
+                if (Memory::Read(val, vtable) && vtable >= moduleBase &&
+                    vtable < moduleBase + moduleSize) {
+                    entry.confidence = 1.0f;
+                    spdlog::info("  Global '{}' validated: 0x{:X} -> 0x{:X} (vtable 0x{:X})",
+                                 entry.id, entry.resolvedAddress, val, vtable);
+                } else {
+                    entry.confidence = 0.7f;
+                    spdlog::info("  Global '{}' at 0x{:X} -> 0x{:X} (vtable check inconclusive)",
+                                 entry.id, entry.resolvedAddress, val);
+                }
             } else if (val == 0) {
                 entry.confidence = 0.5f;
                 spdlog::warn("  Global '{}' at 0x{:X} is null (game not loaded yet)",
                              entry.id, entry.resolvedAddress);
+            } else {
+                spdlog::warn("  Global '{}' at 0x{:X} reads 0x{:X} — suspicious (in-module or invalid range)",
+                             entry.id, entry.resolvedAddress, val);
+                entry.confidence = 0.2f;
             }
         }
     }

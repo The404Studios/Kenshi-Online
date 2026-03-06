@@ -147,12 +147,14 @@ bool Install() {
         spdlog::info("squad_hooks: SquadCreate SKIPPED (mov rax,rsp — crash risk during zone loads)");
     }
 
+    // SquadAddMember hook DISABLED — fires 30-40+ times during zone loading
+    // when NPC squads are assembled. Each call through the trampoline does entity
+    // lookups + packet writes, causing cumulative corruption → crash ~10s later.
+    // The raw function pointer is kept for AddCharacterToLocalSquad (direct call).
     if (funcs.SquadAddMember) {
-        if (hooks.InstallAt("SquadAddMember", reinterpret_cast<uintptr_t>(funcs.SquadAddMember),
-                            &Hook_SquadAddMember, &s_origSquadAddMember)) {
-            installed++;
-            spdlog::info("squad_hooks: SquadAddMember hook installed");
-        }
+        spdlog::info("squad_hooks: SquadAddMember at 0x{:X} — NOT hooked (zone-load crash risk). "
+                     "Raw ptr kept for squad injection.",
+                     reinterpret_cast<uintptr_t>(funcs.SquadAddMember));
     }
 
     spdlog::info("squad_hooks: {}/2 hooks installed", installed);
@@ -212,30 +214,99 @@ static uintptr_t SEH_ReadPtr(uintptr_t addr) {
 
 // Try to resolve the activePlatoon from the primary character.
 // The addMember function expects activePlatoon as 'this', not platoon.
-// Research data: CharacterHuman+0x658 = activePlatoon*
-//                platoon+0x1D8 = activePlatoon*
+// Research data (GOG): CharacterHuman+0x658 = activePlatoon*
+//                       platoon+0x1D8 = activePlatoon*
+// Steam offsets differ — we identify the activePlatoon by matching its vtable
+// against the known vtable address from RTTI discovery.
 static uintptr_t ResolveActivePlatoon(void* primaryChar) {
     uintptr_t charAddr = reinterpret_cast<uintptr_t>(primaryChar);
+    uintptr_t moduleBase = Core::Get().GetScanner().GetBase();
+    size_t moduleSize = Core::Get().GetScanner().GetSize();
 
-    // Try 1: character+0x658 → activePlatoon directly
-    uintptr_t ap = SEH_ReadPtr(charAddr + 0x658);
-    if (ap > 0x10000 && ap < 0x00007FFFFFFFFFFF) {
-        spdlog::debug("squad_hooks: activePlatoon via char+0x658 = 0x{:X}", ap);
-        return ap;
+    spdlog::info("squad_hooks: ResolveActivePlatoon: char=0x{:X}", charAddr);
+
+    // Get the known ActivePlatoon vtable from RTTI discovery.
+    // The orchestrator found SquadAddMember at vtable slot 2 (offset +0x10).
+    // We can find the vtable base by scanning .rdata for a pointer table
+    // that contains SquadAddMember at offset +0x10.
+    auto& funcs = Core::Get().GetGameFunctions();
+    uintptr_t knownVTable = 0;
+    if (funcs.SquadAddMember) {
+        uintptr_t addMemberAddr = reinterpret_cast<uintptr_t>(funcs.SquadAddMember);
+        // The vtable is in .rdata (inside the module). Scan for a qword in .rdata
+        // that equals addMemberAddr — the vtable base is 0x10 bytes before it.
+        for (uintptr_t scan = moduleBase; scan < moduleBase + moduleSize - 0x20; scan += 8) {
+            uintptr_t val = SEH_ReadPtr(scan);
+            if (val == addMemberAddr) {
+                // This is vtable slot 2 (offset +0x10), so vtable base = scan - 0x10
+                knownVTable = scan - 0x10;
+                spdlog::info("squad_hooks: Found ActivePlatoon vtable at 0x{:X} (slot2 at 0x{:X} = 0x{:X})",
+                             knownVTable, scan, addMemberAddr);
+                break;
+            }
+        }
     }
 
-    // Try 2: GetSquadPtr → platoon → +0x1D8 → activePlatoon
+    // Validate candidate: check if object's vtable matches known ActivePlatoon vtable
+    // Minimum 16MB: filters out SSO string data like "one" (0x656E6F) that passes
+    // the old 0x10000 check and crashes SEH_ReadPtr + fills VEH log with AV noise.
+    auto validateAP = [moduleBase, moduleSize, knownVTable](uintptr_t candidate, const char* source) -> bool {
+        if (candidate < 0x1000000 || candidate > 0x00007FFFFFFFFFFF) return false;
+        uintptr_t vtable = SEH_ReadPtr(candidate);
+        if (vtable == 0) return false;
+
+        // Primary check: exact vtable match against RTTI-discovered vtable
+        if (knownVTable != 0 && vtable == knownVTable) {
+            spdlog::info("squad_hooks: activePlatoon MATCHED via {} — 0x{:X} vtable=0x{:X} (RTTI match!)",
+                         source, candidate, vtable);
+            return true;
+        }
+        // Fallback: vtable in game module (works for GOG and some Steam configs)
+        if (vtable >= moduleBase && vtable < moduleBase + moduleSize) {
+            spdlog::info("squad_hooks: activePlatoon candidate via {} — 0x{:X} vtable=0x{:X} (in module)",
+                         source, candidate, vtable);
+            return true;
+        }
+        return false;
+    };
+
+    // Scan character struct from 0x600 to 0x780 (covers GOG 0x658 + Steam variants)
+    for (int off = 0x600; off <= 0x780; off += 8) {
+        uintptr_t ap = SEH_ReadPtr(charAddr + off);
+        if (validateAP(ap, ([off]{ char b[16]; sprintf_s(b, "char+0x%X", off); return std::string(b); })().c_str())) {
+            if (off != 0x658) {
+                spdlog::info("squad_hooks: DISCOVERED activePlatoon at char+0x{:X} (differs from GOG 0x658)", off);
+            }
+            return ap;
+        }
+    }
+
+    // Try via GetSquadPtr → platoon chain
     game::CharacterAccessor accessor(primaryChar);
     uintptr_t squadPtr = accessor.GetSquadPtr();
     if (squadPtr != 0) {
-        ap = SEH_ReadPtr(squadPtr + 0x1D8);
-        if (ap > 0x10000 && ap < 0x00007FFFFFFFFFFF) {
-            spdlog::debug("squad_hooks: activePlatoon via squad+0x1D8 = 0x{:X}", ap);
-            return ap;
+        spdlog::info("squad_hooks: GetSquadPtr=0x{:X}, trying platoon chains", squadPtr);
+        for (int off = 0x1B0; off <= 0x220; off += 8) {
+            uintptr_t ap = SEH_ReadPtr(squadPtr + off);
+            if (validateAP(ap, ([off]{ char b[16]; sprintf_s(b, "squad+0x%X", off); return std::string(b); })().c_str())) {
+                return ap;
+            }
         }
-        // Try 3: GetSquadPtr might already BE the activePlatoon
-        spdlog::debug("squad_hooks: using GetSquadPtr directly as activePlatoon candidate 0x{:X}", squadPtr);
-        return squadPtr;
+        if (validateAP(squadPtr, "squadPtr direct")) return squadPtr;
+    }
+
+    // Diagnostic dump
+    spdlog::warn("squad_hooks: activePlatoon NOT FOUND (knownVTable=0x{:X}) — dumping char+0x600..0x780:",
+                 knownVTable);
+    for (int off = 0x600; off <= 0x780; off += 8) {
+        uintptr_t val = SEH_ReadPtr(charAddr + off);
+        if (val > 0x1000000 && val < 0x00007FFFFFFFFFFF) {
+            uintptr_t vtable = SEH_ReadPtr(val);
+            spdlog::warn("  char+0x{:03X} = 0x{:X} vtable=0x{:X} {}{}",
+                         off, val, vtable,
+                         (vtable >= moduleBase && vtable < moduleBase + moduleSize) ? "IN_MODULE " : "",
+                         (knownVTable != 0 && vtable == knownVTable) ? "** RTTI MATCH **" : "");
+        }
     }
 
     return 0;

@@ -186,15 +186,14 @@ bool HookManager::InstallRaw(const std::string& name, void* target, void* detour
             }
         }
 
-        // Check 2: Alignment — MSVC always 16-byte aligns function entry points.
-        // A non-aligned address indicates mid-function even if .pdata has an entry
-        // (SEH filter/handler blocks get their own .pdata entries but aren't real functions).
+        // Check 2: Alignment — MSVC often 16-byte aligns function entry points,
+        // but NOT always (small functions, COMDAT folding, vtable entries).
+        // VTable-discovered functions are definitively valid even if not 16-byte aligned.
+        // Log a warning but proceed — MinHook handles the actual hookability.
         if ((addr & 0xF) != 0) {
-            spdlog::error("HookManager: REFUSING hook '{}' — target 0x{:X} is NOT 16-byte aligned "
-                          "(low nibble = 0x{:X}). Likely a mid-function SEH handler block, "
-                          "not a real function entry point.",
-                          name, addr, addr & 0xF);
-            return false;
+            spdlog::warn("HookManager: Hook '{}' target 0x{:X} is NOT 16-byte aligned "
+                         "(low nibble = 0x{:X}) — may be vtable-discovered function. Proceeding anyway.",
+                         name, addr, addr & 0xF);
         }
     }
 

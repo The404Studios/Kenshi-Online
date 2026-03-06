@@ -320,6 +320,13 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
 
     auto tryPattern = [&](const char* name, const char* pattern, void*& target) {
         total++;
+        if (target != nullptr) {
+            // Already resolved (e.g. by orchestrator vtable discovery) — don't overwrite
+            resolved++;
+            spdlog::debug("ResolveGameFunctions: '{}' already resolved at 0x{:X}, skipping pattern scan",
+                          name, reinterpret_cast<uintptr_t>(target));
+            return;
+        }
         if (!pattern) {
             spdlog::debug("ResolveGameFunctions: '{}' has no pattern yet", name);
             return;
@@ -577,7 +584,19 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
     // reliable approach since it works identically on GOG and Steam.
     auto findGlobalInFunction = [&](uintptr_t funcAddr, int nth) -> uintptr_t {
         if (!funcAddr) return 0;
-        return rss.ScanForGlobalLoad(funcAddr, funcAddr + 1024, nth, true);
+        // Use .pdata to determine function end (accurate), fallback to 4KB scan.
+        // 1KB was too small — many Kenshi functions are 2-8KB and load globals late.
+        uintptr_t scanEnd = funcAddr + 4096;
+        DWORD64 imageBase = 0;
+        auto* rtFunc = RtlLookupFunctionEntry(
+            static_cast<DWORD64>(funcAddr), &imageBase, nullptr);
+        if (rtFunc) {
+            uintptr_t pdataEnd = static_cast<uintptr_t>(imageBase) + rtFunc->EndAddress;
+            if (pdataEnd > funcAddr && pdataEnd < funcAddr + 65536) {
+                scanEnd = pdataEnd;
+            }
+        }
+        return rss.ScanForGlobalLoad(funcAddr, scanEnd, nth, true);
     };
 
     // ── Semantic validation: does this look like a real PlayerBase? ──
@@ -608,6 +627,32 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
 
     // PlayerBase: Find the global pointer that the squad/player code loads.
     // Priority: 1) function disassembly, 2) string-xref, 3) hardcoded (GOG only)
+    //
+    // STEAM FIX: During early init, the game hasn't loaded, so all globals are 0.
+    // validatePlayerBase rejects val==0. We do a TWO-PASS approach:
+    //   Pass 1: Strict (val must be valid heap pointer) — works on GOG and post-load Steam
+    //   Pass 2: Tentative (accept val==0 if address is in .data section) — works on Steam pre-load
+    // Pass 2 candidates are re-validated by RetryGlobalDiscovery after game loads.
+    auto tentativeGlobalValidation = [&](uintptr_t candidateAddr) -> bool {
+        if (candidateAddr == 0) return false;
+        uintptr_t val = 0;
+        if (!Memory::Read(candidateAddr, val)) return false;
+        // Accept null (game not loaded yet) IF the address is in .data
+        if (val == 0) {
+            bool inData = rss.GetDataBase() != 0 &&
+                          candidateAddr >= rss.GetDataBase() &&
+                          candidateAddr < rss.GetDataBase() + rss.GetDataSize();
+            return inData;
+        }
+        // Non-null: apply full validation
+        if (!isValidUserPtr(val)) return false;
+        if (val >= base && val < base + moduleSize) return false;
+        uintptr_t vtable = 0;
+        if (!Memory::Read(val, vtable)) return false;
+        if (vtable < base + 0x1000 || vtable >= base + moduleSize) return false;
+        return true;
+    };
+
     if (funcs.PlayerBase == 0) {
         // Method 1: Scan resolved functions for .data globals (most reliable)
         // CharacterSpawn (RootObjectFactory::process) loads the factory singleton
@@ -620,6 +665,7 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
         };
         const char* funcNames[] = { "CharacterSpawn", "CharacterStats", "SaveGame", "LoadGame" };
 
+        // Pass 1: Strict validation (non-null heap pointer with vtable)
         for (int fi = 0; fi < 4 && funcs.PlayerBase == 0; fi++) {
             if (!funcCandidates[fi]) continue;
             for (int nth = 0; nth < 16 && funcs.PlayerBase == 0; nth++) {
@@ -675,7 +721,54 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
                 funcs.PlayerBase = hardcoded;
                 spdlog::info("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (hardcoded GOG, -> 0x{:X})",
                              hardcoded, val);
-            } else {
+            }
+        }
+
+        // Pass 2 (Steam pre-load): Accept null-valued .data globals tentatively.
+        // These will be re-validated by RetryGlobalDiscovery after the game loads.
+        if (funcs.PlayerBase == 0) {
+            spdlog::info("ResolveGameFunctions: PlayerBase not found (strict) — trying tentative (null-allowed)...");
+            for (int fi = 0; fi < 4 && funcs.PlayerBase == 0; fi++) {
+                if (!funcCandidates[fi]) continue;
+                for (int nth = 0; nth < 16 && funcs.PlayerBase == 0; nth++) {
+                    uintptr_t candidate = findGlobalInFunction(funcCandidates[fi], nth);
+                    if (!candidate) continue;
+                    if (tentativeGlobalValidation(candidate)) {
+                        uintptr_t val = 0;
+                        Memory::Read(candidate, val);
+                        funcs.PlayerBase = candidate;
+                        spdlog::info("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (TENTATIVE, func='{}', nth={}, val=0x{:X}) — needs re-validation after game load",
+                                     candidate, funcNames[fi], nth, val);
+                    }
+                }
+            }
+
+            // Tentative string-xref pass
+            if (funcs.PlayerBase == 0) {
+                const char* playerAnchors[] = {
+                    "CharacterStats_Attributes",
+                    "Reset squad positions",
+                    "[Character::serialise] Character '",
+                    "[RootObjectFactory::process] Character",
+                };
+                int playerAnchorLens[] = { 25, 21, 33, 38 };
+
+                for (int a = 0; a < 4 && funcs.PlayerBase == 0; a++) {
+                    for (int n = 0; n < 12 && funcs.PlayerBase == 0; n++) {
+                        uintptr_t globalAddr = rss.FindGlobalNearString(
+                            playerAnchors[a], playerAnchorLens[a], n, true);
+                        if (globalAddr && tentativeGlobalValidation(globalAddr)) {
+                            uintptr_t val = 0;
+                            Memory::Read(globalAddr, val);
+                            funcs.PlayerBase = globalAddr;
+                            spdlog::info("ResolveGameFunctions: 'PlayerBase' = 0x{:X} (TENTATIVE string-xref via '{}', nth={}, val=0x{:X})",
+                                         globalAddr, playerAnchors[a], n, val);
+                        }
+                    }
+                }
+            }
+
+            if (funcs.PlayerBase == 0) {
                 spdlog::warn("ResolveGameFunctions: PlayerBase not found — will retry after game loads");
             }
         }
@@ -759,7 +852,56 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
                 funcs.GameWorldSingleton = hardcoded;
                 spdlog::info("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (hardcoded GOG, -> 0x{:X})",
                              hardcoded, val);
-            } else {
+            }
+        }
+
+        // Pass 2 (Steam pre-load): Accept null-valued .data globals tentatively.
+        if (funcs.GameWorldSingleton == 0) {
+            spdlog::info("ResolveGameFunctions: GameWorld not found (strict) — trying tentative (null-allowed)...");
+            uintptr_t gwFuncCandidates2[] = {
+                reinterpret_cast<uintptr_t>(funcs.TimeUpdate),
+                reinterpret_cast<uintptr_t>(funcs.ZoneLoad),
+                reinterpret_cast<uintptr_t>(funcs.GameFrameUpdate),
+                reinterpret_cast<uintptr_t>(funcs.SaveGame),
+            };
+            const char* gwFuncNames2[] = { "TimeUpdate", "ZoneLoad", "GameFrameUpdate", "SaveGame" };
+
+            for (int fi = 0; fi < 4 && funcs.GameWorldSingleton == 0; fi++) {
+                if (!gwFuncCandidates2[fi]) continue;
+                for (int nth = 0; nth < 16 && funcs.GameWorldSingleton == 0; nth++) {
+                    uintptr_t candidate = findGlobalInFunction(gwFuncCandidates2[fi], nth);
+                    if (!candidate) continue;
+                    if (tentativeGlobalValidation(candidate)) {
+                        uintptr_t val = 0;
+                        Memory::Read(candidate, val);
+                        funcs.GameWorldSingleton = candidate;
+                        spdlog::info("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (TENTATIVE, func='{}', nth={}, val=0x{:X})",
+                                     candidate, gwFuncNames2[fi], nth, val);
+                    }
+                }
+            }
+
+            // Tentative string-xref pass
+            if (funcs.GameWorldSingleton == 0) {
+                const char* worldAnchors2[] = { "dayTime", "zone.%d.%d.zone", "Kenshi 1.0." };
+                int worldAnchorLens2[] = { 7, 15, 11 };
+
+                for (int a = 0; a < 3 && funcs.GameWorldSingleton == 0; a++) {
+                    for (int n = 0; n < 12 && funcs.GameWorldSingleton == 0; n++) {
+                        uintptr_t globalAddr = rss.FindGlobalNearString(
+                            worldAnchors2[a], worldAnchorLens2[a], n, true);
+                        if (globalAddr && tentativeGlobalValidation(globalAddr)) {
+                            uintptr_t val = 0;
+                            Memory::Read(globalAddr, val);
+                            funcs.GameWorldSingleton = globalAddr;
+                            spdlog::info("ResolveGameFunctions: 'GameWorldSingleton' = 0x{:X} (TENTATIVE string-xref via '{}', nth={}, val=0x{:X})",
+                                         globalAddr, worldAnchors2[a], n, val);
+                        }
+                    }
+                }
+            }
+
+            if (funcs.GameWorldSingleton == 0) {
                 spdlog::warn("ResolveGameFunctions: GameWorld not found — will retry after game loads");
             }
         }
@@ -802,7 +944,19 @@ bool RetryGlobalDiscovery(const PatternScanner& scanner, GameFunctions& funcs) {
 
     auto findGlobalInFunction = [&](uintptr_t funcAddr, int nth) -> uintptr_t {
         if (!funcAddr) return 0;
-        return rss.ScanForGlobalLoad(funcAddr, funcAddr + 1024, nth, true);
+        // Use .pdata to determine function end (accurate), fallback to 4KB scan.
+        // 1KB was too small — many Kenshi functions are 2-8KB and load globals late.
+        uintptr_t scanEnd = funcAddr + 4096;
+        DWORD64 imageBase = 0;
+        auto* rtFunc = RtlLookupFunctionEntry(
+            static_cast<DWORD64>(funcAddr), &imageBase, nullptr);
+        if (rtFunc) {
+            uintptr_t pdataEnd = static_cast<uintptr_t>(imageBase) + rtFunc->EndAddress;
+            if (pdataEnd > funcAddr && pdataEnd < funcAddr + 65536) {
+                scanEnd = pdataEnd;
+            }
+        }
+        return rss.ScanForGlobalLoad(funcAddr, scanEnd, nth, true);
     };
 
     // ── PlayerBase retry ──

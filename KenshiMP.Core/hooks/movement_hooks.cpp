@@ -211,10 +211,16 @@ bool Install() {
                      reinterpret_cast<uintptr_t>(funcs.CharacterSetPosition));
     }
 
+    // NOTE: Do NOT hook CharacterMoveTo — it starts with `mov rax, rsp` AND has
+    // a 5th stack parameter (moveType). The MovRaxRsp naked detour mechanism cannot
+    // correctly forward stack parameters, causing the trampoline to crash on EVERY call.
+    // This prevents all character movement (click-to-move).
+    // Movement sync works via position polling from OnGameTick.
+    // Remote character AI suppression is handled by ai_hooks.
     if (funcs.CharacterMoveTo) {
-        hookMgr.InstallAt("CharacterMoveTo",
-                          reinterpret_cast<uintptr_t>(funcs.CharacterMoveTo),
-                          &Hook_MoveTo, &s_origMoveTo);
+        spdlog::info("movement_hooks: CharacterMoveTo at 0x{:X} — NOT hooked (mov rax,rsp + stack params = crash). "
+                     "Movement sync via position polling.",
+                     reinterpret_cast<uintptr_t>(funcs.CharacterMoveTo));
     }
 
     spdlog::info("movement_hooks: Installed (setPos={}, moveTo={})",

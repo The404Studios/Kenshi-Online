@@ -530,7 +530,8 @@ void SpawnManager::ScanGameDataHeap() {
                 !(gwPtr >= moduleBase && gwPtr < moduleBase + moduleSize)) {
                 // GameWorld+0x20 = dataMgr1 (KenshiLib verified)
                 uintptr_t val = 0;
-                if (Memory::Read(gwPtr + 0x20, val) && val != 0 && val > moduleBase &&
+                if (Memory::Read(gwPtr + 0x20, val) && val != 0 &&
+                    val > 0x10000 && val < 0x00007FFFFFFFFFFF &&
                     !(val >= moduleBase && val < moduleBase + moduleSize)) {
                     gdmValue = val;
                     gdmAddress = gwPtr + 0x20;

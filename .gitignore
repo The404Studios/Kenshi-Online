@@ -1,14 +1,52 @@
-# Visual Studio cache (contains 50-125MB .ipch files)
-.vs/
-*.suo
-*.user
-*.ipch
-*.vsidx
-*.VC.db
-*.opendb
-
-# Logs
+# Build output
+build/
+*.obj
+*.lib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.iobj
+*.ipdb
 *.log
+*.tlog
 
-# Windows artifacts
-nul
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.suo
+*.sdf
+*.opensdf
+*.cachefile
+Debug/
+Release/
+x64/
+*.VC.db
+*.VC.opendb
+encrypteddata/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Kenshi logs
+kenshi*.log
+
+# Misc
+*.zip
+*.bak
+*.tmp

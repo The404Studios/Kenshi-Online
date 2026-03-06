@@ -8,13 +8,13 @@ namespace kmp {
 
 struct ClientConfig {
     std::string playerName     = "Player";
-    std::string lastServer     = "127.0.0.1";
+    std::string lastServer     = "162.248.94.149";
     uint16_t    lastPort       = KMP_DEFAULT_PORT;
     bool        autoConnect    = true;
     float       overlayScale   = 1.0f;
-    std::string masterServer   = "127.0.0.1";   // Master server address
-    uint16_t    masterPort     = 27801;          // Master server port
-    std::vector<std::string> favoriteServers = {"127.0.0.1:27800"};
+    std::string masterServer   = "162.248.94.149";   // Master server address
+    uint16_t    masterPort     = 27801;               // Master server port
+    std::vector<std::string> favoriteServers = {"162.248.94.149:27800"};
     bool        useSyncOrchestrator = false; // New 7-stage sync pipeline (set true to test)
 
     bool Load(const std::string& path);
@@ -32,7 +32,7 @@ struct ServerConfig {
     int         tickRate     = KMP_TICK_RATE;
     bool        pvpEnabled   = true;
     float       gameSpeed    = 1.0f;
-    std::string masterServer = "127.0.0.1";     // Master server address
+    std::string masterServer = "162.248.94.149"; // Master server address
     uint16_t    masterPort   = 27801;            // Master server port
 
     bool Load(const std::string& path);

@@ -320,11 +320,17 @@ static HRESULT __stdcall HookPresent(IDXGISwapChain* swapChain, UINT syncInterva
 
     // ── OnGameTick driver ──
     // Always drive OnGameTick from Present hook when connected.
-    // time_hooks ALSO drives OnGameTick, but its trampoline may silently fail.
-    // OnGameTick is safe to call multiple times per frame (it's idempotent
-    // for position updates, and spawn queue processes one per call which is fine).
     auto& core = Core::Get();
     if (core.IsConnected()) {
+        static int s_connectedFrames = 0;
+        s_connectedFrames++;
+
+        // Log first 20 connected frames, then every 100th
+        if (s_connectedFrames <= 20 || s_connectedFrames % 100 == 0) {
+            spdlog::debug("render_hooks: Connected frame #{} (present #{})",
+                          s_connectedFrames, s_presentCount);
+        }
+
         auto now = std::chrono::steady_clock::now();
         if (s_hasLastFrameTime) {
             float dt = std::chrono::duration<float>(now - s_lastFrameTime).count();
@@ -333,6 +339,8 @@ static HRESULT __stdcall HookPresent(IDXGISwapChain* swapChain, UINT syncInterva
             }
         } else {
             OutputDebugStringA("KMP: First OnGameTick from Present hook\n");
+            spdlog::info("render_hooks: First OnGameTick from Present hook (connected frame #{})",
+                         s_connectedFrames);
         }
         s_lastFrameTime = now;
         s_hasLastFrameTime = true;

@@ -45,8 +45,9 @@ public:
     // Get the local player's faction pointer (captured from first character)
     uintptr_t GetLocalFactionPtr() const { return m_localFactionPtr; }
 
-    // Set the local player's faction pointer (called from entity_hooks as faction bootstrap)
-    void SetLocalFactionPtr(uintptr_t factionPtr) { m_localFactionPtr = factionPtr; }
+    // Set the local player's faction pointer (called from entity_hooks as faction bootstrap).
+    // Also fixes up any previously-spawned remote characters that still have their NPC faction.
+    void SetLocalFactionPtr(uintptr_t factionPtr);
 
     // ── Remote Players ──
 

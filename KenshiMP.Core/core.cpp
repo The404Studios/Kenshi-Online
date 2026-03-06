@@ -27,6 +27,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <chrono>
 #include <algorithm>
+#include <csignal>
 #include <Windows.h>
 
 namespace kmp {
@@ -49,6 +50,26 @@ static uintptr_t g_gameModuleEnd  = 0;
 
 // Exported counter — entity_hooks updates this so VEH can report which create crashed
 volatile int g_lastCharacterCreateNum = 0;
+
+// ── Breadcrumb trail for crash diagnosis ──
+// Writes to a file BEFORE each dangerous operation. If the process dies from
+// __fastfail, TerminateProcess, or any uncatchable exception, the file shows
+// the last known step. Uses direct C I/O with fflush for immediate write.
+static void WriteBreadcrumb(const char* step, int tickNum = 0, int extra = 0) {
+    // Write every Nth tick to avoid excessive I/O, PLUS always write the first 50
+    static int s_writeCount = 0;
+    if (tickNum > 50 && tickNum % 10 != 0) return; // Skip most ticks after warmup
+    s_writeCount++;
+
+    FILE* f = nullptr;
+    fopen_s(&f, "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiOnline_BREADCRUMB.txt", "w");
+    if (f) {
+        fprintf(f, "tick=%d step=%s extra=%d charCreate=#%d writes=%d\n",
+                tickNum, step, extra, g_lastCharacterCreateNum, s_writeCount);
+        fflush(f);
+        fclose(f);
+    }
+}
 
 // SEH-safe stack dump helper (no C++ objects with destructors allowed)
 static int SEH_DumpStack(char* outBuf, int outBufSize, uint64_t rsp) {
@@ -129,6 +150,21 @@ static LONG CALLBACK VectoredCrashHandler(EXCEPTION_POINTERS* ep) {
         if (dllOffset >= 0x1A00 && dllOffset <= 0x1D00) {
             return EXCEPTION_CONTINUE_SEARCH;
         }
+        // SEH-protected functions: SEH_ReadPointer, SEH_ReadKenshiStringRaw,
+        // SEH_CallFactory, ScanGameDataHeap, and other SEH helpers in spawn_manager.
+        // These intentionally trigger AVs while probing memory — caught by __except.
+        // Range 0x2BD00..0x2D000 covers all spawn_manager SEH functions.
+        if (dllOffset >= 0x2BD00 && dllOffset <= 0x2D000) {
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+        // SEH helpers in entity_hooks (SEH_ReadCharacterData, SEH_ReadFactionPtr, etc.)
+        // Range 0x21000..0x22200 covers all entity_hooks SEH functions.
+        if (dllOffset >= 0x21000 && dllOffset <= 0x22200) {
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+        // SEH helpers in sync_orchestrator (SEH_WritePositionRotation, SEH_ReadPosition, etc.)
+        // These probe game objects that may be freed. Range 0x0..0x2000 from sync_orch start.
+        // Broad skip: any DLL AV in an __except-protected function is benign.
         // During loading (before first game tick), most DLL AVs are scanner probes
         if (g_tickNumber == 0) {
             return EXCEPTION_CONTINUE_SEARCH;
@@ -246,6 +282,19 @@ bool Core::Initialize() {
     // Filtered to only log crashes in game module or NULL (skips system DLL noise).
     g_vehHandle = AddVectoredExceptionHandler(1, VectoredCrashHandler);
 
+    // ── Breadcrumb file for crash diagnosis ──
+    // Opened once at startup, written before every dangerous operation, fflush'd.
+    // Even if VEH and atexit fail (e.g., __fastfail), the file shows last known step.
+    {
+        FILE* bcf = nullptr;
+        fopen_s(&bcf, "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiOnline_BREADCRUMB.txt", "w");
+        if (bcf) {
+            fprintf(bcf, "KMP breadcrumb file created — monitoring for crash location\n");
+            fflush(bcf);
+            fclose(bcf);
+        }
+    }
+
     // ── Last-resort crash detection ──
     // The post-loading "silent crash" isn't caught by VEH (not an AV/stack overflow).
     // Register atexit + SetUnhandledExceptionFilter to detect what kills us.
@@ -261,6 +310,26 @@ bool Core::Initialize() {
         fopen_s(&f, "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiOnline_CRASH.log", "a");
         if (f) {
             fprintf(f, "\nKMP atexit: LastCreate=#%d, LastTick=#%d step=%d (%s)\n",
+                    g_lastCharacterCreateNum, g_tickNumber, g_lastTickStep,
+                    g_lastStepName ? g_lastStepName : "?");
+            fclose(f);
+        }
+    });
+
+    // ── Abort signal handler ──
+    // C runtime abort() (e.g., from failed assertions or heap corruption) doesn't
+    // call atexit. This handler logs the last known state before termination.
+    signal(SIGABRT, [](int) {
+        char buf[256];
+        sprintf_s(buf, "KMP SIGABRT: LastCreate=#%d, LastTick=#%d step=%d (%s)\n",
+                  g_lastCharacterCreateNum, g_tickNumber, g_lastTickStep,
+                  g_lastStepName ? g_lastStepName : "?");
+        OutputDebugStringA(buf);
+
+        FILE* f = nullptr;
+        fopen_s(&f, "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiOnline_CRASH.log", "a");
+        if (f) {
+            fprintf(f, "\nKMP SIGABRT: LastCreate=#%d, LastTick=#%d step=%d (%s)\n",
                     g_lastCharacterCreateNum, g_tickNumber, g_lastTickStep,
                     g_lastStepName ? g_lastStepName : "?");
             fclose(f);
@@ -430,13 +499,64 @@ bool Core::Initialize() {
     return true;
 }
 
+// SEH wrapper for shutdown steps — no C++ objects with destructors allowed inside __try
+static bool SEH_ShutdownStep(void (*fn)()) {
+    __try {
+        fn();
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+// SEH-protected sync orchestrator tick. If the game crashes inside
+// position reads/writes (e.g., freed character objects), catch it
+// instead of killing the process.
+static bool SEH_SyncOrchestratorTick(SyncOrchestrator* orch, float dt) {
+    __try {
+        orch->Tick(dt);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        static int s_syncCrashCount = 0;
+        if (++s_syncCrashCount <= 10) {
+            char buf[128];
+            sprintf_s(buf, "KMP: SEH_SyncOrchestratorTick CRASHED (count=%d)\n", s_syncCrashCount);
+            OutputDebugStringA(buf);
+        }
+        return false;
+    }
+}
+
+static bool SEH_InterpolationUpdate(Interpolation* interp, float dt) {
+    __try {
+        interp->Update(dt);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+static void SEH_LoadingOrchTick(LoadingOrchestrator* orch) {
+    __try {
+        orch->Tick();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        static int s_count = 0;
+        if (++s_count <= 5) {
+            char buf[128];
+            sprintf_s(buf, "KMP: SEH_LoadingOrchTick CRASHED (count=%d)\n", s_count);
+            OutputDebugStringA(buf);
+        }
+    }
+}
+
 void Core::Shutdown() {
     spdlog::info("Kenshi-Online shutting down...");
 
     m_running = false;
     m_connected = false;
 
-    // Shutdown pipeline debugger and facilitators
+    // Each shutdown step is SEH-protected individually — MyGUI widgets may already be
+    // freed by Kenshi, causing AVs in setVisible/setCaption calls during teardown.
     m_pipelineOrch.Shutdown();
     AssetFacilitator::Get().Unbind();
     SyncFacilitator::Get().Unbind();
@@ -444,7 +564,6 @@ void Core::Shutdown() {
         m_syncOrchestrator->Shutdown();
     }
 
-    // Stop task orchestrator before joining network thread
     m_orchestrator.Stop();
 
     if (m_networkThread.joinable()) {
@@ -452,9 +571,17 @@ void Core::Shutdown() {
     }
 
     m_client.Disconnect();
-    m_nativeHud.Shutdown();
-    m_overlay.Shutdown();
-    HookManager::Get().Shutdown();
+
+    // These touch MyGUI — most likely to crash during Kenshi's own shutdown
+    if (!SEH_ShutdownStep([](){ Core::Get().GetNativeHud().Shutdown(); })) {
+        OutputDebugStringA("KMP: SEH — NativeHud::Shutdown crashed\n");
+    }
+    if (!SEH_ShutdownStep([](){ Core::Get().GetOverlay().Shutdown(); })) {
+        OutputDebugStringA("KMP: SEH — Overlay::Shutdown crashed\n");
+    }
+    if (!SEH_ShutdownStep([](){ HookManager::Get().Shutdown(); })) {
+        OutputDebugStringA("KMP: SEH — HookManager::Shutdown crashed\n");
+    }
 
     // Remove vectored exception handler
     if (g_vehHandle) {
@@ -522,6 +649,56 @@ bool Core::InitScanner() {
         bool resolved = ResolveGameFunctions(m_scanner, m_gameFuncs);
         if (!resolved) {
             spdlog::warn("Game functions minimally resolved: false - some features may not work");
+        }
+    }
+
+    // ── Steam singleton validation ──
+    // Hardcoded RVAs (PlayerBase=0x01AC8A90, GameWorld=0x02133040) are GOG 1.0.68 only.
+    // On Steam, these addresses contain unrelated data — dereferencing reads garbage
+    // pointers that crash downstream systems (CharacterIterator, SpawnManager, etc.).
+    // Validate by reading the value and checking it looks like a real heap pointer.
+    {
+        uintptr_t base = m_scanner.GetBase();
+        size_t size = m_scanner.GetSize();
+        auto validateSingleton = [base, size](uintptr_t addr, const char* name) -> bool {
+            if (addr == 0) return true; // Not resolved, nothing to validate
+            uintptr_t val = 0;
+            if (!Memory::Read(addr, val)) {
+                spdlog::warn("Core: {} at 0x{:X} — unreadable, clearing", name, addr);
+                return false;
+            }
+            // Must be in valid userspace heap range and NOT inside the module image
+            if (val == 0) return true; // NULL is OK (game not loaded yet)
+            if (val < 0x10000 || val >= 0x00007FFFFFFFFFFF) {
+                spdlog::warn("Core: {} at 0x{:X} reads garbage 0x{:X} — clearing (Steam offset mismatch)",
+                             name, addr, val);
+                return false;
+            }
+            if (val >= base && val < base + size) {
+                spdlog::warn("Core: {} at 0x{:X} reads module-internal ptr 0x{:X} — clearing",
+                             name, addr, val);
+                return false;
+            }
+            // Double-dereference: a real singleton should point to a readable object
+            uintptr_t check = 0;
+            if (!Memory::Read(val, check)) {
+                spdlog::warn("Core: {} at 0x{:X} -> 0x{:X} not dereferenceable — clearing",
+                             name, addr, val);
+                return false;
+            }
+            return true;
+        };
+
+        if (!validateSingleton(m_gameFuncs.PlayerBase, "PlayerBase")) {
+            m_gameFuncs.PlayerBase = 0;
+        }
+        if (!validateSingleton(m_gameFuncs.GameWorldSingleton, "GameWorldSingleton")) {
+            m_gameFuncs.GameWorldSingleton = 0;
+        }
+
+        if (m_isSteamVersion && m_gameFuncs.PlayerBase == 0 && m_gameFuncs.GameWorldSingleton == 0) {
+            spdlog::info("Core: Steam version — singletons cleared (will use loading cache + entity_hooks fallback)");
+            m_nativeHud.LogStep("INFO", "Steam: using entity_hooks fallback (no hardcoded singletons)");
         }
     }
 
@@ -864,7 +1041,15 @@ void Core::OnGameLoaded() {
     //   5 = + Combat only
     //   6 = + Inventory only
     //   7 = + Faction + Resource (everything EXCEPT Building — disabled, see below)
-    static constexpr int HOOK_PHASE = 7;
+    // HOOK_PHASE bisect: controls which deferred hooks install.
+    // Phase 1: TimeUpdate + GameFrameUpdate
+    // Phase 2: Movement  Phase 3: Squad  Phase 4: AI
+    // Phase 5: Combat    Phase 6: Inventory  Phase 7: Faction+Resource
+    //
+    // MovRaxRsp hooks cause cumulative heap corruption on Steam.
+    // Phase 4 disables Combat/Inventory/Faction (all have MovRaxRsp hooks).
+    // GameFrameUpdate (MovRaxRsp, Phase 1) is also skipped below.
+    static constexpr int HOOK_PHASE = 4;
     {
         char buf[128];
         sprintf_s(buf, "KMP: Hook bisect phase %d\n", HOOK_PHASE);
@@ -887,14 +1072,11 @@ void Core::OnGameLoaded() {
         }
     }
 
-    // GameFrameUpdate — uses MovRaxRsp fix (auto-applied by HookManager)
-    if (m_gameFuncs.GameFrameUpdate) {
-        if (game_tick_hooks::Install()) {
-            m_nativeHud.LogStep("OK", "GameFrameUpdate hook installed");
-        } else {
-            m_nativeHud.LogStep("WARN", "GameFrameUpdate hook FAILED");
-        }
-    }
+    // GameFrameUpdate — DISABLED: MovRaxRsp hook firing every frame causes
+    // cumulative heap corruption on Steam. TimeUpdate alone drives OnGameTick.
+    // GameFrameUpdate only did spawn diagnostics, nothing essential.
+    spdlog::info("Core::OnGameLoaded — GameFrameUpdate SKIPPED (MovRaxRsp heap corruption)");
+    m_nativeHud.LogStep("INFO", "GameFrameUpdate skipped (MovRaxRsp — using TimeUpdate only)");
 
     } // end phase 1
     if (HOOK_PHASE >= 2) {
@@ -1020,6 +1202,16 @@ void Core::OnGameLoaded() {
         m_nativeHud.LogStep("SCAN", "Retrying global discovery (game now loaded)...");
         SEH_RetryGlobalDiscovery(m_scanner, m_gameFuncs);
 
+        // Re-validate after retry — SEH_RetryGlobalDiscovery may re-resolve to same garbage
+        if (m_gameFuncs.PlayerBase != 0 && !validateGlobal(m_gameFuncs.PlayerBase)) {
+            spdlog::warn("Core: PlayerBase still garbage after retry — clearing");
+            m_gameFuncs.PlayerBase = 0;
+        }
+        if (m_gameFuncs.GameWorldSingleton != 0 && !validateGlobal(m_gameFuncs.GameWorldSingleton)) {
+            spdlog::warn("Core: GameWorldSingleton still garbage after retry — clearing");
+            m_gameFuncs.GameWorldSingleton = 0;
+        }
+
         if (m_gameFuncs.PlayerBase != 0) {
             game::SetResolvedPlayerBase(m_gameFuncs.PlayerBase);
             m_nativeHud.LogStep("OK", "PlayerBase discovered");
@@ -1097,17 +1289,139 @@ void Core::OnGameLoaded() {
         spdlog::warn("Core::OnGameLoaded — Skipping CharacterCreate disable (already connected)");
     }
 
+    // ═══ DUMP ALL FUNCTIONS AND OFFSETS ═══
+    {
+        uintptr_t base = m_scanner.GetBase();
+        auto fmtPtr = [base](const char* name, void* ptr) {
+            if (ptr)
+                spdlog::info("  FUNC  {:24s} = 0x{:X}  (RVA 0x{:X})", name,
+                             reinterpret_cast<uintptr_t>(ptr),
+                             reinterpret_cast<uintptr_t>(ptr) - base);
+            else
+                spdlog::info("  FUNC  {:24s} = NULL", name);
+        };
+        spdlog::info("=== FUNCTION DUMP (base=0x{:X}) ===", base);
+        fmtPtr("CharacterSpawn",       m_gameFuncs.CharacterSpawn);
+        fmtPtr("CharacterDestroy",     m_gameFuncs.CharacterDestroy);
+        fmtPtr("CreateRandomSquad",    m_gameFuncs.CreateRandomSquad);
+        fmtPtr("CharacterSerialise",   m_gameFuncs.CharacterSerialise);
+        fmtPtr("CharacterKO",          m_gameFuncs.CharacterKO);
+        fmtPtr("CharacterSetPosition", m_gameFuncs.CharacterSetPosition);
+        fmtPtr("CharacterMoveTo",      m_gameFuncs.CharacterMoveTo);
+        fmtPtr("ApplyDamage",          m_gameFuncs.ApplyDamage);
+        fmtPtr("StartAttack",          m_gameFuncs.StartAttack);
+        fmtPtr("CharacterDeath",       m_gameFuncs.CharacterDeath);
+        fmtPtr("HealthUpdate",         m_gameFuncs.HealthUpdate);
+        fmtPtr("CutDamageMod",         m_gameFuncs.CutDamageMod);
+        fmtPtr("UnarmedDamage",        m_gameFuncs.UnarmedDamage);
+        fmtPtr("MartialArtsCombat",    m_gameFuncs.MartialArtsCombat);
+        fmtPtr("ZoneLoad",             m_gameFuncs.ZoneLoad);
+        fmtPtr("ZoneUnload",           m_gameFuncs.ZoneUnload);
+        fmtPtr("BuildingPlace",        m_gameFuncs.BuildingPlace);
+        fmtPtr("BuildingDestroyed",    m_gameFuncs.BuildingDestroyed);
+        fmtPtr("Navmesh",             m_gameFuncs.Navmesh);
+        fmtPtr("SpawnCheck",           m_gameFuncs.SpawnCheck);
+        fmtPtr("GameFrameUpdate",      m_gameFuncs.GameFrameUpdate);
+        fmtPtr("TimeUpdate",           m_gameFuncs.TimeUpdate);
+        fmtPtr("SaveGame",             m_gameFuncs.SaveGame);
+        fmtPtr("LoadGame",             m_gameFuncs.LoadGame);
+        fmtPtr("ImportGame",           m_gameFuncs.ImportGame);
+        fmtPtr("CharacterStats",       m_gameFuncs.CharacterStats);
+        fmtPtr("InputKeyPressed",      m_gameFuncs.InputKeyPressed);
+        fmtPtr("InputMouseMoved",      m_gameFuncs.InputMouseMoved);
+        fmtPtr("SquadCreate",          m_gameFuncs.SquadCreate);
+        fmtPtr("SquadAddMember",       m_gameFuncs.SquadAddMember);
+        fmtPtr("ItemPickup",           m_gameFuncs.ItemPickup);
+        fmtPtr("ItemDrop",             m_gameFuncs.ItemDrop);
+        fmtPtr("BuyItem",              m_gameFuncs.BuyItem);
+        fmtPtr("FactionRelation",      m_gameFuncs.FactionRelation);
+        fmtPtr("AICreate",             m_gameFuncs.AICreate);
+        fmtPtr("AIPackages",           m_gameFuncs.AIPackages);
+        fmtPtr("GunTurret",            m_gameFuncs.GunTurret);
+        fmtPtr("GunTurretFire",        m_gameFuncs.GunTurretFire);
+        fmtPtr("BuildingDismantle",    m_gameFuncs.BuildingDismantle);
+        fmtPtr("BuildingConstruct",    m_gameFuncs.BuildingConstruct);
+        fmtPtr("BuildingRepair",       m_gameFuncs.BuildingRepair);
+        spdlog::info("  SGLTN PlayerBase           = 0x{:X} (val=0x{:X})",
+                     m_gameFuncs.PlayerBase,
+                     m_gameFuncs.PlayerBase ? SEH_ReadPtr(m_gameFuncs.PlayerBase) : 0);
+        spdlog::info("  SGLTN GameWorldSingleton   = 0x{:X} (val=0x{:X})",
+                     m_gameFuncs.GameWorldSingleton,
+                     m_gameFuncs.GameWorldSingleton ? SEH_ReadPtr(m_gameFuncs.GameWorldSingleton) : 0);
+        spdlog::info("  Count: {}/{} resolved", m_gameFuncs.CountResolved(), GameFunctions::TotalFunctions());
+
+        auto& co = game::GetOffsets().character;
+        auto& wo = game::GetOffsets().world;
+        spdlog::info("=== OFFSET DUMP ===");
+        auto fmtOff = [](const char* name, int val) {
+            if (val >= 0)
+                spdlog::info("  OFF   {:24s} = 0x{:03X}", name, val);
+            else
+                spdlog::info("  OFF   {:24s} = -1 (UNKNOWN)", name);
+        };
+        fmtOff("name", co.name);
+        fmtOff("faction", co.faction);
+        fmtOff("position", co.position);
+        fmtOff("rotation", co.rotation);
+        fmtOff("gameDataPtr", co.gameDataPtr);
+        fmtOff("inventory", co.inventory);
+        fmtOff("stats", co.stats);
+        fmtOff("animClassOffset", co.animClassOffset);
+        fmtOff("charMovementOffset", co.charMovementOffset);
+        fmtOff("writablePosOffset", co.writablePosOffset);
+        fmtOff("writablePosVecOffset", co.writablePosVecOffset);
+        fmtOff("squad", co.squad);
+        fmtOff("equipment", co.equipment);
+        fmtOff("isPlayerControlled", co.isPlayerControlled);
+        fmtOff("health", co.health);
+        fmtOff("healthChain1", co.healthChain1);
+        fmtOff("healthChain2", co.healthChain2);
+        fmtOff("healthBase", co.healthBase);
+        fmtOff("moneyChain1", co.moneyChain1);
+        fmtOff("moneyChain2", co.moneyChain2);
+        fmtOff("moneyBase", co.moneyBase);
+        fmtOff("sceneNode", co.sceneNode);
+        fmtOff("aiPackage", co.aiPackage);
+        fmtOff("world.gameSpeed", wo.gameSpeed);
+        fmtOff("world.characterList", wo.characterList);
+        fmtOff("world.zoneManager", wo.zoneManager);
+        fmtOff("world.timeOfDay", wo.timeOfDay);
+        spdlog::info("=== END DUMP ===");
+    }
+
     m_nativeHud.LogStep("GAME", "Ready! Press F1 for multiplayer menu");
     OutputDebugStringA("KMP: === Core::OnGameLoaded() COMPLETE ===\n");
 }
 
+// SEH wrapper for network thread update — must be a plain function (no C++ objects with destructors)
+static int SEH_NetworkUpdate(NetworkClient* client) {
+    __try {
+        client->Update();
+        return 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return GetExceptionCode();
+    }
+}
+
 void Core::NetworkThreadFunc() {
     spdlog::info("Network thread started");
+    int consecutiveCrashes = 0;
 
     while (m_running) {
-        // Always pump ENet events — handles async connect, receive, and disconnect
-        m_client.Update();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        int exCode = SEH_NetworkUpdate(&m_client);
+        if (exCode != 0) {
+            consecutiveCrashes++;
+            if (consecutiveCrashes <= 20) {
+                spdlog::error("NetworkThread: SEH crash #{} in Update() — exception 0x{:08X}",
+                              consecutiveCrashes, static_cast<unsigned>(exCode));
+                OutputDebugStringA("KMP: NetworkThread SEH crash in Update()\n");
+            }
+            // Back off briefly after a crash to avoid tight crash loops
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        } else {
+            consecutiveCrashes = 0;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
     }
 
     spdlog::info("Network thread stopped");
@@ -1217,29 +1531,35 @@ void Core::SendExistingEntitiesToServer() {
                          iteratorWorked ? "found no squad members" : "FAILED (0 chars)",
                          cached.size(), playerFaction);
 
-            for (const auto& cc : cached) {
-                if (cc.x == 0.f && cc.y == 0.f && cc.z == 0.f) continue;
+            // Lambda to send one cached character to server
+            auto trySendCached = [&](const entity_hooks::CachedCharacter& cc) -> bool {
+                if (m_entityRegistry.GetNetId(cc.gameObj) != INVALID_ENTITY) return false;
 
-                // Apply faction filter (with cache fallback: if NO faction, send first 4 chars)
-                if (playerFaction != 0 && cc.factionPtr != playerFaction) {
-                    skippedFaction++;
-                    continue;
+                // Re-read LIVE position from game object (cached position may be stale/zero)
+                game::CharacterAccessor accessor(cc.gameObj);
+                if (!accessor.IsValid()) return false;
+                Vec3 pos = accessor.GetPosition();
+                if (pos.x == 0.f && pos.y == 0.f && pos.z == 0.f) {
+                    // Fall back to cached position if live read returns zero
+                    pos = Vec3(cc.x, cc.y, cc.z);
+                    if (pos.x == 0.f && pos.y == 0.f && pos.z == 0.f) return false;
                 }
-                // If still no faction at all, cap at 4 characters to avoid NPC flood
-                if (playerFaction == 0 && count >= 4) break;
 
-                if (m_entityRegistry.GetNetId(cc.gameObj) != INVALID_ENTITY) continue;
-
-                Vec3 pos(cc.x, cc.y, cc.z);
                 EntityID netId = m_entityRegistry.Register(cc.gameObj, EntityType::NPC, m_localPlayerId);
                 m_entityRegistry.UpdatePosition(netId, pos);
 
-                // Read rotation from game object (may be stale but good enough)
-                game::CharacterAccessor accessor(cc.gameObj);
                 Quat rot = accessor.GetRotation();
                 m_entityRegistry.UpdateRotation(netId, rot);
 
                 std::string charName = accessor.GetName();
+                uintptr_t liveFaction = accessor.GetFactionPtr();
+                uint32_t fId = cc.factionId;
+                if (liveFaction != 0) {
+                    Memory::Read(liveFaction + 0x08, fId);
+                }
+
+                spdlog::info("Core: Sending cached entity {} '{}' at ({:.0f},{:.0f},{:.0f}) faction=0x{:X}",
+                             netId, charName, pos.x, pos.y, pos.z, liveFaction);
 
                 PacketWriter writer;
                 writer.WriteHeader(MessageType::C2S_EntitySpawnReq);
@@ -1251,13 +1571,46 @@ void Core::SendExistingEntitiesToServer() {
                 writer.WriteF32(pos.y);
                 writer.WriteF32(pos.z);
                 writer.WriteU32(rot.Compress());
-                writer.WriteU32(cc.factionId);
+                writer.WriteU32(fId);
                 uint16_t nameLen = static_cast<uint16_t>(std::min<size_t>(charName.size(), 255));
                 writer.WriteU16(nameLen);
                 if (nameLen > 0) writer.WriteRaw(charName.data(), nameLen);
 
                 m_client.SendReliable(writer.Data(), writer.Size());
-                count++;
+                return true;
+            };
+
+            // Pass 1: faction-filtered scan
+            for (const auto& cc : cached) {
+                if (playerFaction != 0 && cc.factionPtr != playerFaction) {
+                    skippedFaction++;
+                    continue;
+                }
+                if (playerFaction == 0 && count >= 4) break;
+                if (trySendCached(cc)) count++;
+            }
+
+            // Pass 2: if faction filter found NOTHING, retry WITHOUT filter (cap at 4)
+            // This handles the case where s_capturedFaction is an NPC faction, not the
+            // player's faction (common on Steam where the first CharacterCreate is an NPC).
+            if (count == 0 && playerFaction != 0) {
+                spdlog::warn("Core: Faction filter 0x{:X} matched 0 chars — retrying WITHOUT faction filter (cap 4)",
+                             playerFaction);
+                int unfilteredCount = 0;
+                for (const auto& cc : cached) {
+                    if (unfilteredCount >= 4) break;
+                    if (trySendCached(cc)) {
+                        count++;
+                        unfilteredCount++;
+                        // Update faction from the first successfully sent character
+                        if (unfilteredCount == 1 && cc.factionPtr != 0) {
+                            playerFaction = cc.factionPtr;
+                            m_playerController.SetLocalFactionPtr(playerFaction);
+                            spdlog::info("Core: Updated player faction to 0x{:X} from first sent character",
+                                         playerFaction);
+                        }
+                    }
+                }
             }
         } else {
             spdlog::warn("Core: Both CharacterIterator AND loading cache empty — no characters to send");
@@ -1338,6 +1691,7 @@ void Core::OnGameTick(float deltaTime) {
         spdlog::info("Core::OnGameTick ENTERED (call #{}, dt={:.4f}, lastStep={})",
                      s_tickCallCount, deltaTime, m_lastCompletedStep.load());
     }
+    WriteBreadcrumb("tick_entry", s_tickCallCount);
     SetLastCompletedStep(0);
 
     // ── Step 1: Entity scan with retry ──
@@ -1418,44 +1772,53 @@ void Core::OnGameTick(float deltaTime) {
     // ── Steps 2-9: Sync pipeline ──
     if (m_useSyncOrchestrator && m_syncOrchestrator) {
         g_lastTickStep = 2; g_lastStepName = "interpolation";
-        m_interpolation.Update(deltaTime);
+        WriteBreadcrumb("interpolation", s_tickCallCount, 2);
+        SEH_InterpolationUpdate(&m_interpolation, deltaTime);
         SetLastCompletedStep(4);
 
         g_lastTickStep = 3; g_lastStepName = "sync_orch_tick";
-        m_syncOrchestrator->Tick(deltaTime);
+        WriteBreadcrumb("sync_orch_tick", s_tickCallCount, 3);
+        SEH_SyncOrchestratorTick(m_syncOrchestrator.get(), deltaTime);
         SetLastCompletedStep(6);
 
         g_lastTickStep = 4; g_lastStepName = "loading_orch";
-        m_loadingOrch.Tick();
+        WriteBreadcrumb("loading_orch", s_tickCallCount, 4);
+        SEH_LoadingOrchTick(&m_loadingOrch);
 
         g_lastTickStep = 5; g_lastStepName = "host_teleport";
+        WriteBreadcrumb("host_teleport", s_tickCallCount, 5);
         HandleHostTeleport();
         SetLastCompletedStep(8);
         SetLastCompletedStep(9);
     } else {
         g_lastTickStep = 2; g_lastStepName = "wait_bg_work";
+        WriteBreadcrumb("wait_bg_work", s_tickCallCount, 2);
         if (m_pipelineStarted) {
             m_orchestrator.WaitForFrameWork();
         }
         SetLastCompletedStep(2);
 
         g_lastTickStep = 3; g_lastStepName = "swap_buffers";
+        WriteBreadcrumb("swap_buffers", s_tickCallCount, 3);
         if (m_pipelineStarted) {
             std::swap(m_readBuffer, m_writeBuffer);
         }
         SetLastCompletedStep(3);
 
         g_lastTickStep = 4; g_lastStepName = "interpolation";
+        WriteBreadcrumb("interpolation_alt", s_tickCallCount, 4);
         m_interpolation.Update(deltaTime);
         SetLastCompletedStep(4);
 
         g_lastTickStep = 5; g_lastStepName = "apply_remote_pos";
+        WriteBreadcrumb("apply_remote_pos", s_tickCallCount, 5);
         if (m_pipelineStarted) {
             ApplyRemotePositions();
         }
         SetLastCompletedStep(5);
 
         g_lastTickStep = 6; g_lastStepName = "poll_local_pos";
+        WriteBreadcrumb("poll_local_pos", s_tickCallCount, 6);
         PollLocalPositions();
 
         g_lastTickStep = 7; g_lastStepName = "send_packets";
@@ -1465,17 +1828,21 @@ void Core::OnGameTick(float deltaTime) {
         SetLastCompletedStep(6);
 
         g_lastTickStep = 8; g_lastStepName = "loading_orch";
-        m_loadingOrch.Tick();
+        WriteBreadcrumb("loading_orch_alt", s_tickCallCount, 8);
+        SEH_LoadingOrchTick(&m_loadingOrch);
 
         g_lastTickStep = 9; g_lastStepName = "handle_spawns";
+        WriteBreadcrumb("handle_spawns", s_tickCallCount, 9);
         HandleSpawnQueue();
         SetLastCompletedStep(7);
 
         g_lastTickStep = 10; g_lastStepName = "host_teleport";
+        WriteBreadcrumb("host_teleport_alt", s_tickCallCount, 10);
         HandleHostTeleport();
         SetLastCompletedStep(8);
 
         g_lastTickStep = 11; g_lastStepName = "kick_bg_work";
+        WriteBreadcrumb("kick_bg_work", s_tickCallCount, 11);
         m_frameData[m_writeBuffer].Clear();
         KickBackgroundWork();
         m_pipelineStarted = true;
@@ -1483,23 +1850,22 @@ void Core::OnGameTick(float deltaTime) {
     }
 
     // ── Step 9b: Deferred probes — DISABLED ──
-    // AnimClass probing was flooding the log with 5 "Method 2 unavailable" per tick
-    // and never succeeding. PlayerControlled probing also never succeeds (CharacterIterator
-    // always fails). Both are non-essential optimizations. Disabled to eliminate them
-    // as potential crash contributors.
     g_lastTickStep = 12; g_lastStepName = "probes_skipped";
 
     // ── Step 10: Diagnostics ──
     g_lastTickStep = 13; g_lastStepName = "diagnostics";
+    WriteBreadcrumb("diagnostics", s_tickCallCount, 13);
     UpdateDiagnostics(deltaTime);
     SetLastCompletedStep(10);
 
     // ── Step 11: Pipeline debugger ──
     g_lastTickStep = 14; g_lastStepName = "pipeline_orch";
+    WriteBreadcrumb("pipeline_orch", s_tickCallCount, 14);
     m_pipelineOrch.Tick(deltaTime);
     SetLastCompletedStep(11);
 
     g_lastTickStep = 15; g_lastStepName = "tick_complete";
+    WriteBreadcrumb("tick_complete", s_tickCallCount, 15);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1529,6 +1895,35 @@ static bool SEH_WritePositionRotation(void* gameObj, Vec3 pos, Quat rot) {
             sprintf_s(buf, "KMP: SEH_WritePositionRotation CRASHED for gameObj 0x%p\n", gameObj);
             OutputDebugStringA(buf);
         }
+        return false;
+    }
+}
+
+// Fix stale faction pointer on a spawned character by copying the LIVE
+// faction from the host's primary character.  Must be called BEFORE the
+// game engine's next character-update tick to prevent a use-after-free
+// crash at game+0x927E94 (reads faction+0x250 on every character).
+static bool SEH_FixUpFaction_Core(void* spawnedChar) {
+    __try {
+        void* primaryChar = Core::Get().GetPlayerController().GetPrimaryCharacter();
+        if (!primaryChar) return false;
+
+        uintptr_t primaryPtr = reinterpret_cast<uintptr_t>(primaryChar);
+        uintptr_t spawnedPtr = reinterpret_cast<uintptr_t>(spawnedChar);
+
+        uintptr_t faction = 0;
+        Memory::Read(primaryPtr + 0x10, faction);
+        if (faction == 0 || faction < 0x10000 || faction > 0x00007FFFFFFFFFFF)
+            return false;
+
+        // Validate: faction object should be readable (not freed)
+        uintptr_t vtable = 0;
+        Memory::Read(faction, vtable);
+        if (vtable == 0) return false;
+
+        Memory::Write(spawnedPtr + 0x10, faction);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
     }
 }
@@ -1854,65 +2249,22 @@ void Core::HandleSpawnQueue() {
                      m_spawnManager.HasPreCallData());
     }
 
-    if (pending > 0 && s_hasPendingTimer && m_spawnManager.HasPreCallData()) {
+    // SpawnCharacterDirect DISABLED — the copied pre-call struct from loading
+    // contains a faction pointer that becomes a use-after-free when the source
+    // NPC's zone unloads, crashing at game+0x927E94 (faction+0x250).
+    //
+    // Remote characters spawn ONLY via in-place replay (entity_hooks):
+    // Hook_CharacterCreate piggybacks on natural NPC creation events.
+    // The player must walk near NPCs (town, camp) to trigger spawns.
+    if (pending > 0 && s_hasPendingTimer) {
         auto pendingDuration = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - s_firstPendingTime);
-
-        // Wait 10s before using direct spawn — gives in-place replay (entity_hooks)
-        // time to handle spawns via the safer original-stack method.
-        // In-place replay needs ~5s (loading burst end + 3s settle), so 10s
-        // provides a comfortable margin before falling back to SpawnCharacterDirect.
-        if (pendingDuration.count() >= 10 && s_directSpawnAttempts < 10) {
-            static auto s_lastDirectAttempt = std::chrono::steady_clock::time_point{};
-            auto sinceLast = std::chrono::duration_cast<std::chrono::seconds>(
-                std::chrono::steady_clock::now() - s_lastDirectAttempt);
-
-            if (s_directSpawnAttempts == 0 || sinceLast.count() >= 3) {
-                s_lastDirectAttempt = std::chrono::steady_clock::now();
-                s_directSpawnAttempts++;
-
-                spdlog::info("Core: FALLBACK DIRECT SPAWN attempt #{} ({} pending, "
-                             "{}s since queued)", s_directSpawnAttempts, pending,
-                             pendingDuration.count());
-                m_nativeHud.LogStep("GAME", "Fallback spawn attempt #" +
-                              std::to_string(s_directSpawnAttempts) + "...");
-
-                SpawnRequest req;
-                if (m_spawnManager.PopNextSpawn(req)) {
-                    void* character = m_spawnManager.SpawnCharacterDirect(&req.position);
-                    if (character) {
-                        spdlog::info("Core: FALLBACK SPAWN SUCCESS! entity={} char=0x{:X}",
-                                     req.netId, reinterpret_cast<uintptr_t>(character));
-
-                        // Link to EntityRegistry FIRST (safe — our own code, just a map insert).
-                        // Even if post-spawn setup below crashes, the entity is linked and
-                        // ApplyRemotePositions() will move it next frame.
-                        m_entityRegistry.SetGameObject(req.netId, character);
-                        m_entityRegistry.UpdatePosition(req.netId, req.position);
-
-                        // SEH-protected post-spawn setup (WritePosition, name/faction, AI,
-                        // squad injection, player controlled flag, AnimClass probe).
-                        // All follow chains of game memory pointers that may be invalid
-                        // for freshly-spawned characters from SpawnCharacterDirect.
-                        if (SEH_FallbackPostSpawnSetup(character, req.netId,
-                                                        req.owner, req.position)) {
-                            m_nativeHud.LogStep("OK", "Remote player spawned!");
-                            m_overlay.AddSystemMessage("Remote player character spawned!");
-                            m_nativeHud.AddSystemMessage("Remote player spawned nearby!");
-                        } else {
-                            m_nativeHud.LogStep("WARN", "Spawn partial — setup crashed (SEH caught)");
-                            m_nativeHud.AddSystemMessage("Remote player spawned (partial — setup error)");
-                        }
-                    } else {
-                        spdlog::warn("Core: FALLBACK SPAWN FAILED for entity {} (attempt #{})",
-                                     req.netId, s_directSpawnAttempts);
-                        req.retryCount++;
-                        if (req.retryCount < MAX_SPAWN_RETRIES) {
-                            m_spawnManager.RequeueSpawn(req);
-                        }
-                        m_nativeHud.LogStep("WARN", "Spawn attempt failed, retrying...");
-                    }
-                }
+        if (pendingDuration.count() >= 10 && pendingDuration.count() % 10 == 0) {
+            static int64_t s_lastLogSec = 0;
+            if (pendingDuration.count() != s_lastLogSec) {
+                s_lastLogSec = pendingDuration.count();
+                spdlog::info("Core: {} spawns pending for {}s — waiting for in-place replay "
+                             "(walk near NPCs)", pending, pendingDuration.count());
             }
         }
     }

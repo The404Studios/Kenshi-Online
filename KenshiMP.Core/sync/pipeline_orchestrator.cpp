@@ -71,8 +71,30 @@ uint32_t PipelineOrchestrator::GetTimestampMs() const {
 // TICK
 // ══════════════════════════════════════════════════════════════════════════════
 
+// SEH wrapper — PipelineOrchestrator::TickInner has C++ objects (lock_guard, etc.)
+// that prevent __try from being used directly in it. This thin wrapper catches any AV
+// from garbage game pointers (common on Steam where singletons don't resolve).
+static bool SEH_PipelineOrchestratorTick(PipelineOrchestrator* self) {
+    __try {
+        self->TickInner();
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 void PipelineOrchestrator::Tick(float /*deltaTime*/) {
     if (!m_initialized) return;
+
+    if (!SEH_PipelineOrchestratorTick(this)) {
+        static int s_tickCrashCount = 0;
+        if (++s_tickCrashCount <= 5) {
+            spdlog::error("PipelineOrchestrator::Tick SEH crash #{}", s_tickCrashCount);
+        }
+    }
+}
+
+void PipelineOrchestrator::TickInner() {
     auto now = std::chrono::steady_clock::now();
 
     // Track game loaded time for CanSpawn stuck detection

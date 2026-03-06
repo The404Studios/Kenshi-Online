@@ -446,7 +446,14 @@ struct GameFunctions {
     uintptr_t GameWorldSingleton = 0;
 
     bool IsMinimallyResolved() const {
-        return PlayerBase != 0;
+        // On Steam, PlayerBase may not be found during init (singletons are
+        // discovered later when the game loads and the values become non-null).
+        // Consider resolved if we have either PlayerBase OR the critical hooks.
+        if (PlayerBase != 0) return true;
+        // Fallback: at least CharacterSpawn + GameFrameUpdate/TimeUpdate resolved
+        // means string xref worked and hooks can install — singletons can be retried later.
+        return (CharacterSpawn != nullptr) &&
+               (GameFrameUpdate != nullptr || TimeUpdate != nullptr);
     }
 
     int CountResolved() const {

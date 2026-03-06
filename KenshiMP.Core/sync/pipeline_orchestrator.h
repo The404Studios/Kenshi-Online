@@ -33,6 +33,7 @@ public:
 
     // ── Per-frame tick (called from Core::OnGameTick, Step 11) ──
     void Tick(float deltaTime);
+    void TickInner(); // Called from SEH wrapper in Tick()
 
     // ── Event Recording (thread-safe, called from any thread) ──
     void RecordEvent(PipelineEventType type, uint8_t severity,

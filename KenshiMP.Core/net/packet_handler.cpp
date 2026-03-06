@@ -41,6 +41,14 @@ public:
         PacketHeader header;
         if (!reader.ReadHeader(header)) return;
 
+        // Debug: log every packet for first 100, then every 50th
+        static int s_packetNum = 0;
+        s_packetNum++;
+        if (s_packetNum <= 100 || s_packetNum % 50 == 0) {
+            spdlog::debug("PacketHandler: pkt #{} type={} size={} ch={}",
+                          s_packetNum, static_cast<int>(header.type), size, channel);
+        }
+
         // ── SAFE messages (work without game world) ──
         // These are pure connection/UI messages that don't access game objects.
         switch (header.type) {

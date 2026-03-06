@@ -77,6 +77,41 @@ void PlayerController::RemoveRemotePlayer(PlayerID id) {
     }
 }
 
+// Validate faction pointer: readable and has a vtable-like first qword
+static bool SEH_ValidateFaction(uintptr_t factionPtr, uintptr_t& outVtable) {
+    __try {
+        outVtable = *reinterpret_cast<uintptr_t*>(factionPtr);
+        // Vtable should be in a valid high-address code range (module or DLL)
+        return (outVtable > 0x7FF000000000ULL && outVtable < 0x7FFFFFFFFFFFF0ULL);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        outVtable = 0;
+        return false;
+    }
+}
+
+// SEH wrapper — __try can't coexist with C++ destructors (MSVC C2712)
+static bool SEH_WriteFactionToChar(void* gameObj, uintptr_t factionPtr) {
+    __try {
+        game::CharacterAccessor accessor(gameObj);
+        if (accessor.IsValid() && accessor.WriteFaction(factionPtr)) {
+            return true;
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // Character may have been freed
+    }
+    return false;
+}
+
+void PlayerController::SetLocalFactionPtr(uintptr_t factionPtr) {
+    uintptr_t oldFaction = m_localFactionPtr;
+    m_localFactionPtr = factionPtr;
+
+    // Faction fix-up on remote characters DISABLED — writing NPC faction pointers
+    // causes use-after-free crashes when the source zone unloads.
+    spdlog::info("PlayerController: SetLocalFactionPtr 0x{:X} (was 0x{:X}) — fix-up disabled",
+                 factionPtr, oldFaction);
+}
+
 bool PlayerController::OnRemoteCharacterSpawned(EntityID entityId, void* gameObject, PlayerID owner) {
     if (!gameObject) return false;
 
@@ -114,17 +149,15 @@ bool PlayerController::OnRemoteCharacterSpawned(EntityID entityId, void* gameObj
         }
     }
 
-    // ── 2. Fix faction to match local player (so remote chars are allies) ──
-    if (m_localFactionPtr != 0) {
-        if (accessor.WriteFaction(m_localFactionPtr)) {
-            spdlog::info("PlayerController: Set entity {} faction to local 0x{:X}",
-                         entityId, m_localFactionPtr);
-        } else {
-            spdlog::warn("PlayerController: WriteFaction failed for entity {}", entityId);
-        }
-    } else {
-        spdlog::warn("PlayerController: No local faction captured — remote entity {} keeps default faction", entityId);
-    }
+    // ── 2. Faction write DISABLED ──
+    // Writing a captured NPC faction pointer to the remote character causes a
+    // use-after-free crash: when the source NPC's zone unloads, its faction object
+    // is freed. The game engine then crashes accessing faction+0x250 on the remote
+    // character (game+0x927E94, sign-extended 32-bit pointer → 0xFFFFFFFF prefix).
+    // The remote character keeps its default factory-assigned faction instead.
+    // TODO: Find the PLAYER's faction (not NPC faction) for allied status.
+    spdlog::info("PlayerController: Faction write SKIPPED for entity {} (use-after-free prevention). "
+                 "Local faction=0x{:X}", entityId, m_localFactionPtr);
 
     spdlog::info("PlayerController: Remote character {} set up for player '{}' (named + faction set)",
                  entityId, displayName);

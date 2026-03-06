@@ -61,13 +61,19 @@ bool NativeMenu::Init() {
     bridge.SetCaption(m_settingsNameEdit, config.playerName);
     m_autoConnectChecked = config.autoConnect;
 
-    // Disable MyGUI keyboard focus on our edit widgets — we handle all text input
-    // manually via WndProc (OnChar/OnKeyDown). Without this, MyGUI's injectKeyPress
-    // would also deliver keystrokes to focused widgets, causing double-typing.
+    // Disable MyGUI keyboard focus AND make read-only — we handle all text input
+    // manually via WndProc (OnChar/OnKeyDown). NeedKeyFocus=false prevents focus
+    // requests, but Kenshi's OIS input can still deliver keystrokes via MyGUI's
+    // injectKeyPress. ReadOnly=true prevents the EditBox from processing them
+    // internally, eliminating double-typing.
     bridge.SetProperty(m_serverIPEdit, "NeedKeyFocus", "false");
     bridge.SetProperty(m_serverPortEdit, "NeedKeyFocus", "false");
     bridge.SetProperty(m_playerNameEdit, "NeedKeyFocus", "false");
     bridge.SetProperty(m_settingsNameEdit, "NeedKeyFocus", "false");
+    bridge.SetProperty(m_serverIPEdit, "ReadOnly", "true");
+    bridge.SetProperty(m_serverPortEdit, "ReadOnly", "true");
+    bridge.SetProperty(m_playerNameEdit, "ReadOnly", "true");
+    bridge.SetProperty(m_settingsNameEdit, "ReadOnly", "true");
 
     // Store the values we set so we have reliable fallbacks if GetCaption fails
     m_storedIP = config.lastServer;
