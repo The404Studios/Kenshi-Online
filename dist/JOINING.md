@@ -5,10 +5,36 @@
 
 ## Installation
 
+### Quick Install (install.bat)
 1. Extract the KenshiMP zip into any folder
 2. Run `install.bat` as Administrator
 3. The installer auto-detects your Kenshi folder and sets everything up
 4. To remove, run `uninstall.bat`
+
+### Manual Install
+If `install.bat` doesn't work, copy the files manually:
+
+1. Open your Kenshi game folder (usually `C:\Program Files (x86)\Steam\steamapps\common\Kenshi\`)
+2. Copy these files from the `client/` folder into the Kenshi game folder:
+   - `KenshiMP.Core.dll` — goes next to `kenshi_x64.exe`
+   - `Kenshi_MainMenu.layout` — goes next to `kenshi_x64.exe`
+   - `Kenshi_MultiplayerHUD.layout` — goes next to `kenshi_x64.exe`
+   - `Kenshi_MultiplayerPanel.layout` — goes next to `kenshi_x64.exe`
+3. Run `KenshiMP.Injector.exe` — this adds the plugin to Kenshi's config
+4. For hosting: copy `KenshiMP.Server.exe` from `server/` to wherever you want to run the server
+
+### File Layout After Install
+```
+Kenshi/
+├── kenshi_x64.exe
+├── KenshiMP.Core.dll              <-- Client plugin
+├── Kenshi_MainMenu.layout         <-- MULTIPLAYER button on main menu
+├── Kenshi_MultiplayerHUD.layout   <-- In-game HUD (status, chat, log)
+├── Kenshi_MultiplayerPanel.layout <-- Multiplayer menu (Host/Join/Settings)
+└── Plugins_x64.cfg               <-- Modified by injector (adds Plugin=KenshiMP.Core)
+```
+
+**Important:** All 3 `.layout` files MUST be in the same folder as `kenshi_x64.exe` or the UI won't appear.
 
 ---
 
@@ -90,10 +116,14 @@ Some routers have UPnP disabled. You'll need to forward port **27800 UDP** manua
 **Game crashes on join?**
 - Make sure both players have KenshiMP installed (run `install.bat`)
 - Always click **NEW GAME** when joining, not Load Game
+- If you're on v0.1.0.1 or earlier, update to v1.0.2 — older versions crash due to a faction pointer bug
 
 **Other player is invisible?**
-- Entity spawning is still in development
-- You should see each other's names and positions in the player list (Tab)
+- After connecting, **walk toward a town or any area with NPCs** (guards, traders, patrols)
+- The mod uses Kenshi's own NPC creation events to safely spawn remote players
+- This takes 10-30 seconds — you'll see a log message when the spawn triggers
+- Press Insert to open the debug log and watch for spawn status
+- Check the player list (Tab) to confirm the other player is connected
 
 ---
 
