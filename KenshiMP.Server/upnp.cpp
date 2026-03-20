@@ -1,6 +1,9 @@
 #include "upnp.h"
 #include <spdlog/spdlog.h>
 
+#ifdef _WIN32
+// ── Windows implementation ── Uses COM/UPnP NAT Traversal API
+
 #include <Windows.h>
 #include <natupnp.h>
 #include <comdef.h>
@@ -219,3 +222,61 @@ std::string UPnPMapper::GetExternalIP() {
 }
 
 } // namespace kmp
+
+#else
+// ── Linux implementation ── No-op UPnP for dedicated servers.
+// Dedicated servers typically have static IPs and firewall rules
+// managed externally (iptables/ufw/cloud security groups).
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+namespace kmp {
+
+std::string UPnPMapper::GetLocalIP() {
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock < 0) return "127.0.0.1";
+
+    sockaddr_in target{};
+    target.sin_family = AF_INET;
+    target.sin_port = htons(80);
+    inet_pton(AF_INET, "8.8.8.8", &target.sin_addr);
+
+    if (connect(sock, (sockaddr*)&target, sizeof(target)) != 0) {
+        close(sock);
+        return "127.0.0.1";
+    }
+
+    sockaddr_in local{};
+    socklen_t localLen = sizeof(local);
+    if (getsockname(sock, (sockaddr*)&local, &localLen) != 0) {
+        close(sock);
+        return "127.0.0.1";
+    }
+
+    char ipStr[INET_ADDRSTRLEN] = {};
+    inet_ntop(AF_INET, &local.sin_addr, ipStr, sizeof(ipStr));
+    close(sock);
+    return ipStr;
+}
+
+bool UPnPMapper::AddMapping(uint16_t externalPort, uint16_t /*internalPort*/,
+                            const std::string& protocol, const std::string& /*description*/) {
+    spdlog::info("UPnP: Skipped on Linux dedicated server (port {} {} — ensure firewall is open)",
+                 externalPort, protocol);
+    return false;
+}
+
+bool UPnPMapper::RemoveMapping(uint16_t /*externalPort*/, const std::string& /*protocol*/) {
+    return true;
+}
+
+std::string UPnPMapper::GetExternalIP() {
+    return "";
+}
+
+} // namespace kmp
+
+#endif

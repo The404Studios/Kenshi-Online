@@ -39,6 +39,7 @@ bool GameServer::Start(const ServerConfig& config) {
             spdlog::info("GameServer: UPnP mapped port {} successfully", config.port);
         }
     } else {
+#ifdef _WIN32
         spdlog::info("GameServer: UPnP unavailable — adding Windows Firewall rule instead...");
 
         std::string deleteCmd = "netsh advfirewall firewall delete rule name=\"KenshiMP Server\" >nul 2>&1";
@@ -53,6 +54,9 @@ bool GameServer::Start(const ServerConfig& config) {
             spdlog::warn("GameServer: Failed to add firewall rule (need admin?). "
                          "Port {} may need manual forwarding.", config.port);
         }
+#else
+        spdlog::info("GameServer: Linux dedicated server — ensure port {} UDP is open in firewall", config.port);
+#endif
     }
 
     // ── Now start listening — port is mapped (or we tried our best) ──

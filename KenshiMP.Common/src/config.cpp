@@ -1,7 +1,13 @@
 #include "kmp/config.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
+
+#ifdef _WIN32
 #include <shlobj.h>
+#else
+#include <cstdlib>
+#include <sys/stat.h>
+#endif
 
 namespace kmp {
 
@@ -10,6 +16,7 @@ using json = nlohmann::json;
 // ── ClientConfig ──
 
 std::string ClientConfig::GetDefaultPath() {
+#ifdef _WIN32
     char path[MAX_PATH];
     if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_APPDATA, nullptr, 0, path))) {
         std::string dir = std::string(path) + "\\KenshiMP";
@@ -17,6 +24,15 @@ std::string ClientConfig::GetDefaultPath() {
         return dir + "\\client.json";
     }
     return "client.json";
+#else
+    const char* home = std::getenv("HOME");
+    if (home) {
+        std::string dir = std::string(home) + "/.config/KenshiMP";
+        mkdir(dir.c_str(), 0755);
+        return dir + "/client.json";
+    }
+    return "client.json";
+#endif
 }
 
 bool ClientConfig::Load(const std::string& path) {
