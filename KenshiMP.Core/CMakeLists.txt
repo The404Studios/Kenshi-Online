@@ -17,6 +17,10 @@ add_library(KenshiMP.Core SHARED
     hooks/building_hooks.cpp
     hooks/ai_hooks.cpp
     hooks/resource_hooks.cpp
+    hooks/squad_spawn_hooks.h
+    hooks/squad_spawn_hooks.cpp
+    hooks/char_tracker_hooks.h
+    hooks/char_tracker_hooks.cpp
     # Game wrappers
     game/game_character.cpp
     game/game_squad.cpp
@@ -29,6 +33,9 @@ add_library(KenshiMP.Core SHARED
     game/player_controller.cpp
     game/loading_orchestrator.cpp
     game/asset_facilitator.cpp
+    game/lobby_manager.h
+    game/lobby_manager.cpp
+    game/shared_save_sync.cpp
     # Networking
     net/client.cpp
     net/packet_handler.cpp

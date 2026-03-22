@@ -1,0 +1,8 @@
+﻿  Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.Scanner/CMakeLists.txt
+  scanner.cpp
+  patterns.cpp
+  memory.cpp
+  hook_manager.cpp
+  function_analyzer.cpp
+  Generating Code...
+  KenshiMP.Scanner.vcxproj -> C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\Debug\KenshiMP.Scanner.lib

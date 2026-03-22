@@ -45,6 +45,7 @@ struct MovRaxRspHook {
     void* rawTrampoline     = nullptr;  // MinHook's raw trampoline (starts with mov rax,rsp)
                                         // Safe for REENTRANT calls — no global slot manipulation
     void* capturedRspSlot   = nullptr;  // Pointer to uint64_t holding captured RSP
+    volatile int32_t* bypassFlag = nullptr; // Pointer to bypass flag (1=passthrough, 0=hook active)
     void* allocBase         = nullptr;  // VirtualAlloc base (for cleanup)
     size_t allocSize        = 0;        // Allocation size
 };

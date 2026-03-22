@@ -206,6 +206,23 @@ void PatternOrchestrator::RegisterBuiltinPatterns(GameFunctions& funcs) {
         patterns::SPAWN_CHECK, " tried to spawn inside walls!", 29,
         0x004FFAD0, &funcs.SpawnCheck);
 
+    // ── Squad Spawn Bypass (from research mod RE) ──
+    // The squad spawning pipeline checks whether to spawn squads near the player.
+    // Hooking this allows injecting remote player characters through the game's
+    // natural spawn pipeline — fully initialized with faction, AI, squad, animations.
+    reg("SquadSpawnBypass", "entity", "Squad spawn check bypass",
+        "48 8D AC 24 30 FF FF FF FF 48 81 EC D0 01 00 00",
+        " tried to spawn inside walls!", 29,
+        0x004FF47C, &funcs.SquadSpawnBypass);
+
+    // Character animation update — fires for EVERY character each frame.
+    // Research mod uses this to track all characters by name in real time.
+    // Pattern from GOG: mov rcx,[rbx+320]; mov [rbx+37C],sil
+    reg("CharAnimUpdate", "entity", "Character animation update tick",
+        "48 8B 8B 20 03 00 00 40 88 B3 7C 03 00 00",
+        nullptr, 0,
+        0x0065F6C7, &funcs.CharAnimUpdate);
+
     // ── Game Loop / Time ── (CRITICAL for multiplayer tick)
     reg("GameFrameUpdate", "core", "Main game frame tick",
         patterns::GAME_FRAME_UPDATE, "Kenshi 1.0.", 11,

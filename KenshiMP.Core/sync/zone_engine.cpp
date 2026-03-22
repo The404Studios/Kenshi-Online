@@ -171,9 +171,9 @@ bool ZoneEngine::IsInRange(const ZoneCoord& entityZone) const {
 }
 
 bool ZoneEngine::ShouldSync(EntityID entityId) const {
-    auto* info = m_registry.GetInfo(entityId);
-    if (!info) return false;
-    return m_localZone.IsAdjacent(info->zone);
+    auto infoCopy = m_registry.GetInfoCopy(entityId);
+    if (!infoCopy) return false;
+    return m_localZone.IsAdjacent(infoCopy->zone);
 }
 
 // ---- Networking ----

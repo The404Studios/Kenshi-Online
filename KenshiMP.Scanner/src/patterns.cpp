@@ -203,9 +203,25 @@ private:
     }
 
     uintptr_t FindFunctionStart(uintptr_t codeAddr) const {
-        // Walk backwards looking for function prologue patterns
+        // Method 1: Use .pdata (RtlLookupFunctionEntry) — authoritative and works
+        // for large functions (ApplyDamage=6925B, StartAttack=9253B) where the
+        // string xref can be thousands of bytes from the prologue.
         __try {
-            for (uintptr_t addr = codeAddr - 1; addr > codeAddr - 2048 && addr > m_textBase; addr--) {
+            DWORD64 imageBase = 0;
+            auto* rtFunc = RtlLookupFunctionEntry(
+                static_cast<DWORD64>(codeAddr), &imageBase, nullptr);
+            if (rtFunc) {
+                uintptr_t funcStart = static_cast<uintptr_t>(imageBase) + rtFunc->BeginAddress;
+                if (funcStart < codeAddr && funcStart > 0) {
+                    return funcStart;
+                }
+            }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {}
+
+        // Method 2: Fallback — walk backwards looking for function prologue patterns.
+        // Increased from 2048 to 16384 to handle large Kenshi functions.
+        __try {
+            for (uintptr_t addr = codeAddr - 1; addr > codeAddr - 16384 && addr > m_textBase; addr--) {
                 uint8_t b = *reinterpret_cast<const uint8_t*>(addr);
 
                 // Look for CC/C3 padding (end of previous function)
@@ -342,8 +358,9 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
             DWORD64 imageBase = 0;
             auto* rtFunc = RtlLookupFunctionEntry(
                 static_cast<DWORD64>(addr), &imageBase, nullptr);
+            uintptr_t funcStart = 0;
             if (rtFunc) {
-                uintptr_t funcStart = static_cast<uintptr_t>(imageBase) + rtFunc->BeginAddress;
+                funcStart = static_cast<uintptr_t>(imageBase) + rtFunc->BeginAddress;
                 if (funcStart != addr) {
                     uintptr_t offset = addr - funcStart;
                     if (offset <= 0x10) {
@@ -363,14 +380,23 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
                 }
             }
 
-            // Final alignment check — MSVC function entries are always 16-byte aligned.
-            // SEH handler blocks get their own .pdata entries but aren't hookable functions.
+            // Alignment check: MSVC usually aligns functions to 16 bytes, but NOT always.
+            // .pdata is the authoritative source for function boundaries.
+            // SquadAddMember at 0x928423 is a valid .pdata function entry despite not being
+            // 16-byte aligned. Only warn, don't reject — .pdata already confirmed it above.
             if ((addr & 0xF) != 0) {
-                spdlog::error("ResolveGameFunctions: '{}' at 0x{:X} NOT 16-byte aligned "
-                              "(low nibble 0x{:X}) — SEH handler block, nulling",
-                              name, addr, addr & 0xF);
-                target = nullptr;
-                return;
+                if (rtFunc && funcStart == addr) {
+                    // .pdata confirms this IS a function start despite odd alignment — accept it
+                    spdlog::warn("ResolveGameFunctions: '{}' at 0x{:X} NOT 16-byte aligned "
+                                 "(low nibble 0x{:X}) but .pdata confirms function start — accepting",
+                                 name, addr, addr & 0xF);
+                } else {
+                    spdlog::error("ResolveGameFunctions: '{}' at 0x{:X} NOT 16-byte aligned "
+                                  "(low nibble 0x{:X}) and no .pdata confirmation — nulling",
+                                  name, addr, addr & 0xF);
+                    target = nullptr;
+                    return;
+                }
             }
 
             target = reinterpret_cast<void*>(addr);
@@ -466,9 +492,9 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
     FallbackEntry fallbacks[] = {
         // Entity lifecycle
         {"CharacterSpawn",       "[RootObjectFactory::process] Character",              38, &funcs.CharacterSpawn},
-        {"CharacterDestroy",     "NodeList::destroyNodesByBuilding",                    31, &funcs.CharacterDestroy},
+        {"CharacterDestroy",     "NodeList::destroyNodesByBuilding",                    32, &funcs.CharacterDestroy},
         {"CreateRandomSquad",    "[RootObjectFactory::createRandomSquad] Missing squad leader", 59, &funcs.CreateRandomSquad},
-        {"CharacterSerialise",   "[Character::serialise] Character '",                  33, &funcs.CharacterSerialise},
+        {"CharacterSerialise",   "[Character::serialise] Character '",                  34, &funcs.CharacterSerialise},
         {"CharacterKO",          "knockout",                                             8, &funcs.CharacterKO},
         // Movement
         {"CharacterSetPosition", "HavokCharacter::setPosition moved someone off the world", 55, &funcs.CharacterSetPosition},
@@ -478,13 +504,13 @@ bool ResolveGameFunctions(const PatternScanner& scanner, GameFunctions& funcs) {
         // Combat
         {"ApplyDamage",          "Attack damage effect",                                20, &funcs.ApplyDamage},
         {"StartAttack",          "Cutting damage",                                      14, &funcs.StartAttack},
-        {"CharacterDeath",       "{1} has died from blood loss.",                        28, &funcs.CharacterDeath},
+        {"CharacterDeath",       "{1} has died from blood loss.",                        29, &funcs.CharacterDeath},
         {"HealthUpdate",         "block chance",                                         12, &funcs.HealthUpdate},
         {"MartialArtsCombat",    "Martial Arts",                                        12, &funcs.MartialArtsCombat},
         // World / Zones
         {"ZoneLoad",             "zone.%d.%d.zone",                                     15, &funcs.ZoneLoad},
         {"ZoneUnload",           "destroyed navmesh",                                   17, &funcs.ZoneUnload},
-        {"BuildingPlace",        "[RootObjectFactory::createBuilding] Building",         45, &funcs.BuildingPlace},
+        {"BuildingPlace",        "[RootObjectFactory::createBuilding] Building",         44, &funcs.BuildingPlace},
         {"BuildingDestroyed",    "Building::setDestroyed",                              22, &funcs.BuildingDestroyed},
         // Game loop / Time
         {"GameFrameUpdate",      "Kenshi 1.0.",                                         11, &funcs.GameFrameUpdate},

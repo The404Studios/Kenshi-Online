@@ -3,10 +3,16 @@
 #include "../game/game_types.h"
 #include "../game/spawn_manager.h"
 #include "../game/player_controller.h"
+#include "../game/asset_facilitator.h"
+#include "../game/loading_orchestrator.h"
 #include "../hooks/time_hooks.h"
 #include "../hooks/entity_hooks.h"
+#include "../hooks/ai_hooks.h"
+#include "../hooks/char_tracker_hooks.h"
+#include "../game/shared_save_sync.h"
 #include "kmp/protocol.h"
 #include "kmp/messages.h"
+#include "kmp/constants.h"
 #include "kmp/memory.h"
 #include "kmp/hook_manager.h"
 #include <spdlog/spdlog.h>
@@ -180,7 +186,7 @@ void CommandRegistry::RegisterBuiltins() {
         if (args.args.empty()) return "Usage: /connect <ip> [port]";
 
         std::string ip = args.args[0];
-        uint16_t port = 7777; // Default port
+        uint16_t port = KMP_DEFAULT_PORT; // 27800
         if (args.args.size() >= 2) {
             try {
                 port = static_cast<uint16_t>(std::stoi(args.args[1]));
@@ -190,6 +196,8 @@ void CommandRegistry::RegisterBuiltins() {
         }
 
         if (core.GetClient().ConnectAsync(ip, port)) {
+            core.TransitionTo(ClientPhase::Connecting);
+            core.GetOverlay().SetConnecting(true);
             return "Connecting to " + ip + ":" + std::to_string(port) + "...";
         }
         return "Connection failed to start.";
@@ -610,10 +618,7 @@ void CommandRegistry::RegisterBuiltins() {
         snprintf(buf, sizeof(buf), "\n--- CharacterIterator: %d characters in world ---", iter.Count());
         r += buf;
 
-        // Loading cache
-        auto& cache = entity_hooks::GetLoadingCharacters();
-        snprintf(buf, sizeof(buf), "\n--- Loading cache: %d characters ---", (int)cache.size());
-        r += buf;
+        // Loading cache removed — CharacterIterator is the sole discovery path
 
         return r;
     });
@@ -665,6 +670,30 @@ void CommandRegistry::RegisterBuiltins() {
         snprintf(buf, sizeof(buf), "\n  Game loaded:       %s", core.IsGameLoaded() ? "YES" : "NO");
         r += buf;
         snprintf(buf, sizeof(buf), "\n  Connected:         %s", core.IsConnected() ? "YES" : "NO");
+        r += buf;
+
+        // Loading orchestrator state (spawn gating)
+        auto& orch = core.GetLoadingOrch();
+        const char* phaseName = "?";
+        switch (orch.GetPhase()) {
+            case LoadingPhase::Idle: phaseName = "Idle"; break;
+            case LoadingPhase::InitialLoad: phaseName = "InitialLoad"; break;
+            case LoadingPhase::ZoneTransition: phaseName = "ZoneTransition"; break;
+            case LoadingPhase::SpawnLoad: phaseName = "SpawnLoad"; break;
+        }
+        r += "\n  --- Spawn Gate ---";
+        snprintf(buf, sizeof(buf), "\n  Phase:             %s", phaseName);
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Orch game loaded:  %s", orch.IsGameLoaded() ? "YES" : "NO");
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  In burst:          %s", orch.IsInBurst() ? "YES" : "NO");
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Burst count:       %d", orch.GetBurstCount());
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Can spawn now:     %s", AssetFacilitator::Get().CanSpawn() ? "YES" : "NO");
+        r += buf;
+        std::string blockReason = orch.GetSpawnBlockReason();
+        snprintf(buf, sizeof(buf), "\n  Block reason:      %s", blockReason.c_str());
         r += buf;
 
         return r;
@@ -936,6 +965,719 @@ void CommandRegistry::RegisterBuiltins() {
 
             return "Usage: /pipeline [status|entity <id>]";
         });
+
+    // /discover — Runtime offset discovery using anchor-based scanning
+    // Scans the character struct to FIND where fields actually live,
+    // instead of assuming hardcoded GOG offsets are correct.
+    Register("discover", "Discover character offsets by scanning struct memory", [](const CommandArgs& args) -> std::string {
+        auto& core = Core::Get();
+        void* primaryChar = core.GetPlayerController().GetPrimaryCharacter();
+        if (!primaryChar) return "No primary character — load a game first.";
+
+        uintptr_t charPtr = reinterpret_cast<uintptr_t>(primaryChar);
+        auto& co = game::GetOffsets().character;
+        char buf[512];
+        std::string r = "--- Offset Discovery ---";
+        snprintf(buf, sizeof(buf), "\n  Character at 0x%012llX", (unsigned long long)charPtr);
+        r += buf;
+
+        // ══════════════════════════════════════════════════════════════
+        //  STEP 0: Hex dump first 0x500 bytes to LOG FILE for analysis
+        // ══════════════════════════════════════════════════════════════
+        spdlog::info("=== CHARACTER STRUCT HEX DUMP (0x500 bytes) at 0x{:012X} ===", charPtr);
+        for (int row = 0; row < 0x500; row += 16) {
+            char hexLine[128] = {};
+            char asciiLine[20] = {};
+            int pos = 0;
+            for (int b = 0; b < 16; b++) {
+                uint8_t byte = 0;
+                Memory::Read(charPtr + row + b, byte);
+                pos += sprintf_s(hexLine + pos, sizeof(hexLine) - pos, "%02X ", byte);
+                asciiLine[b] = (byte >= 0x20 && byte <= 0x7E) ? (char)byte : '.';
+            }
+            asciiLine[16] = '\0';
+            spdlog::info("  +{:03X}: {} |{}|", row, hexLine, asciiLine);
+        }
+        spdlog::info("=== END HEX DUMP ===");
+        r += "\n  Hex dump (0x500 bytes) written to log file.";
+
+        // Helper: check if value looks like a valid heap pointer
+        uintptr_t modBase = Memory::GetModuleBase();
+        auto isHeapPtr = [modBase](uintptr_t val) -> bool {
+            if (val < 0x10000 || val >= 0x00007FFFFFFFFFFF) return false;
+            if ((val & 0x7) != 0) return false;
+            if (val >= modBase && val < modBase + 0x4000000) return false;
+            return true;
+        };
+
+        // Read known anchor: position from the existing accessor
+        game::CharacterAccessor accessor(primaryChar);
+        Vec3 knownPos = accessor.GetPosition();
+        std::string knownName = accessor.GetName();
+
+        snprintf(buf, sizeof(buf), "\n  Known position: (%.1f, %.1f, %.1f)", knownPos.x, knownPos.y, knownPos.z);
+        r += buf;
+        r += "\n  Known name: " + knownName;
+
+        int matches = 0, mismatches = 0;
+
+        // ══════════════════════════════════════════════════════════════
+        //  STEP 1: Scan for POSITION (3 consecutive floats)
+        // ══════════════════════════════════════════════════════════════
+        r += "\n\n  --- Position Scan ---";
+        bool posNonZero = (knownPos.x != 0.f || knownPos.y != 0.f || knownPos.z != 0.f);
+        int discoveredPosOffset = -1;
+        if (posNonZero) {
+            for (int off = 0; off < 0x400; off += 4) {
+                float fx = 0, fy = 0, fz = 0;
+                Memory::Read(charPtr + off, fx);
+                Memory::Read(charPtr + off + 4, fy);
+                Memory::Read(charPtr + off + 8, fz);
+                if (std::abs(fx - knownPos.x) < 0.5f &&
+                    std::abs(fy - knownPos.y) < 0.5f &&
+                    std::abs(fz - knownPos.z) < 0.5f) {
+                    snprintf(buf, sizeof(buf), "\n  FOUND position at +0x%03X (%.1f, %.1f, %.1f)", off, fx, fy, fz);
+                    r += buf;
+                    spdlog::info("DISCOVER: Position at +0x{:03X} = ({:.1f}, {:.1f}, {:.1f})", off, fx, fy, fz);
+                    if (discoveredPosOffset == -1) discoveredPosOffset = off;
+                }
+            }
+            if (discoveredPosOffset == co.position) {
+                r += "\n  OK: Matches hardcoded +0x" + std::to_string(co.position);
+                matches++;
+            } else if (discoveredPosOffset >= 0) {
+                snprintf(buf, sizeof(buf), "\n  MISMATCH: Hardcoded=+0x%03X, Found=+0x%03X", co.position, discoveredPosOffset);
+                r += buf;
+                mismatches++;
+            } else {
+                r += "\n  NOT FOUND";
+                mismatches++;
+            }
+        } else {
+            r += "\n  SKIP (position is zero — character may not be loaded)";
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  STEP 2: Scan for NAME (MSVC std::string pattern)
+        //  Look for size/capacity pair where size matches known name length
+        // ══════════════════════════════════════════════════════════════
+        r += "\n\n  --- Name Scan ---";
+        int discoveredNameOffset = -1;
+        if (!knownName.empty() && knownName != "Unknown") {
+            uint64_t expectedSize = knownName.size();
+            for (int off = 0; off < 0x400; off += 8) {
+                uint64_t size = 0, capacity = 0;
+                Memory::Read(charPtr + off + 0x10, size);
+                Memory::Read(charPtr + off + 0x18, capacity);
+                if (size != expectedSize || capacity < size || capacity > 256) continue;
+
+                // Try reading the actual string to verify
+                char testBuf[257] = {};
+                bool readable = true;
+                if (capacity <= 15) {
+                    // SSO: inline
+                    for (size_t i = 0; i < size && i < 256; i++) {
+                        if (!Memory::Read(charPtr + off + i, testBuf[i])) { readable = false; break; }
+                    }
+                } else {
+                    // Heap: pointer at +0x00
+                    uintptr_t dataPtr = 0;
+                    Memory::Read(charPtr + off, dataPtr);
+                    if (dataPtr < 0x10000 || dataPtr >= 0x00007FFFFFFFFFFF) continue;
+                    for (size_t i = 0; i < size && i < 256; i++) {
+                        if (!Memory::Read(dataPtr + i, testBuf[i])) { readable = false; break; }
+                    }
+                }
+                if (!readable) continue;
+                std::string foundName(testBuf, (size_t)size);
+                if (foundName == knownName) {
+                    snprintf(buf, sizeof(buf), "\n  FOUND name at +0x%03X = '%s'", off, foundName.c_str());
+                    r += buf;
+                    spdlog::info("DISCOVER: Name at +0x{:03X} = '{}'", off, foundName);
+                    if (discoveredNameOffset == -1) discoveredNameOffset = off;
+                }
+            }
+            if (discoveredNameOffset == co.name) {
+                matches++;
+                r += "\n  OK: Matches hardcoded";
+            } else if (discoveredNameOffset >= 0) {
+                snprintf(buf, sizeof(buf), "\n  MISMATCH: Hardcoded=+0x%03X, Found=+0x%03X", co.name, discoveredNameOffset);
+                r += buf;
+                mismatches++;
+            } else {
+                r += "\n  NOT FOUND";
+                mismatches++;
+            }
+        } else {
+            r += "\n  SKIP (name unknown)";
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  STEP 3: Scan for FACTION (valid heap pointer with name at +0x10)
+        // ══════════════════════════════════════════════════════════════
+        r += "\n\n  --- Faction Pointer Scan ---";
+        int discoveredFactionOffset = -1;
+        for (int off = 0; off < 0x100; off += 8) {
+            uintptr_t candidate = 0;
+            Memory::Read(charPtr + off, candidate);
+            if (!isHeapPtr(candidate)) continue;
+
+            // A faction should have a readable name at +0x10
+            uint64_t fNameSize = 0, fNameCap = 0;
+            Memory::Read(candidate + 0x10 + 0x10, fNameSize);
+            Memory::Read(candidate + 0x10 + 0x18, fNameCap);
+            if (fNameSize < 1 || fNameSize > 100 || fNameCap < fNameSize || fNameCap > 256) continue;
+
+            // Read the faction name
+            char fNameBuf[101] = {};
+            bool fReadable = true;
+            if (fNameCap <= 15) {
+                for (size_t i = 0; i < fNameSize && i < 100; i++)
+                    if (!Memory::Read(candidate + 0x10 + i, fNameBuf[i])) { fReadable = false; break; }
+            } else {
+                uintptr_t fDataPtr = 0;
+                Memory::Read(candidate + 0x10, fDataPtr);
+                if (fDataPtr < 0x10000) continue;
+                for (size_t i = 0; i < fNameSize && i < 100; i++)
+                    if (!Memory::Read(fDataPtr + i, fNameBuf[i])) { fReadable = false; break; }
+            }
+            if (!fReadable) continue;
+
+            // Validate: name should be printable ASCII
+            bool allAscii = true;
+            for (size_t i = 0; i < fNameSize; i++)
+                if (fNameBuf[i] < 0x20 || fNameBuf[i] > 0x7E) { allAscii = false; break; }
+            if (!allAscii) continue;
+
+            snprintf(buf, sizeof(buf), "\n  FOUND faction ptr at +0x%03X -> 0x%llX name='%s'",
+                     off, (unsigned long long)candidate, fNameBuf);
+            r += buf;
+            spdlog::info("DISCOVER: Faction at +0x{:03X} -> 0x{:X} name='{}'", off, candidate, fNameBuf);
+
+            // Also try reading faction ID at candidate+0x08
+            uint32_t factionId = 0;
+            Memory::Read(candidate + game::GetOffsets().faction.id, factionId);
+            snprintf(buf, sizeof(buf), " (id=%u)", factionId);
+            r += buf;
+
+            if (discoveredFactionOffset == -1) discoveredFactionOffset = off;
+        }
+        if (discoveredFactionOffset == co.faction) {
+            matches++;
+            r += "\n  OK: Matches hardcoded +0x" + std::to_string(co.faction);
+        } else if (discoveredFactionOffset >= 0) {
+            snprintf(buf, sizeof(buf), "\n  MISMATCH: Hardcoded=+0x%03X, Found=+0x%03X", co.faction, discoveredFactionOffset);
+            r += buf;
+            mismatches++;
+        } else {
+            r += "\n  NOT FOUND (no pointer with readable name at +0x10)";
+            mismatches++;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  STEP 4: Scan for GAMEDATA (pointer to object with name at +0x28)
+        // ══════════════════════════════════════════════════════════════
+        r += "\n\n  --- GameData Pointer Scan ---";
+        int discoveredGDOffset = -1;
+        for (int off = 0; off < 0x200; off += 8) {
+            uintptr_t candidate = 0;
+            Memory::Read(charPtr + off, candidate);
+            if (!isHeapPtr(candidate)) continue;
+
+            std::string gdName = SpawnManager::ReadKenshiString(candidate + 0x28);
+            if (gdName.empty() || gdName.size() < 2 || gdName.size() > 64) continue;
+
+            // Validate: printable ASCII
+            bool ok = true;
+            for (char c : gdName) if (c < 0x20 || c > 0x7E) { ok = false; break; }
+            if (!ok) continue;
+
+            // Check for GameDataManager* at candidate+0x10 (should be consistent)
+            uintptr_t gdmPtr = 0;
+            Memory::Read(candidate + 0x10, gdmPtr);
+
+            snprintf(buf, sizeof(buf), "\n  FOUND GameData at +0x%03X -> 0x%llX name='%s' mgr=0x%llX",
+                     off, (unsigned long long)candidate, gdName.c_str(), (unsigned long long)gdmPtr);
+            r += buf;
+            spdlog::info("DISCOVER: GameData at +0x{:03X} -> 0x{:X} name='{}' mgr=0x{:X}", off, candidate, gdName, gdmPtr);
+            if (discoveredGDOffset == -1) discoveredGDOffset = off;
+        }
+        if (discoveredGDOffset == co.gameDataPtr) {
+            matches++;
+            r += "\n  OK: Matches hardcoded";
+        } else if (discoveredGDOffset >= 0) {
+            snprintf(buf, sizeof(buf), "\n  MISMATCH: Hardcoded=+0x%03X, Found=+0x%03X", co.gameDataPtr, discoveredGDOffset);
+            r += buf;
+            mismatches++;
+        } else {
+            r += "\n  NOT FOUND";
+            mismatches++;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  STEP 5: Scan for HEALTH CHAIN
+        //  Follow every pointer in the struct, then follow sub-pointers,
+        //  looking for arrays of floats near 100.0
+        // ══════════════════════════════════════════════════════════════
+        r += "\n\n  --- Health Chain Discovery ---";
+        int discoveredHC1 = -1, discoveredHC2 = -1, discoveredHBase = -1;
+        spdlog::info("DISCOVER: Starting health chain scan...");
+
+        for (int off1 = 0x100; off1 < 0x400; off1 += 8) {
+            uintptr_t ptr1 = 0;
+            Memory::Read(charPtr + off1, ptr1);
+            if (!isHeapPtr(ptr1)) continue;
+
+            // Follow sub-pointers from ptr1
+            for (int off2 = 0; off2 < 0x800; off2 += 8) {
+                uintptr_t ptr2 = 0;
+                if (!Memory::Read(ptr1 + off2, ptr2)) continue;
+                if (!isHeapPtr(ptr2)) continue;
+
+                // Look for 7 consecutive floats near 100.0 (full health character)
+                for (int base = 0; base < 0x200; base += 4) {
+                    int goodCount = 0;
+                    for (int part = 0; part < 7; part++) {
+                        float hp = 0;
+                        if (!Memory::Read(ptr2 + base + part * 8, hp)) break;
+                        // Health values for a loaded char are typically 50-200 range
+                        if (hp > 10.f && hp < 300.f) goodCount++;
+                    }
+                    if (goodCount >= 5) {
+                        // Found a candidate! Read all 7 values
+                        float healthVals[7] = {};
+                        for (int p = 0; p < 7; p++)
+                            Memory::Read(ptr2 + base + p * 8, healthVals[p]);
+
+                        snprintf(buf, sizeof(buf),
+                                 "\n  FOUND health chain: +0x%03X -> +0x%03X -> +0x%03X"
+                                 "\n    [%.0f, %.0f, %.0f, %.0f, %.0f, %.0f, %.0f]",
+                                 off1, off2, base,
+                                 healthVals[0], healthVals[1], healthVals[2], healthVals[3],
+                                 healthVals[4], healthVals[5], healthVals[6]);
+                        r += buf;
+                        spdlog::info("DISCOVER: Health chain +0x{:03X} -> +0x{:03X} -> +0x{:03X} = "
+                                     "[{:.0f}, {:.0f}, {:.0f}, {:.0f}, {:.0f}, {:.0f}, {:.0f}]",
+                                     off1, off2, base,
+                                     healthVals[0], healthVals[1], healthVals[2], healthVals[3],
+                                     healthVals[4], healthVals[5], healthVals[6]);
+
+                        if (discoveredHC1 == -1) {
+                            discoveredHC1 = off1;
+                            discoveredHC2 = off2;
+                            discoveredHBase = base;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (discoveredHC1 == co.healthChain1 && discoveredHC2 == co.healthChain2 && discoveredHBase == co.healthBase) {
+            matches++;
+            r += "\n  OK: Matches hardcoded chain (0x2B8->0x5F8->0x40)";
+        } else if (discoveredHC1 >= 0) {
+            snprintf(buf, sizeof(buf), "\n  MISMATCH: Hardcoded=(0x%X->0x%X->0x%X), Found=(0x%X->0x%X->0x%X)",
+                     co.healthChain1, co.healthChain2, co.healthBase,
+                     discoveredHC1, discoveredHC2, discoveredHBase);
+            r += buf;
+            mismatches++;
+        } else {
+            r += "\n  NOT FOUND (no 7-float health array discovered)";
+            mismatches++;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  STEP 6: Scan for INVENTORY pointer
+        //  Valid heap pointer, with owner backpointer and item count
+        // ══════════════════════════════════════════════════════════════
+        r += "\n\n  --- Inventory Pointer Scan ---";
+        int discoveredInvOffset = -1;
+        for (int off = 0x200; off < 0x400; off += 8) {
+            uintptr_t candidate = 0;
+            Memory::Read(charPtr + off, candidate);
+            if (!isHeapPtr(candidate)) continue;
+
+            // Inventory should have: items ptr at +0x10, itemCount at +0x18
+            // and owner backpointer at +0x28 should point back to our character
+            uintptr_t ownerPtr = 0;
+            Memory::Read(candidate + 0x28, ownerPtr);
+            if (ownerPtr != charPtr) continue;  // Owner must be THIS character
+
+            int itemCount = 0;
+            Memory::Read(candidate + 0x18, itemCount);
+            if (itemCount < 0 || itemCount > 10000) continue;
+
+            snprintf(buf, sizeof(buf), "\n  FOUND inventory at +0x%03X -> 0x%llX (owner=self, items=%d)",
+                     off, (unsigned long long)candidate, itemCount);
+            r += buf;
+            spdlog::info("DISCOVER: Inventory at +0x{:03X} -> 0x{:X} (items={})", off, candidate, itemCount);
+            if (discoveredInvOffset == -1) discoveredInvOffset = off;
+        }
+        if (discoveredInvOffset == co.inventory) {
+            matches++;
+            r += "\n  OK: Matches hardcoded";
+        } else if (discoveredInvOffset >= 0) {
+            snprintf(buf, sizeof(buf), "\n  MISMATCH: Hardcoded=+0x%03X, Found=+0x%03X", co.inventory, discoveredInvOffset);
+            r += buf;
+            mismatches++;
+        } else {
+            // Try without owner check (owner offset might be different)
+            r += "\n  NOT FOUND with owner check. Scanning without...";
+            for (int off = 0x200; off < 0x400; off += 8) {
+                uintptr_t candidate = 0;
+                Memory::Read(charPtr + off, candidate);
+                if (!isHeapPtr(candidate)) continue;
+
+                // Look for reasonable item count at any nearby offset
+                for (int countOff = 0x10; countOff <= 0x30; countOff += 8) {
+                    int itemCount = 0;
+                    Memory::Read(candidate + countOff, itemCount);
+                    if (itemCount >= 0 && itemCount < 500) {
+                        // Check if items pointer looks valid
+                        uintptr_t itemsPtr = 0;
+                        Memory::Read(candidate + countOff - 8, itemsPtr);
+                        if (itemCount == 0 || isHeapPtr(itemsPtr)) {
+                            snprintf(buf, sizeof(buf), "\n  CANDIDATE inv at +0x%03X -> 0x%llX (count=%d at +0x%02X)",
+                                     off, (unsigned long long)candidate, itemCount, countOff);
+                            r += buf;
+                            spdlog::info("DISCOVER: Inventory candidate at +0x{:03X} -> 0x{:X} (count={} at +0x{:02X})",
+                                         off, candidate, itemCount, countOff);
+                            if (discoveredInvOffset == -1) discoveredInvOffset = off;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  STEP 7: Scan for STATS (inline block of floats in skill range)
+        // ══════════════════════════════════════════════════════════════
+        r += "\n\n  --- Stats Block Scan ---";
+        int discoveredStatsOffset = -1;
+        for (int off = 0x300; off < 0x500; off += 4) {
+            // Check 10 consecutive floats in reasonable stat range (1-100)
+            int statCount = 0;
+            for (int s = 0; s < 10; s++) {
+                float val = 0;
+                Memory::Read(charPtr + off + s * 4, val);
+                if (val >= 1.f && val <= 100.f) statCount++;
+            }
+            if (statCount >= 7) {
+                // Read first 5 stats for display
+                float s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+                Memory::Read(charPtr + off, s0);
+                Memory::Read(charPtr + off + 4, s1);
+                Memory::Read(charPtr + off + 8, s2);
+                Memory::Read(charPtr + off + 12, s3);
+                Memory::Read(charPtr + off + 16, s4);
+                snprintf(buf, sizeof(buf), "\n  FOUND stats block at +0x%03X [%.1f, %.1f, %.1f, %.1f, %.1f, ...]",
+                         off, s0, s1, s2, s3, s4);
+                r += buf;
+                spdlog::info("DISCOVER: Stats block at +0x{:03X} [{:.1f}, {:.1f}, {:.1f}, {:.1f}, {:.1f}]",
+                             off, s0, s1, s2, s3, s4);
+                if (discoveredStatsOffset == -1) discoveredStatsOffset = off;
+            }
+        }
+        if (discoveredStatsOffset == co.stats) {
+            matches++;
+            r += "\n  OK: Matches hardcoded +0x450";
+        } else if (discoveredStatsOffset >= 0) {
+            snprintf(buf, sizeof(buf), "\n  MISMATCH: Hardcoded=+0x%03X, Found=+0x%03X", co.stats, discoveredStatsOffset);
+            r += buf;
+            mismatches++;
+        } else {
+            r += "\n  NOT FOUND";
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  STEP 8: Scan for MONEY CHAIN
+        // ══════════════════════════════════════════════════════════════
+        r += "\n\n  --- Money Chain Scan ---";
+        int knownMoney = accessor.GetMoney();
+        snprintf(buf, sizeof(buf), "\n  Current money (via hardcoded chain): %d cats", knownMoney);
+        r += buf;
+
+        // Also dump raw pointers at the hardcoded offsets for debugging
+        {
+            uintptr_t mc1 = 0, mc2 = 0;
+            int moneyVal = 0;
+            Memory::Read(charPtr + co.moneyChain1, mc1);
+            if (mc1) Memory::Read(mc1 + co.moneyChain2, mc2);
+            if (mc2) Memory::Read(mc2 + co.moneyBase, moneyVal);
+            snprintf(buf, sizeof(buf), "\n  Chain check: +0x%X->0x%llX, +0x%X->0x%llX, +0x%X->%d",
+                     co.moneyChain1, (unsigned long long)mc1,
+                     co.moneyChain2, (unsigned long long)mc2,
+                     co.moneyBase, moneyVal);
+            r += buf;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  SUMMARY
+        // ══════════════════════════════════════════════════════════════
+        snprintf(buf, sizeof(buf), "\n\n--- SUMMARY: %d matches | %d mismatches ---", matches, mismatches);
+        r += buf;
+
+        if (mismatches > 0) {
+            r += "\n  WARNING: Some offsets do not match hardcoded values!";
+            r += "\n  Check log file for hex dump and details.";
+            r += "\n  Update offsets in game_types.h if mismatches are confirmed.";
+        } else if (matches > 0) {
+            r += "\n  All verified offsets match hardcoded values.";
+        }
+
+        spdlog::info("DISCOVER: Complete — {} matches, {} mismatches", matches, mismatches);
+        return r;
+    });
+
+    // /discover update — Apply discovered offsets to the live offset table
+    Register("discover_apply", "Apply discovered offsets (run /discover first)", [](const CommandArgs& args) -> std::string {
+        // This is a placeholder — after /discover confirms correct offsets,
+        // this command would update GetOffsets() with the discovered values.
+        // For now, users should manually update game_types.h defaults.
+        return "Not yet implemented. Run /discover first, check log, then update game_types.h.";
+    });
+
+    // /forcespawn — Bypass all gates and force-spawn pending remote characters
+    Register("forcespawn", "Force-spawn pending remote characters (bypass gates)", [](const CommandArgs&) -> std::string {
+        auto& core = Core::Get();
+        auto& sm = core.GetSpawnManager();
+
+        if (!core.IsConnected()) return "Not connected to a server.";
+        if (!core.IsGameLoaded()) return "Game not loaded yet.";
+
+        size_t pending = sm.GetPendingSpawnCount();
+
+        // If no pending spawns, check for stuck remote entities and re-queue them
+        if (pending == 0) {
+            auto remoteEntities = core.GetEntityRegistry().GetRemoteEntities();
+            int requeued = 0;
+            for (auto eid : remoteEntities) {
+                if (!core.GetEntityRegistry().GetGameObject(eid)) {
+                    auto infoCopy = core.GetEntityRegistry().GetInfoCopy(eid);
+                    if (infoCopy) {
+                        SpawnRequest req;
+                        req.netId = eid;
+                        req.owner = infoCopy->ownerPlayerId;
+                        req.type = infoCopy->type;
+                        req.position = infoCopy->lastPosition;
+                        sm.QueueSpawn(req);
+                        requeued++;
+                    }
+                }
+            }
+            if (requeued > 0) {
+                pending = requeued;
+            } else {
+                return "No pending spawns and no stuck remote entities.";
+            }
+        }
+
+        if (!sm.IsReady()) {
+            // Try to use ForceSpawnRemotePlayers which sets the bypass flag
+            core.ForceSpawnRemotePlayers();
+            return "SpawnManager not fully ready — forcing bypass for next tick.";
+        }
+
+        int spawned = 0, failed = 0;
+        for (size_t i = 0; i < pending && i < 16; i++) {
+            SpawnRequest req;
+            if (!sm.PopNextSpawn(req)) break;
+
+            // Map owner to mod template slot
+            int templateCount = sm.GetModTemplateCount();
+            int modSlot = 0;
+            if (templateCount > 0 && req.owner > 0) {
+                modSlot = (static_cast<int>(req.owner) - 1) % templateCount;
+            }
+            if (modSlot < 0 || modSlot >= templateCount) modSlot = 0;
+
+            // Try mod template first, then createRandomChar fallback
+            void* newChar = nullptr;
+            if (templateCount > 0) {
+                newChar = sm.SpawnCharacterDirect(&req.position, modSlot);
+            }
+            if (!newChar) {
+                newChar = entity_hooks::CallFactoryCreateRandom(sm.GetFactory());
+            }
+
+            uintptr_t addr = reinterpret_cast<uintptr_t>(newChar);
+            if (newChar && addr > 0x10000 && addr < 0x00007FFFFFFFFFFF && (addr & 0x7) == 0) {
+                core.GetEntityRegistry().SetGameObject(req.netId, newChar);
+                core.GetEntityRegistry().UpdatePosition(req.netId, req.position);
+
+                // Full post-spawn setup (position, rename, AI suppress, faction fix)
+                game::CharacterAccessor accessor(newChar);
+                if (req.position.x != 0.f || req.position.y != 0.f || req.position.z != 0.f) {
+                    accessor.WritePosition(req.position);
+                }
+
+                // Fix faction pointer to prevent crash on faction+0x250 access
+                uintptr_t localFaction = entity_hooks::GetEarlyPlayerFaction();
+                if (localFaction == 0) localFaction = entity_hooks::GetFallbackFaction();
+                if (localFaction != 0) {
+                    accessor.WriteFaction(localFaction);
+                }
+
+                core.GetPlayerController().OnRemoteCharacterSpawned(req.netId, newChar, req.owner);
+                ai_hooks::MarkRemoteControlled(newChar);
+                game::ScheduleDeferredAnimClassProbe(addr);
+
+                spdlog::info("forcespawn: Spawned entity {} at 0x{:X}", req.netId, addr);
+                spawned++;
+            } else {
+                spdlog::warn("forcespawn: All spawn methods returned null for entity {}", req.netId);
+                failed++;
+            }
+        }
+
+        char buf[128];
+        snprintf(buf, sizeof(buf), "Force-spawned %d characters (%d failed, %d remaining)",
+                 spawned, failed, (int)sm.GetPendingSpawnCount());
+        return buf;
+    });
+
+    // /fulldiag — Comprehensive diagnostic dump (all systems)
+    Register("fulldiag", "Full diagnostic dump of all systems", [](const CommandArgs&) -> std::string {
+        auto& core = Core::Get();
+        auto& sm = core.GetSpawnManager();
+        auto& reg = core.GetEntityRegistry();
+        auto& orch = core.GetLoadingOrch();
+        char buf[256];
+        std::string r;
+
+        // ── Connection ──
+        r += "=== CONNECTION ===";
+        snprintf(buf, sizeof(buf), "\n  Connected: %s  |  Player ID: %u  |  Game loaded: %s",
+                 core.IsConnected() ? "YES" : "NO",
+                 core.GetLocalPlayerId(),
+                 core.IsGameLoaded() ? "YES" : "NO");
+        r += buf;
+
+        // ── Entity Registry ──
+        r += "\n=== ENTITIES ===";
+        size_t total = reg.GetEntityCount();
+        size_t remote = reg.GetRemoteCount();
+        size_t spawned = reg.GetSpawnedRemoteCount();
+        snprintf(buf, sizeof(buf), "\n  Total: %d  |  Remote: %d  |  Remote spawned: %d",
+                 (int)total, (int)remote, (int)spawned);
+        r += buf;
+
+        // ── Spawn System ──
+        r += "\n=== SPAWN SYSTEM ===";
+        snprintf(buf, sizeof(buf), "\n  Factory: %s  |  PreCall: %s  |  Pending: %d",
+                 sm.IsReady() ? "YES" : "NO",
+                 sm.HasPreCallData() ? "YES" : "NO",
+                 (int)sm.GetPendingSpawnCount());
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  Templates: %d total, %d char, %d factory",
+                 (int)sm.GetTemplateCount(),
+                 (int)sm.GetCharacterTemplateCount(),
+                 (int)sm.GetFactoryTemplateCount());
+        r += buf;
+        snprintf(buf, sizeof(buf), "\n  In-place spawns: %d", entity_hooks::GetInPlaceSpawnCount());
+        r += buf;
+
+        // ── Spawn Gate ──
+        r += "\n=== SPAWN GATE ===";
+        const char* phaseName = "?";
+        switch (orch.GetPhase()) {
+            case LoadingPhase::Idle: phaseName = "Idle"; break;
+            case LoadingPhase::InitialLoad: phaseName = "InitialLoad"; break;
+            case LoadingPhase::ZoneTransition: phaseName = "ZoneTransition"; break;
+            case LoadingPhase::SpawnLoad: phaseName = "SpawnLoad"; break;
+        }
+        snprintf(buf, sizeof(buf), "\n  Phase: %s  |  GameLoaded: %s  |  Burst: %s  |  CanSpawn: %s",
+                 phaseName,
+                 orch.IsGameLoaded() ? "Y" : "N",
+                 orch.IsInBurst() ? "Y" : "N",
+                 AssetFacilitator::Get().CanSpawn() ? "Y" : "N");
+        r += buf;
+        std::string blockReason = orch.GetSpawnBlockReason();
+        snprintf(buf, sizeof(buf), "\n  Block reason: %s", blockReason.c_str());
+        r += buf;
+
+        // ── Hooks ──
+        r += "\n=== HOOKS ===";
+        auto diags = HookManager::Get().GetDiagnostics();
+        int active = 0, movrax = 0;
+        for (auto& d : diags) {
+            if (d.enabled) active++;
+            if (d.prologue[0] == 0x48 && d.prologue[1] == 0x8B && d.prologue[2] == 0xC4) movrax++;
+        }
+        snprintf(buf, sizeof(buf), "\n  Total: %d  |  Active: %d  |  MovRaxRsp: %d",
+                 (int)diags.size(), active, movrax);
+        r += buf;
+
+        // Show any crashed hooks
+        for (auto& d : diags) {
+            if (d.crashCount > 0) {
+                snprintf(buf, sizeof(buf), "\n  CRASHED: %s (crashes: %d)", d.name.c_str(), d.crashCount);
+                r += buf;
+            }
+        }
+
+        // ── Primary Character ──
+        r += "\n=== PRIMARY CHAR ===";
+        void* primary = core.GetPlayerController().GetPrimaryCharacter();
+        if (primary) {
+            uintptr_t p = reinterpret_cast<uintptr_t>(primary);
+            float px = 0, py = 0, pz = 0;
+            uintptr_t fac = 0;
+            Memory::Read(p + 0x48, px); Memory::Read(p + 0x4C, py); Memory::Read(p + 0x50, pz);
+            Memory::Read(p + 0x10, fac);
+            snprintf(buf, sizeof(buf), "\n  Addr: 0x%llX  Pos: (%.0f, %.0f, %.0f)  Faction: 0x%llX",
+                     (unsigned long long)p, px, py, pz, (unsigned long long)fac);
+            r += buf;
+        } else {
+            r += "\n  (none)";
+        }
+
+        r += "\n--- Use /forcespawn to bypass gates ---";
+        return r;
+    });
+
+    // /instance — Launch a second Kenshi instance for testing multiplayer
+    Register("instance", "Launch a second Kenshi instance (bypasses Steam single-instance lock)", [](const CommandArgs&) -> std::string {
+        // Find kenshi_x64.exe relative to our DLL
+        char modulePath[MAX_PATH] = {};
+        GetModuleFileNameA(nullptr, modulePath, MAX_PATH);
+
+        // Launch with -nosteam flag to bypass Steam's single-instance check
+        STARTUPINFOA si = {};
+        si.cb = sizeof(si);
+        PROCESS_INFORMATION pi = {};
+
+        std::string cmdLine = std::string("\"") + modulePath + "\" -nosteam";
+        if (CreateProcessA(nullptr, cmdLine.data(), nullptr, nullptr, FALSE,
+                           0, nullptr, nullptr, &si, &pi)) {
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            return "Launched second Kenshi instance (PID: " + std::to_string(pi.dwProcessId) + ")";
+        }
+
+        // Fallback: try without -nosteam
+        cmdLine = std::string("\"") + modulePath + "\"";
+        if (CreateProcessA(nullptr, cmdLine.data(), nullptr, nullptr, FALSE,
+                           0, nullptr, nullptr, &si, &pi)) {
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            return "Launched second Kenshi instance (PID: " + std::to_string(pi.dwProcessId) + ")";
+        }
+
+        return "Failed to launch Kenshi: " + std::to_string(GetLastError());
+    });
+
+    // /syncstatus — Show shared-save sync status
+    Register("syncstatus", "Show shared-save sync status", [](const CommandArgs&) -> std::string {
+        std::string r = "=== SHARED-SAVE SYNC ===";
+        r += "\nOwn character: " + shared_save_sync::GetOwnCharacterName();
+        r += " — " + std::string(shared_save_sync::IsOwnCharacterFound() ? "FOUND" : "searching...");
+        r += "\nOther character: " + shared_save_sync::GetOtherCharacterName();
+        r += " — " + std::string(shared_save_sync::IsOtherCharacterFound() ? "FOUND" : "searching...");
+        r += "\nTracked characters: " + std::to_string(char_tracker_hooks::GetTrackedCount());
+        return r;
+    });
 
     spdlog::info("CommandRegistry: {} built-in commands registered", GetAll().size());
 }

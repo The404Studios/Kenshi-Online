@@ -74,14 +74,18 @@ void OnPlay() {
         return;
     }
 
-    // 3. Write connection config (writes to %APPDATA%/KenshiMP/client.json)
+    // 3. Install multiplayer mod file (player templates, factions, squads)
+    UpdateStatus(L"Installing multiplayer mod...");
+    kmp::InstallModFile(gameDir); // Not fatal if missing — spawn system has fallbacks
+
+    // 4. Write connection config (writes to %APPDATA%/KenshiMP/client.json)
     char addrA[128], portA[8], nameA[32];
     WideCharToMultiByte(CP_UTF8, 0, serverAddr, -1, addrA, sizeof(addrA), nullptr, nullptr);
     WideCharToMultiByte(CP_UTF8, 0, serverPort, -1, portA, sizeof(portA), nullptr, nullptr);
     WideCharToMultiByte(CP_UTF8, 0, playerName, -1, nameA, sizeof(nameA), nullptr, nullptr);
     kmp::WriteConnectConfig(addrA, portA, nameA);
 
-    // 4. Launch the game
+    // 5. Launch the game
     UpdateStatus(L"Launching Kenshi via Steam...");
     if (!kmp::LaunchKenshi(gameDir)) {
         UpdateStatus(L"Failed to launch Kenshi");

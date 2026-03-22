@@ -33,9 +33,9 @@ constexpr int   KMP_CHANNEL_RELIABLE_ORDERED   = 0;
 constexpr int   KMP_CHANNEL_RELIABLE_UNORDERED = 1;
 constexpr int   KMP_CHANNEL_UNRELIABLE_SEQ     = 2;
 
-// Bandwidth limits
-constexpr uint32_t KMP_UPSTREAM_LIMIT   = 128 * 1024; // 128 KB/s
-constexpr uint32_t KMP_DOWNSTREAM_LIMIT = 256 * 1024; // 256 KB/s
+// Bandwidth limits (sized for 16 players × 20 Hz position updates)
+constexpr uint32_t KMP_UPSTREAM_LIMIT   = 2 * 1024 * 1024; // 2 MB/s (server→client fan-out)
+constexpr uint32_t KMP_DOWNSTREAM_LIMIT = 2 * 1024 * 1024; // 2 MB/s (client→server headroom)
 
 // Timeouts
 constexpr uint32_t KMP_CONNECT_TIMEOUT_MS  = 5000;

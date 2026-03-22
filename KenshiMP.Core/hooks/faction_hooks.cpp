@@ -6,6 +6,7 @@
 #include "../core.h"
 #include "../game/game_types.h"
 #include "kmp/memory.h"
+#include <atomic>
 #include <spdlog/spdlog.h>
 
 namespace kmp::faction_hooks {
@@ -16,8 +17,8 @@ using FactionRelationFn = void(__fastcall*)(void* factionA, void* factionB, floa
 // ── State ──
 static FactionRelationFn s_origFactionRelation = nullptr;
 static int s_relationChangeCount = 0;
-static bool s_loading = false;
-static bool s_serverSourced = false;
+static std::atomic<bool> s_loading{false};
+static std::atomic<bool> s_serverSourced{false};
 
 // ── SEH wrapper ──
 
@@ -40,7 +41,7 @@ static void __fastcall Hook_FactionRelation(void* factionA, void* factionB, floa
         return;
     }
 
-    if (s_loading || s_serverSourced) return;
+    if (s_loading.load(std::memory_order_acquire) || s_serverSourced.load(std::memory_order_acquire)) return;
 
     auto& core = Core::Get();
     if (!core.IsConnected()) return;
@@ -49,8 +50,9 @@ static void __fastcall Hook_FactionRelation(void* factionA, void* factionB, floa
                   s_relationChangeCount, (uintptr_t)factionA, (uintptr_t)factionB, relation);
 
     uint32_t factionIdA = 0, factionIdB = 0;
-    if (factionA) Memory::Read(reinterpret_cast<uintptr_t>(factionA) + 0x08, factionIdA);
-    if (factionB) Memory::Read(reinterpret_cast<uintptr_t>(factionB) + 0x08, factionIdB);
+    const int factionIdOffset = game::GetOffsets().faction.id;
+    if (factionA) Memory::Read(reinterpret_cast<uintptr_t>(factionA) + factionIdOffset, factionIdA);
+    if (factionB) Memory::Read(reinterpret_cast<uintptr_t>(factionB) + factionIdOffset, factionIdB);
 
     PacketWriter writer;
     writer.WriteHeader(MessageType::C2S_FactionRelation);
@@ -88,11 +90,11 @@ void Uninstall() {
 }
 
 void SetLoading(bool loading) {
-    s_loading = loading;
+    s_loading.store(loading, std::memory_order_release);
 }
 
 void SetServerSourced(bool sourced) {
-    s_serverSourced = sourced;
+    s_serverSourced.store(sourced, std::memory_order_release);
 }
 
 FactionRelationFn GetOriginal() {

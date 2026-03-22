@@ -320,9 +320,9 @@ struct StringAnchor {
 constexpr StringAnchor STRING_ANCHORS[] = {
     // Entity lifecycle
     {"CharacterSpawn",       "[RootObjectFactory::process] Character",              38},
-    {"CharacterDestroy",     "NodeList::destroyNodesByBuilding",                    31},
+    {"CharacterDestroy",     "NodeList::destroyNodesByBuilding",                    32},
     {"CreateRandomSquad",    "[RootObjectFactory::createRandomSquad] Missing squad leader", 59},
-    {"CharacterSerialise",   "[Character::serialise] Character '",                  33},
+    {"CharacterSerialise",   "[Character::serialise] Character '",                  34},
     {"CharacterKO",          "knockout",                                             8},
     // Movement
     {"CharacterSetPosition", "HavokCharacter::setPosition moved someone off the world", 55},
@@ -330,7 +330,7 @@ constexpr StringAnchor STRING_ANCHORS[] = {
     // Combat
     {"ApplyDamage",          "Attack damage effect",                                20},
     {"StartAttack",          "Cutting damage",                                      14},
-    {"CharacterDeath",       "{1} has died from blood loss.",                        28},
+    {"CharacterDeath",       "{1} has died from blood loss.",                        29},
     {"HealthUpdate",         "block chance",                                         12},
     {"CutDamageMod",         "cut damage mod",                                      14},
     {"UnarmedDamage",        "unarmed damage bonus",                                20},
@@ -338,7 +338,7 @@ constexpr StringAnchor STRING_ANCHORS[] = {
     // World / Zones
     {"ZoneLoad",             "zone.%d.%d.zone",                                     15},
     {"ZoneUnload",           "destroyed navmesh",                                   17},
-    {"BuildingPlace",        "[RootObjectFactory::createBuilding] Building",         45},
+    {"BuildingPlace",        "[RootObjectFactory::createBuilding] Building",         44},
     {"BuildingDestroyed",    "Building::setDestroyed",                              22},
     {"SpawnCheck",           " tried to spawn inside walls!",                        29},
     // Game loop / Time
@@ -375,7 +375,9 @@ constexpr size_t NUM_STRING_ANCHORS = sizeof(STRING_ANCHORS) / sizeof(STRING_ANC
 
 struct GameFunctions {
     // ── Entity Lifecycle ──
-    void*  CharacterSpawn       = nullptr;  // RootObjectFactory::process
+    void*  CharacterSpawn       = nullptr;  // RootObjectFactory::process (0x581770)
+    void*  FactoryCreate        = nullptr;  // RootObjectFactory::create (0x583400) — dispatcher, builds request struct internally
+    void*  CreateRandomChar     = nullptr;  // RootObjectFactory::createRandomChar (0x5836E0) — creates random NPC
     void*  CharacterDestroy     = nullptr;  // NodeList destroy path
     void*  CreateRandomSquad    = nullptr;  // RootObjectFactory::createRandomSquad
     void*  CharacterSerialise   = nullptr;  // Character save/load serialization
@@ -401,6 +403,9 @@ struct GameFunctions {
     void*  BuildingDestroyed    = nullptr;  // Building destruction
     void*  Navmesh              = nullptr;  // Navmesh system
     void*  SpawnCheck           = nullptr;  // Spawn collision check
+    void*  SquadSpawnBypass    = nullptr;  // Squad spawn check bypass (research mod: GOG 0x4FF47C)
+    void*  SquadSpawnCall      = nullptr;  // Squad spawn function call site (research mod: GOG 0x4FFA88)
+    void*  CharAnimUpdate      = nullptr;  // Character animation update callback (research mod: GOG 0x65F6C7)
 
     // ── Game Loop / Time ──
     void*  GameFrameUpdate      = nullptr;  // Main game frame tick

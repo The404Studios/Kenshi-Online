@@ -7,6 +7,7 @@
 #include <vector>
 #include <queue>
 #include <functional>
+#include <atomic>
 
 namespace kmp {
 
@@ -27,6 +28,11 @@ struct SpawnRequest {
     uint32_t    templateId;
     uint32_t    factionId;
     uint32_t    retryCount = 0; // How many times this request has been re-queued
+
+    // Extended state (synced on connect so server+clients have correct initial state)
+    bool        hasExtendedState = false;
+    float       health[7] = {100.f, 100.f, 100.f, 100.f, 100.f, 100.f, 100.f};
+    bool        alive = true;
 };
 
 static constexpr uint32_t MAX_SPAWN_RETRIES = 200; // ~10 seconds at 20 ticks/sec
@@ -51,6 +57,9 @@ public:
 
     // Is the factory ready? (have we captured it yet?)
     bool IsReady() const { return m_factory != nullptr; }
+
+    // Get the factory pointer (needed for createRandomChar fallback)
+    void* GetFactory() const { return m_factory; }
 
     // Get the number of known templates
     size_t GetTemplateCount() const;
@@ -96,6 +105,26 @@ private:
     uintptr_t m_preCallOrigAddr = 0;  // Original stack address (for self-reference fixup)
     bool m_hasPreCallData = false;
 
+    // Mod player templates: GameData* from kenshi-online.mod for each player slot.
+    // These are persistent objects in the game's GameDataManager — safe to pass to factory.
+    static constexpr int MAX_MOD_TEMPLATES = 16;
+    void* m_modPlayerTemplates[MAX_MOD_TEMPLATES] = {};
+    std::atomic<int> m_modTemplateCount{0};
+
+    // Mod candidate storage: multiple GameData entries per name.
+    // m_templates is a unique map (one entry per name), so when the mod defines
+    // both a FACTION and a CHARACTER named "Player 1", one overwrites the other.
+    // This vector stores ALL heap-scan entries for mod player names so that
+    // FindModTemplates can use the numId heuristic to pick the correct one.
+    std::vector<std::pair<std::string, void*>> m_modCandidates;
+
+    // GameData pointer offset in the request struct (detected at runtime).
+    // -1 = not detected yet.
+    int m_gameDataOffsetInStruct = -1;
+
+    // Position offset in the request struct (detected at runtime by entity_hooks).
+    int m_positionOffsetInStruct = -1;
+
     // Spawn queue (network thread -> game thread)
     mutable std::mutex m_queueMutex;
     std::queue<SpawnRequest> m_spawnQueue;
@@ -104,6 +133,11 @@ private:
     std::function<void(EntityID netId, void* gameObject)> m_onSpawned;
 
 public:
+    void SetFactory(void* factory) {
+        if (!m_factory && factory) {
+            m_factory = factory;
+        }
+    }
     void SetOrigProcess(FactoryProcessFn fn) { m_origProcess = fn; }
     void SetOnSpawnedCallback(std::function<void(EntityID, void*)> cb) { m_onSpawned = cb; }
 
@@ -123,7 +157,7 @@ public:
     // Constructs a request struct, fixes self-references, and calls the factory.
     // If desiredPosition is non-null, writes it into the struct at offset 0x20 (detected).
     // Returns the created character pointer or nullptr.
-    void* SpawnCharacterDirect(const Vec3* desiredPosition = nullptr);
+    void* SpawnCharacterDirect(const Vec3* desiredPosition = nullptr, int modSlot = 0);
 
     // Process spawn queue from within the CharacterCreate hook.
     // The hook has ALREADY disabled itself (HookBypass active), so we can call
@@ -141,6 +175,31 @@ public:
     size_t GetPendingSpawnCount() const {
         std::lock_guard lock(m_queueMutex);
         return m_spawnQueue.size();
+    }
+
+    // Clear all pending spawn requests (call on full disconnect)
+    void ClearSpawnQueue() {
+        std::lock_guard lock(m_queueMutex);
+        std::queue<SpawnRequest> empty;
+        m_spawnQueue.swap(empty);
+    }
+
+    // Remove pending spawn requests for a specific player (call on player leave)
+    int ClearSpawnsForOwner(PlayerID owner) {
+        std::lock_guard lock(m_queueMutex);
+        std::queue<SpawnRequest> filtered;
+        int removed = 0;
+        while (!m_spawnQueue.empty()) {
+            SpawnRequest req = m_spawnQueue.front();
+            m_spawnQueue.pop();
+            if (req.owner == owner) {
+                removed++;
+            } else {
+                filtered.push(req);
+            }
+        }
+        m_spawnQueue.swap(filtered);
+        return removed;
     }
 
     // Pop the next spawn request from the queue (returns true if one was available)
@@ -178,6 +237,31 @@ public:
 
     // Get discovered GameDataManager pointer (for heap scan bootstrapping)
     uintptr_t GetManagerPointer() const { return m_managerPointer; }
+
+    // ── Mod Template System ──
+    // After heap scan, find GameData entries from kenshi-online.mod for player characters.
+    // These are REAL persistent GameData objects that the factory can use directly.
+    void FindModTemplates();
+
+    // Get mod template for a player slot (0-based). Returns nullptr if not found.
+    void* GetModTemplate(int playerSlot) const;
+
+    // Get number of discovered mod templates
+    int GetModTemplateCount() const { return m_modTemplateCount; }
+
+    // ── GameData Offset in Request Struct ──
+    // Detected at runtime: offset within the pre-call request struct where
+    // the GameData pointer is stored. Allows swapping templates for remote spawns.
+    void SetGameDataOffset(int offset);
+    int GetGameDataOffset() const { return m_gameDataOffsetInStruct; }
+    void SetPositionOffset(int offset);
+    int GetPositionOffset() const { return m_positionOffsetInStruct; }
+
+    // ── Improved Spawn with Mod Template ──
+    // Clones the pre-call struct, swaps in a mod template's GameData pointer,
+    // sets desired position, fixes self-references, and calls factory.
+    // This creates a fully-initialized character because the GameData is real.
+    void* SpawnWithModTemplate(int playerSlot, const Vec3& position);
 
     // Read a Kenshi std::string from memory (handles SSO).
     // Public so entity_hooks and other systems can read template names.

@@ -98,6 +98,7 @@ struct WorldOffsets {
     int weatherState   = -1;     // Not yet verified on GameWorld
     int characterList  = 0x0888; // GameWorld+0x0888 characterArray (KenshiLib verified)
     int buildingList   = -1;     // Not yet verified
+    int paused         = 0x08B9; // GameWorld+0x08B9 — bool paused flag (RE verified)
     int zoneManager    = 0x08B0; // GameWorld+0x08B0 (KenshiLib verified)
     int characterCount = -1;     // Derived from list (lektor length at +0x00)
 };
@@ -138,6 +139,7 @@ struct ItemOffsets {
 };
 
 struct FactionOffsets {
+    int id             = 0x08;   // Faction ID (used in 6+ files: entity_hooks, faction_hooks, etc.)
     int name           = 0x10;   // Faction name string
     int members        = 0x30;   // Member list pointer
     int memberCount    = 0x38;   // Member count
@@ -146,6 +148,17 @@ struct FactionOffsets {
     int color2         = 0x84;   // Secondary uniform color
     int isPlayerFaction = 0x90;  // Is this the player's faction
     int money          = 0xA0;   // Faction wealth (int)
+};
+
+struct GameDataOffsets {
+    int id             = 0x08;   // Template ID (uint32_t)
+    int managerPtr     = 0x10;   // GameDataManager* backpointer
+    int name           = 0x28;   // Template name (Kenshi std::string)
+};
+
+struct TimeManagerOffsets {
+    int timeOfDay      = 0x08;   // Float 0.0-1.0 (day cycle)
+    int gameSpeed      = 0x10;   // Float (current game speed multiplier)
 };
 
 struct StatsOffsets {
@@ -181,14 +194,16 @@ struct StatsOffsets {
 
 // Combined offsets structure
 struct GameOffsets {
-    CharacterOffsets character;
-    SquadOffsets     squad;
-    WorldOffsets     world;
-    BuildingOffsets  building;
-    InventoryOffsets inventory;
-    ItemOffsets      item;
-    FactionOffsets   faction;
-    StatsOffsets     stats;
+    CharacterOffsets    character;
+    SquadOffsets        squad;
+    WorldOffsets        world;
+    BuildingOffsets     building;
+    InventoryOffsets    inventory;
+    ItemOffsets         item;
+    FactionOffsets      faction;
+    StatsOffsets        stats;
+    GameDataOffsets     gameData;
+    TimeManagerOffsets  timeManager;
 
     // Version string found in memory (for validation)
     char gameVersion[32] = {};
@@ -223,6 +238,10 @@ void ScheduleDeferredAnimClassProbe(uintptr_t charPtr);
 // Process all deferred probes. Call once per game tick from game_tick_hooks.
 // Returns true if animClassOffset was successfully discovered.
 bool ProcessDeferredAnimClassProbes();
+
+// Reset all probe statics (animClass, equipment, writePos logging, deferred queue).
+// Call on disconnect/reconnect or second game load to prevent stale state.
+void ResetProbeState();
 
 // ── Player Controlled Offset Discovery ──
 // Discovers the isPlayerControlled bool offset by comparing a known player-controlled

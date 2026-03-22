@@ -109,6 +109,7 @@ struct TestClient {
         MsgHandshake hs{};
         hs.protocolVersion = KMP_PROTOCOL_VERSION;
         strncpy(hs.playerName, name.c_str(), KMP_MAX_NAME_LENGTH);
+        hs.playerName[KMP_MAX_NAME_LENGTH] = '\0';
         hs.gameVersionMajor = 1;
         hs.gameVersionMinor = 0;
         hs.gameVersionPatch = 68;
@@ -449,6 +450,12 @@ struct TestClient {
                     }
                 }
             }
+            // If graceful disconnect didn't complete, force it so the server
+            // sees the peer go away immediately (prevents zombie peer slots)
+            if (connected && peer) {
+                enet_peer_reset(peer);
+                connected = false;
+            }
             peer = nullptr;
         }
     }
@@ -558,6 +565,7 @@ static void Test_ServerConnection() {
     TestAssert(enetConnected, "ENet connection established");
 
     if (!enetConnected) {
+        client.Disconnect();
         client.Destroy();
         return;
     }
@@ -597,8 +605,8 @@ static void Test_TwoPlayersConnect() {
     TestAssert(client1.connected && client2.connected, "Both clients connected");
 
     if (!client1.connected || !client2.connected) {
-        client1.Destroy();
-        client2.Destroy();
+        client1.Disconnect(); client2.Disconnect();
+        client1.Destroy(); client2.Destroy();
         return;
     }
 
@@ -1041,6 +1049,14 @@ static void Test_MultipleEntitiesPerPlayer() {
 //  New System Tests
 // ─────────────────────────────────────────────────
 
+// Cleanup helper: properly disconnect and destroy both clients
+static void CleanupTwoClients(TestClient& c1, TestClient& c2) {
+    c1.Disconnect(); c2.Disconnect();
+    c1.Destroy(); c2.Destroy();
+    // Give server time to fully process both disconnects
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+}
+
 // Helper: connect two clients, handshake, spawn entities, return ready state
 static bool SetupTwoClients(TestClient& c1, TestClient& c2,
                             const char* name1 = "Alice", const char* name2 = "Bob") {
@@ -1050,13 +1066,22 @@ static bool SetupTwoClients(TestClient& c1, TestClient& c2,
     c2.Connect("127.0.0.1", KMP_DEFAULT_PORT);
     c1.PollUntil([&]() { return c1.connected; }, 3000);
     c2.PollUntil([&]() { return c2.connected; }, 3000);
-    if (!c1.connected || !c2.connected) return false;
+    if (!c1.connected || !c2.connected) {
+        printf("    SetupTwoClients: connection failed (c1=%d, c2=%d)\n",
+               c1.connected, c2.connected);
+        return false;
+    }
 
     c1.SendHandshake();
-    c1.PollUntil([&]() { return c1.handshakeOk; }, 3000);
+    c1.PollUntil([&]() { return c1.handshakeOk || c1.wasRejected; }, 3000);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     c2.SendHandshake();
-    c2.PollUntil([&]() { return c2.handshakeOk; }, 3000);
+    c2.PollUntil([&]() { return c2.handshakeOk || c2.wasRejected; }, 3000);
+    if (!c1.handshakeOk || !c2.handshakeOk) {
+        printf("    SetupTwoClients: handshake failed (c1=%d/%d, c2=%d/%d)\n",
+               c1.handshakeOk, c1.wasRejected, c2.handshakeOk, c2.wasRejected);
+        return false;
+    }
     c1.Poll(200); c2.Poll(200);
 
     // Spawn entities for both
@@ -1066,7 +1091,13 @@ static bool SetupTwoClients(TestClient& c1, TestClient& c2,
     c2.PollUntil([&]() { return c2.myEntityId != 0; }, 3000);
     c1.Poll(300); c2.Poll(300);
 
-    return c1.myEntityId != 0 && c2.myEntityId != 0;
+    if (c1.myEntityId == 0 || c2.myEntityId == 0) {
+        printf("    SetupTwoClients: entity spawn failed (c1=%u, c2=%u)\n",
+               c1.myEntityId, c2.myEntityId);
+        return false;
+    }
+
+    return true;
 }
 
 static void Test_InventorySync() {
@@ -1075,7 +1106,7 @@ static void Test_InventorySync() {
     TestClient c1, c2;
     bool ready = SetupTwoClients(c1, c2);
     TestAssert(ready, "Both clients connected with entities");
-    if (!ready) { c1.Destroy(); c2.Destroy(); return; }
+    if (!ready) { CleanupTwoClients(c1, c2); return; }
 
     // Client 1 picks up an item
     size_t c2InvBefore = c2.inventoryUpdates.size();
@@ -1113,8 +1144,7 @@ static void Test_InventorySync() {
         TestAssert(inv.action == 1, "Inventory action is 'remove' (1)");
     }
 
-    c1.Disconnect(); c2.Disconnect();
-    c1.Destroy(); c2.Destroy();
+    CleanupTwoClients(c1, c2);
 }
 
 static void Test_TradeSync() {
@@ -1123,7 +1153,7 @@ static void Test_TradeSync() {
     TestClient c1, c2;
     bool ready = SetupTwoClients(c1, c2);
     TestAssert(ready, "Both clients connected with entities");
-    if (!ready) { c1.Destroy(); c2.Destroy(); return; }
+    if (!ready) { CleanupTwoClients(c1, c2); return; }
 
     // Client 1 sends a trade request
     c1.SendTradeRequest(c1.myEntityId, 2001, 1, 500);
@@ -1143,8 +1173,7 @@ static void Test_TradeSync() {
                tr.buyerEntityId, tr.itemTemplateId, tr.quantity, tr.success);
     }
 
-    c1.Disconnect(); c2.Disconnect();
-    c1.Destroy(); c2.Destroy();
+    CleanupTwoClients(c1, c2);
 }
 
 static void Test_SquadSync() {
@@ -1153,7 +1182,7 @@ static void Test_SquadSync() {
     TestClient c1, c2;
     bool ready = SetupTwoClients(c1, c2);
     TestAssert(ready, "Both clients connected with entities");
-    if (!ready) { c1.Destroy(); c2.Destroy(); return; }
+    if (!ready) { CleanupTwoClients(c1, c2); return; }
 
     // Client 1 creates a squad
     size_t c2SquadsBefore = c2.squadsCreated.size();
@@ -1177,8 +1206,7 @@ static void Test_SquadSync() {
         printf("    Squad net ID: %u\n", squadId);
     }
 
-    c1.Disconnect(); c2.Disconnect();
-    c1.Destroy(); c2.Destroy();
+    CleanupTwoClients(c1, c2);
 }
 
 static void Test_FactionRelationSync() {
@@ -1187,7 +1215,7 @@ static void Test_FactionRelationSync() {
     TestClient c1, c2;
     bool ready = SetupTwoClients(c1, c2);
     TestAssert(ready, "Both clients connected with entities");
-    if (!ready) { c1.Destroy(); c2.Destroy(); return; }
+    if (!ready) { CleanupTwoClients(c1, c2); return; }
 
     // Client 1 changes a faction relation
     size_t c2FactionBefore = c2.factionRelations.size();
@@ -1212,8 +1240,7 @@ static void Test_FactionRelationSync() {
         printf("    Faction %u <-> %u = %.1f\n", fr.factionIdA, fr.factionIdB, fr.relation);
     }
 
-    c1.Disconnect(); c2.Disconnect();
-    c1.Destroy(); c2.Destroy();
+    CleanupTwoClients(c1, c2);
 }
 
 static void Test_BuildingSync() {
@@ -1222,7 +1249,7 @@ static void Test_BuildingSync() {
     TestClient c1, c2;
     bool ready = SetupTwoClients(c1, c2);
     TestAssert(ready, "Both clients connected with entities");
-    if (!ready) { c1.Destroy(); c2.Destroy(); return; }
+    if (!ready) { CleanupTwoClients(c1, c2); return; }
 
     // Client 1 places a building
     size_t c2BuildsBefore = c2.buildingsPlaced.size();
@@ -1250,8 +1277,7 @@ static void Test_BuildingSync() {
     }
 
     if (buildingId == 0) {
-        c1.Disconnect(); c2.Disconnect();
-        c1.Destroy(); c2.Destroy();
+        CleanupTwoClients(c1, c2);
         return;
     }
 
@@ -1273,8 +1299,7 @@ static void Test_BuildingSync() {
         TestAssert(found, "Destroyed building ID matches placed building");
     }
 
-    c1.Disconnect(); c2.Disconnect();
-    c1.Destroy(); c2.Destroy();
+    CleanupTwoClients(c1, c2);
 }
 
 static void Test_ServerBrowser() {
@@ -1288,6 +1313,7 @@ static void Test_ServerBrowser() {
     TestAssert(enetConnected, "ENet connection established for query");
 
     if (!enetConnected) {
+        client.Disconnect();
         client.Destroy();
         return;
     }
@@ -1332,7 +1358,8 @@ static void Test_ServerBrowser() {
     }
     TestAssert(gotResponse, "Received S2C_ServerInfo response");
 
-    client.Destroy(); // Don't disconnect - server disconnects us after query
+    client.Disconnect();
+    client.Destroy();
 }
 
 static void Test_FullMultiplayerSession() {
@@ -1349,7 +1376,7 @@ static void Test_FullMultiplayerSession() {
     TestClient c1, c2;
     bool ready = SetupTwoClients(c1, c2, "Host", "Joiner");
     TestAssert(ready, "Full session: both players connected and spawned");
-    if (!ready) { c1.Destroy(); c2.Destroy(); return; }
+    if (!ready) { CleanupTwoClients(c1, c2); return; }
 
     printf("    Host entity: %u, Joiner entity: %u\n", c1.myEntityId, c2.myEntityId);
 
@@ -1485,53 +1512,53 @@ int main(int argc, char** argv) {
             return 1;
         }
         printf("[*] Server is ready!\n");
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 
     // ── Run Tests ──
 
     Test_ServerConnection();
     // Small pause between tests to let server clean up
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_TwoPlayersConnect();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_EntitySpawnAndBroadcast();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_PositionSync();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_ChatRelay();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_DisconnectCleanup();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_TimeSync();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_MultipleEntitiesPerPlayer();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_InventorySync();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_TradeSync();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_SquadSync();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_FactionRelationSync();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_BuildingSync();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_ServerBrowser();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_FullMultiplayerSession();
 

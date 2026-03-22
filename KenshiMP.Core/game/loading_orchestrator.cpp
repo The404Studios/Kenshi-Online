@@ -30,6 +30,35 @@ bool LoadingOrchestrator::IsSafeToSpawn() const {
     return true;
 }
 
+std::string LoadingOrchestrator::GetSpawnBlockReason() const {
+    auto phase = GetPhase();
+    if (phase != LoadingPhase::Idle) {
+        const char* phaseName = "?";
+        switch (phase) {
+            case LoadingPhase::InitialLoad: phaseName = "InitialLoad"; break;
+            case LoadingPhase::ZoneTransition: phaseName = "ZoneTransition"; break;
+            case LoadingPhase::SpawnLoad: phaseName = "SpawnLoad"; break;
+            default: break;
+        }
+        return std::string("Phase=") + phaseName + " (need Idle)";
+    }
+    if (m_inBurst.load(std::memory_order_relaxed))
+        return "Burst in progress";
+    if (!m_gameLoaded.load(std::memory_order_relaxed))
+        return "Game not loaded (OnGameLoaded never fired)";
+    if (m_hasResourceHooks) {
+        std::lock_guard lock(m_resourceMutex);
+        if (!m_pendingResources.empty())
+            return "Pending resources: " + std::to_string(m_pendingResources.size());
+    }
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now - m_lastLoadCompleteTime);
+    if (elapsed.count() < SPAWN_COOLDOWN_MS)
+        return "Cooldown: " + std::to_string(SPAWN_COOLDOWN_MS - elapsed.count()) + "ms remaining";
+    return "OK";
+}
+
 void LoadingOrchestrator::RequestPreload(const std::string& templateName) {
     // Anticipatory preload — currently a no-op until Ogre hooks are installed.
     // When resource hooks are active, this will trigger MeshManager::prepare()
@@ -81,6 +110,7 @@ void LoadingOrchestrator::OnResourceFailed(const std::string& name, const std::s
 
 void LoadingOrchestrator::OnBurstDetected(int createCount) {
     m_inBurst.store(true, std::memory_order_relaxed);
+    m_burstStartTime = std::chrono::steady_clock::now();
     m_burstCount.fetch_add(1, std::memory_order_relaxed);
 
     if (GetPhase() == LoadingPhase::Idle) {
@@ -134,6 +164,23 @@ void LoadingOrchestrator::OnZoneLoadEnd() {
 
 void LoadingOrchestrator::Tick() {
     auto phase = GetPhase();
+
+    // Burst timeout: if m_inBurst has been true for >30s, auto-clear it.
+    // This prevents IsSafeToSpawn() from being permanently stuck if
+    // OnBurstEnded() is never called (e.g. due to a missed event).
+    if (m_inBurst.load(std::memory_order_relaxed)) {
+        auto burstElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - m_burstStartTime);
+        if (burstElapsed.count() >= BURST_TIMEOUT_MS) {
+            spdlog::warn("LoadingOrchestrator: Burst timeout ({}ms) — auto-clearing stuck burst",
+                         burstElapsed.count());
+            m_inBurst.store(false, std::memory_order_relaxed);
+            m_lastLoadCompleteTime = std::chrono::steady_clock::now();
+            if (phase == LoadingPhase::InitialLoad || phase == LoadingPhase::ZoneTransition) {
+                TransitionTo(LoadingPhase::Idle);
+            }
+        }
+    }
 
     // Zone transition settling
     if (phase == LoadingPhase::ZoneTransition && !m_inBurst.load(std::memory_order_relaxed)) {

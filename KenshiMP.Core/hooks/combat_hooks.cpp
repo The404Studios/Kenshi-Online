@@ -1,167 +1,197 @@
 #include "combat_hooks.h"
+#include "ai_hooks.h"
 #include "../core.h"
 #include "../game/game_types.h"
 #include "kmp/hook_manager.h"
 #include "kmp/protocol.h"
 #include "kmp/safe_hook.h"
 #include <spdlog/spdlog.h>
+#include <atomic>
+#include <mutex>
+#include <vector>
 
 namespace kmp::combat_hooks {
 
 // ── Function Types ──
-using ApplyDamageFn = void(__fastcall*)(void* target, void* attacker,
-                                        int bodyPart, float cut, float blunt, float pierce);
 using CharacterDeathFn = void(__fastcall*)(void* character, void* killer);
 using CharacterKOFn = void(__fastcall*)(void* character, void* attacker, int reason);
 
-static ApplyDamageFn    s_origApplyDamage  = nullptr;
 static CharacterDeathFn s_origCharDeath    = nullptr;
 static CharacterKOFn    s_origCharKO       = nullptr;
 
 // ── Hook Health ──
-static HookHealth s_damageHealth{"ApplyDamage"};
 static HookHealth s_deathHealth{"CharacterDeath"};
 static HookHealth s_koHealth{"CharacterKO"};
 
 // ── Diagnostic Counters ──
-static std::atomic<int> s_damageCount{0};
 static std::atomic<int> s_deathCount{0};
 static std::atomic<int> s_koCount{0};
 
-// ── Hooks ──
+// ═══════════════════════════════════════════════════════════════════════════
+//  DEFERRED EVENT QUEUE
+//
+//  Combat hooks fire inside MovRaxRsp naked detours where:
+//  - spdlog calls allocate from heap → corrupt the 4KB stack gap
+//  - SendReliable acquires ENet mutex → deadlock if game thread holds it
+//  - PacketWriter has a destructor → stack unwinding crashes in detour context
+//  - CharacterAccessor reads game memory → AV in wrong stack context
+//
+//  SOLUTION: The hook body does ONLY the minimum (call original + capture IDs
+//  into a lock-free queue), then ProcessDeferredEvents() runs from the safe
+//  OnGameTick context to do logging, packet building, and network sends.
+// ═══════════════════════════════════════════════════════════════════════════
 
-static void __fastcall Hook_ApplyDamage(void* target, void* attacker,
-                                         int bodyPart, float cut, float blunt, float pierce) {
-    int callNum = s_damageCount.fetch_add(1) + 1;
-    spdlog::debug("combat_hooks: ApplyDamage #{} target=0x{:X} attacker=0x{:X} part={} cut={:.1f} blunt={:.1f} pierce={:.1f}",
-                  callNum, reinterpret_cast<uintptr_t>(target),
-                  reinterpret_cast<uintptr_t>(attacker),
-                  bodyPart, cut, blunt, pierce);
+enum class CombatEventType : uint8_t { Death, KO };
 
-    auto& core = Core::Get();
+struct DeferredCombatEvent {
+    CombatEventType type;
+    uint32_t entityId;
+    uint32_t otherId;   // killer for death, attacker for KO
+    uint8_t  reason;    // KO reason
+};
 
-    if (core.IsConnected()) {
-        // Apply damage locally for responsiveness (SEH-protected)
-        if (!SafeCall_Void_PtrPtrIFFF(reinterpret_cast<void*>(s_origApplyDamage),
-                                       target, attacker, bodyPart, cut, blunt, pierce,
-                                       &s_damageHealth)) {
-            if (s_damageHealth.trampolineFailed.load()) {
-                spdlog::error("combat_hooks: ApplyDamage trampoline CRASHED! Hook disabled.");
-            }
-            return;
-        }
+static constexpr int MAX_DEFERRED_EVENTS = 64;
+static DeferredCombatEvent s_eventRing[MAX_DEFERRED_EVENTS];
+static std::atomic<int> s_eventWriteIdx{0};
+static std::atomic<int> s_eventReadIdx{0};
 
-        // Send attack intent to server for our own characters
-        EntityID targetId = core.GetEntityRegistry().GetNetId(target);
-        EntityID attackerId = attacker ? core.GetEntityRegistry().GetNetId(attacker) : INVALID_ENTITY;
-
-        auto* info = attackerId != INVALID_ENTITY
-            ? core.GetEntityRegistry().GetInfo(attackerId)
-            : nullptr;
-
-        if (info && info->ownerPlayerId == core.GetLocalPlayerId() &&
-            targetId != INVALID_ENTITY) {
-            PacketWriter writer;
-            writer.WriteHeader(MessageType::C2S_AttackIntent);
-            writer.WriteU32(attackerId);
-            writer.WriteU32(targetId);
-            writer.WriteU8(0); // melee
-
-            core.GetClient().SendReliable(writer.Data(), writer.Size());
-        }
-    } else {
-        // Not connected - normal single-player behavior (SEH-protected)
-        if (!SafeCall_Void_PtrPtrIFFF(reinterpret_cast<void*>(s_origApplyDamage),
-                                       target, attacker, bodyPart, cut, blunt, pierce,
-                                       &s_damageHealth)) {
-            if (s_damageHealth.trampolineFailed.load()) {
-                spdlog::error("combat_hooks: ApplyDamage trampoline CRASHED! Hook disabled.");
-            }
-        }
+// Lock-free single-producer (hook) single-consumer (game tick) ring buffer.
+// Safe because: hooks run on game thread (single producer), ProcessDeferredEvents
+// runs on game thread (single consumer), and both are the SAME thread.
+static bool PushEvent(const DeferredCombatEvent& evt) {
+    int writeIdx = s_eventWriteIdx.load(std::memory_order_relaxed);
+    int nextIdx = (writeIdx + 1) % MAX_DEFERRED_EVENTS;
+    if (nextIdx == s_eventReadIdx.load(std::memory_order_acquire)) {
+        return false; // Full — drop event (better than crash)
     }
+    s_eventRing[writeIdx] = evt;
+    s_eventWriteIdx.store(nextIdx, std::memory_order_release);
+    return true;
 }
+
+static bool PopEvent(DeferredCombatEvent& out) {
+    int readIdx = s_eventReadIdx.load(std::memory_order_relaxed);
+    if (readIdx == s_eventWriteIdx.load(std::memory_order_acquire)) {
+        return false; // Empty
+    }
+    out = s_eventRing[readIdx];
+    s_eventReadIdx.store((readIdx + 1) % MAX_DEFERRED_EVENTS, std::memory_order_release);
+    return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  HOOK BODIES — MINIMAL WORK ONLY
+//  No spdlog. No PacketWriter. No SendReliable. No CharacterAccessor.
+//  Just: call original + push event IDs to ring buffer.
+// ═══════════════════════════════════════════════════════════════════════════
 
 static void __fastcall Hook_CharacterDeath(void* character, void* killer) {
-    int callNum = s_deathCount.fetch_add(1) + 1;
-    spdlog::info("combat_hooks: CharacterDeath #{} char=0x{:X} killer=0x{:X}",
-                 callNum, reinterpret_cast<uintptr_t>(character),
-                 reinterpret_cast<uintptr_t>(killer));
+    s_deathCount.fetch_add(1, std::memory_order_relaxed);
 
+    // Call original FIRST (SEH-protected) — game death logic must always run
+    SafeCall_Void_PtrPtr(reinterpret_cast<void*>(s_origCharDeath),
+                          character, killer, &s_deathHealth);
+
+    // Capture entity IDs (cheap pointer lookups, no allocation)
     auto& core = Core::Get();
+    if (!core.IsConnected()) return;
 
-    // SEH-protected trampoline call (apply death locally first)
-    if (!SafeCall_Void_PtrPtr(reinterpret_cast<void*>(s_origCharDeath),
-                               character, killer, &s_deathHealth)) {
-        if (s_deathHealth.trampolineFailed.load()) {
-            spdlog::error("combat_hooks: CharacterDeath trampoline CRASHED! Hook disabled.");
-        }
-    }
+    EntityID entityId = core.GetEntityRegistry().GetNetId(character);
+    if (entityId == INVALID_ENTITY) return;
 
-    // Send death notification to server for entities we own
-    if (core.IsConnected()) {
-        EntityID entityId = core.GetEntityRegistry().GetNetId(character);
-        EntityID killerId = killer ? core.GetEntityRegistry().GetNetId(killer) : INVALID_ENTITY;
+    EntityID killerId = killer ? core.GetEntityRegistry().GetNetId(killer) : INVALID_ENTITY;
 
-        auto* info = entityId != INVALID_ENTITY
-            ? core.GetEntityRegistry().GetInfo(entityId)
-            : nullptr;
+    // Defer all heavy work (logging, packet send) to ProcessDeferredEvents
+    DeferredCombatEvent evt{};
+    evt.type = CombatEventType::Death;
+    evt.entityId = entityId;
+    evt.otherId = killerId;
+    PushEvent(evt);
+}
 
-        if (info && info->ownerPlayerId == core.GetLocalPlayerId()) {
-            PacketWriter writer;
-            writer.WriteHeader(MessageType::C2S_CombatDeath);
-            writer.WriteU32(entityId);
-            writer.WriteU32(killerId);
-            core.GetClient().SendReliable(writer.Data(), writer.Size());
-            spdlog::info("combat_hooks: Sent death event for entity {} (killer={})",
-                         entityId, killerId);
-        }
+static void __fastcall Hook_CharacterKO(void* character, void* attacker, int reason) {
+    s_koCount.fetch_add(1, std::memory_order_relaxed);
+
+    // Call original FIRST (SEH-protected) — game KO logic must always run
+    SafeCall_Void_PtrPtrI(reinterpret_cast<void*>(s_origCharKO),
+                           character, attacker, reason, &s_koHealth);
+
+    // Capture entity IDs (cheap pointer lookups, no allocation)
+    auto& core = Core::Get();
+    if (!core.IsConnected()) return;
+
+    EntityID entityId = core.GetEntityRegistry().GetNetId(character);
+    if (entityId == INVALID_ENTITY) return;
+
+    EntityID attackerId = attacker ? core.GetEntityRegistry().GetNetId(attacker) : INVALID_ENTITY;
+
+    // Defer all heavy work to ProcessDeferredEvents
+    DeferredCombatEvent evt{};
+    evt.type = CombatEventType::KO;
+    evt.entityId = entityId;
+    evt.otherId = attackerId;
+    evt.reason = static_cast<uint8_t>(reason);
+    PushEvent(evt);
+}
+
+// ── SEH wrapper for reading health (no C++ objects allowed in __try) ──
+static float SEH_ReadChestHealth(void* gameObj) {
+    __try {
+        game::CharacterAccessor accessor(gameObj);
+        return accessor.GetHealth(BodyPart::Chest);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return -100.f; // Assume dead on read failure
     }
 }
 
-// ── CharacterKO Hook ──
-// Fires when a character is knocked unconscious (health drops below KO threshold).
-// KO reason: 0=blood loss, 1=head trauma, 2=other
+// ═══════════════════════════════════════════════════════════════════════════
+//  DEFERRED PROCESSING — called from Core::OnGameTick (safe context)
+//  Here we can safely: log, build packets, send via ENet, read game memory.
+// ═══════════════════════════════════════════════════════════════════════════
 
-static void __fastcall Hook_CharacterKO(void* character, void* attacker, int reason) {
-    int callNum = s_koCount.fetch_add(1) + 1;
-    spdlog::info("combat_hooks: CharacterKO #{} char=0x{:X} attacker=0x{:X} reason={}",
-                 callNum, reinterpret_cast<uintptr_t>(character),
-                 reinterpret_cast<uintptr_t>(attacker), reason);
-
+void ProcessDeferredEvents() {
     auto& core = Core::Get();
-
-    if (core.IsConnected()) {
-        EntityID entityId = core.GetEntityRegistry().GetNetId(character);
-        EntityID attackerId = attacker ? core.GetEntityRegistry().GetNetId(attacker) : INVALID_ENTITY;
-
-        // Send KO event to server for entities we own
-        auto* info = entityId != INVALID_ENTITY
-            ? core.GetEntityRegistry().GetInfo(entityId)
-            : nullptr;
-
-        if (info && info->ownerPlayerId == core.GetLocalPlayerId()) {
-            PacketWriter writer;
-            writer.WriteHeader(MessageType::C2S_CombatStance); // Reuse combat channel
-            writer.WriteU32(entityId);
-            writer.WriteU32(attackerId);
-            writer.WriteU8(static_cast<uint8_t>(reason));
-
-            // Include current health of the chest (primary KO indicator)
-            game::CharacterAccessor accessor(character);
-            float chestHealth = accessor.GetHealth(BodyPart::Chest);
-            writer.WriteF32(chestHealth);
-
-            core.GetClient().SendReliable(writer.Data(), writer.Size());
-            spdlog::debug("combat_hooks: Sent KO event for entity {} (attacker={})",
-                          entityId, attackerId);
-        }
+    if (!core.IsConnected()) {
+        // Drain queue without processing if disconnected
+        DeferredCombatEvent discard;
+        while (PopEvent(discard)) {}
+        return;
     }
 
-    // Call original KO handler (SEH-protected)
-    if (!SafeCall_Void_PtrPtrI(reinterpret_cast<void*>(s_origCharKO),
-                                character, attacker, reason, &s_koHealth)) {
-        if (s_koHealth.trampolineFailed.load()) {
-            spdlog::error("combat_hooks: CharacterKO trampoline CRASHED! Hook disabled.");
+    DeferredCombatEvent evt;
+    int processed = 0;
+    while (PopEvent(evt) && processed < 16) { // Cap per tick to avoid stalls
+        processed++;
+
+        // Only send events for entities we OWN
+        auto infoCopy = core.GetEntityRegistry().GetInfoCopy(evt.entityId);
+        if (!infoCopy || infoCopy->ownerPlayerId != core.GetLocalPlayerId()) continue;
+
+        if (evt.type == CombatEventType::Death) {
+            spdlog::info("combat_hooks: [deferred] Death — entity {} killer {}",
+                         evt.entityId, evt.otherId);
+
+            PacketWriter writer;
+            writer.WriteHeader(MessageType::C2S_CombatDeath);
+            writer.WriteU32(evt.entityId);
+            writer.WriteU32(evt.otherId);
+            core.GetClient().SendReliable(writer.Data(), writer.Size());
+
+        } else if (evt.type == CombatEventType::KO) {
+            spdlog::info("combat_hooks: [deferred] KO — entity {} attacker {} reason {}",
+                         evt.entityId, evt.otherId, evt.reason);
+
+            PacketWriter writer;
+            writer.WriteHeader(MessageType::C2S_CombatKO);
+            writer.WriteU32(evt.entityId);
+            writer.WriteU32(evt.otherId);
+            writer.WriteU8(evt.reason);
+
+            // Read health safely from game tick context (not hook context)
+            void* gameObj = core.GetEntityRegistry().GetGameObject(evt.entityId);
+            float chestHealth = gameObj ? SEH_ReadChestHealth(gameObj) : -100.f;
+            writer.WriteF32(chestHealth);
+            core.GetClient().SendReliable(writer.Data(), writer.Size());
         }
     }
 }
@@ -173,10 +203,14 @@ bool Install() {
     auto& hookMgr = HookManager::Get();
     auto& funcs = core.GetGameFunctions();
 
+    // ═══ DO NOT HOOK ApplyDamage ═══
+    // ApplyDamage (0x7A33A0) uses `mov rax, rsp` prologue and fires hundreds
+    // of times per combat tick. The MovRaxRsp wrapper's global RSP slots corrupt
+    // under rapid-fire calls → deterministic crash on "attack unprovoked".
+    // Combat damage sync uses death/KO hooks + health polling instead.
     if (funcs.ApplyDamage) {
-        hookMgr.InstallAt("ApplyDamage",
-                          reinterpret_cast<uintptr_t>(funcs.ApplyDamage),
-                          &Hook_ApplyDamage, &s_origApplyDamage);
+        spdlog::info("combat_hooks: ApplyDamage at 0x{:X} — NOT hooked (mov rax,rsp crash risk)",
+                     reinterpret_cast<uintptr_t>(funcs.ApplyDamage));
     }
 
     if (funcs.CharacterDeath) {
@@ -191,14 +225,12 @@ bool Install() {
                           &Hook_CharacterKO, &s_origCharKO);
     }
 
-    spdlog::info("combat_hooks: Installed (damage={}, death={}, ko={})",
-                 funcs.ApplyDamage != nullptr, funcs.CharacterDeath != nullptr,
-                 funcs.CharacterKO != nullptr);
+    spdlog::info("combat_hooks: Installed (damage=SKIPPED, death={}, ko={})",
+                 funcs.CharacterDeath != nullptr, funcs.CharacterKO != nullptr);
     return true;
 }
 
 void Uninstall() {
-    HookManager::Get().Remove("ApplyDamage");
     HookManager::Get().Remove("CharacterDeath");
     HookManager::Get().Remove("CharacterKO");
     spdlog::info("combat_hooks: Uninstalled");

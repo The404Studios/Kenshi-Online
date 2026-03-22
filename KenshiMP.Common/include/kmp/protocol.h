@@ -46,6 +46,7 @@ enum class MessageType : uint8_t {
     S2C_CombatKO          = 0x44,
     C2S_CombatStance      = 0x45,
     C2S_CombatDeath       = 0x46,
+    C2S_CombatKO          = 0x47,
 
     // Stats (Channel 1)
     S2C_StatUpdate        = 0x50,
@@ -106,6 +107,11 @@ enum class MessageType : uint8_t {
     S2C_PipelineSnapshot  = 0xE1,  // Server → client: forwarded snapshot from peer
     C2S_PipelineEvent     = 0xE2,  // Client → server: pipeline event batch
     S2C_PipelineEvent     = 0xE3,  // Server → client: forwarded events from peer
+
+    // ── Lobby ──
+    S2C_FactionAssignment = 0xF0,  // Server assigns faction string to client
+    C2S_LobbyReady        = 0xF1,  // Client confirms ready with faction loaded
+    S2C_LobbyStart        = 0xF2,  // Server tells all clients to start/load
 };
 
 // ── Packet Header ──

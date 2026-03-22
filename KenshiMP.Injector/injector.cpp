@@ -109,4 +109,71 @@ bool WriteConnectConfig(const char* address, const char* port, const char* playe
     return true;
 }
 
+bool InstallModFile(const std::wstring& gamePath) {
+    // Find the kenshi-online.mod source file.
+    // Search order: next to injector, one dir up, build output, KenshiMP root.
+    wchar_t exePath[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+    std::wstring exeDir(exePath);
+    size_t lastSlash = exeDir.find_last_of(L"\\/");
+    if (lastSlash != std::wstring::npos) exeDir = exeDir.substr(0, lastSlash);
+
+    std::wstring candidates[] = {
+        exeDir + L"\\kenshi-online.mod",
+        exeDir + L"\\..\\kenshi-online.mod",
+        exeDir + L"\\..\\data\\kenshi-online.mod",
+        gamePath + L"\\KenshiMP\\kenshi-online.mod",
+    };
+
+    std::wstring srcPath;
+    for (auto& c : candidates) {
+        if (GetFileAttributesW(c.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            srcPath = c;
+            break;
+        }
+    }
+
+    if (srcPath.empty()) {
+        // Mod file not found — not fatal, spawn system will fall back
+        return false;
+    }
+
+    // Copy to data/ directory (always loaded alongside gamedata.base)
+    std::wstring dataPath = gamePath + L"\\data\\kenshi-online.mod";
+    CopyFileW(srcPath.c_str(), dataPath.c_str(), FALSE);
+
+    // Also copy to mods/kenshi-online/ directory (standard mod location)
+    std::wstring modsDir = gamePath + L"\\mods";
+    CreateDirectoryW(modsDir.c_str(), nullptr);
+    std::wstring modSubDir = modsDir + L"\\kenshi-online";
+    CreateDirectoryW(modSubDir.c_str(), nullptr);
+    std::wstring modsDstPath = modSubDir + L"\\kenshi-online.mod";
+    CopyFileW(srcPath.c_str(), modsDstPath.c_str(), FALSE);
+
+    // Add "kenshi-online" to __mods.list if not already present
+    std::wstring modsListPath = gamePath + L"\\data\\__mods.list";
+    std::ifstream modsListIn(modsListPath);
+    std::vector<std::string> modLines;
+    std::string modLine;
+    bool alreadyListed = false;
+    while (std::getline(modsListIn, modLine)) {
+        if (!modLine.empty() && modLine.back() == '\r') modLine.pop_back();
+        if (modLine == "kenshi-online") alreadyListed = true;
+        modLines.push_back(modLine);
+    }
+    modsListIn.close();
+
+    if (!alreadyListed) {
+        modLines.push_back("kenshi-online");
+        std::ofstream modsListOut(modsListPath);
+        for (size_t i = 0; i < modLines.size(); i++) {
+            modsListOut << modLines[i];
+            if (i + 1 < modLines.size()) modsListOut << "\n";
+        }
+        modsListOut.close();
+    }
+
+    return true;
+}
+
 } // namespace kmp

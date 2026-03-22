@@ -23,16 +23,16 @@ public:
 
     // Check if the local player owns this entity
     bool IsLocallyOwned(EntityID entityId) const {
-        auto* info = m_registry->GetInfo(entityId);
-        if (!info) return false;
-        return info->ownerPlayerId == m_localPlayerId;
+        auto infoCopy = m_registry->GetInfoCopy(entityId);
+        if (!infoCopy) return false;
+        return infoCopy->ownerPlayerId == m_localPlayerId;
     }
 
     // Check if the server (host) owns this entity
     bool IsServerOwned(EntityID entityId) const {
-        auto* info = m_registry->GetInfo(entityId);
-        if (!info) return false;
-        return info->ownerPlayerId == 0;
+        auto infoCopy = m_registry->GetInfoCopy(entityId);
+        if (!infoCopy) return false;
+        return infoCopy->ownerPlayerId == 0;
     }
 
     // Transfer ownership of all entities from one player to server (owner=0)

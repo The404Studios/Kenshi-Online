@@ -20,7 +20,8 @@ struct ClientConfig {
     bool Load(const std::string& path);
     bool Save(const std::string& path) const;
 
-    static std::string GetDefaultPath();
+    static std::string GetDefaultPath();     // Shared path (Injector writes here)
+    static std::string GetInstancePath();    // PID-specific path (Core saves here)
 };
 
 struct ServerConfig {

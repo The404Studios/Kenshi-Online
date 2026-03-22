@@ -1,0 +1,23 @@
+﻿  Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/enet/CMakeLists.txt
+  callbacks.c
+  compress.c
+  host.c
+  list.c
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\host.c(245,60): warning C5287: operands are different enum types '_ENetProtocolCommand' and '_ENetProtocolFlag'; use an explicit cast to silence this warning
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\host.c(489,75): warning C5287: operands are different enum types '_ENetProtocolCommand' and '_ENetProtocolFlag'; use an explicit cast to silence this warning
+  packet.c
+  peer.c
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\peer.c(52,71): warning C5287: operands are different enum types '_ENetProtocolCommand' and '_ENetProtocolFlag'; use an explicit cast to silence this warning
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\peer.c(145,62): warning C5287: operands are different enum types '_ENetProtocolCommand' and '_ENetProtocolFlag'; use an explicit cast to silence this warning
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\peer.c(204,71): warning C5287: operands are different enum types '_ENetProtocolCommand' and '_ENetProtocolFlag'; use an explicit cast to silence this warning
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\peer.c(210,68): warning C5287: operands are different enum types '_ENetProtocolCommand' and '_ENetProtocolFlag'; use an explicit cast to silence this warning
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\peer.c(456,57): warning C5287: operands are different enum types '_ENetProtocolCommand' and '_ENetProtocolFlag'; use an explicit cast to silence this warning
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\peer.c(522,67): warning C5287: operands are different enum types '_ENetProtocolCommand' and '_ENetProtocolFlag'; use an explicit cast to silence this warning
+  protocol.c
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\protocol.c(426,73): warning C5287: operands are different enum types '_ENetProtocolCommand' and '_ENetProtocolFlag'; use an explicit cast to silence this warning
+  unix.c
+  win32.c
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\win32.c(94,17): warning C4996: 'gethostbyname': Use getaddrinfo() or GetAddrInfoW() instead or define _WINSOCK_DEPRECATED_NO_WARNINGS to disable deprecated API warnings
+C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\lib\enet\win32.c(128,17): warning C4996: 'gethostbyaddr': Use getnameinfo() or GetNameInfoW() instead or define _WINSOCK_DEPRECATED_NO_WARNINGS to disable deprecated API warnings
+  Generating Code...
+  enet.vcxproj -> C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\Debug\enet.lib

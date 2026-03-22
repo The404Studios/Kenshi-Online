@@ -1,0 +1,10 @@
+﻿  Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/lib/spdlog/CMakeLists.txt
+  spdlog.cpp
+  stdout_sinks.cpp
+  color_sinks.cpp
+  file_sinks.cpp
+  async.cpp
+  cfg.cpp
+  bundled_fmtlib_format.cpp
+  Generating Code...
+  spdlog.vcxproj -> C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\Debug\spdlogd.lib

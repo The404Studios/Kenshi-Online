@@ -58,7 +58,7 @@
                     <Property key="TextColour" value="0.871345 0.845139 0.810198"/>
                 </Widget>
                 <Widget type="EditBox" skin="Kenshi_EditBox" position_real="0.32 0.0 0.66 0.1" align="HStretch Top" name="MPServerIP">
-                    <Property key="Caption" value="127.0.0.1"/>
+                    <Property key="Caption" value="162.248.94.149"/>
                     <Property key="NeedKeyFocus" value="false"/>
                 </Widget>
 

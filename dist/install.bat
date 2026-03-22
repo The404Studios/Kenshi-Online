@@ -182,8 +182,33 @@ if exist "%~dp0Kenshi_MultiplayerHUD.layout" (
     echo  [WARNING] Kenshi_MultiplayerHUD.layout not found (in-game HUD may not work)
 )
 
+:: ── Install Multiplayer Mod ──
+echo  [6/7] Installing kenshi-online.mod...
+
+if exist "%~dp0kenshi-online.mod" (
+    :: Copy to data/ (always loaded by the game engine)
+    copy /Y "%~dp0kenshi-online.mod" "%KENSHI_DIR%\data\kenshi-online.mod" >nul
+    echo         Copied kenshi-online.mod to data/
+
+    :: Also copy to mods/kenshi-online/ (standard mod location)
+    if not exist "%KENSHI_DIR%\mods\kenshi-online" mkdir "%KENSHI_DIR%\mods\kenshi-online"
+    copy /Y "%~dp0kenshi-online.mod" "%KENSHI_DIR%\mods\kenshi-online\kenshi-online.mod" >nul
+    echo         Copied kenshi-online.mod to mods/
+
+    :: Add to __mods.list if not present
+    findstr /C:"kenshi-online" "%KENSHI_DIR%\data\__mods.list" >nul 2>&1
+    if errorlevel 1 (
+        echo kenshi-online>> "%KENSHI_DIR%\data\__mods.list"
+        echo         Added kenshi-online to mod load list
+    ) else (
+        echo         kenshi-online already in mod load list
+    )
+) else (
+    echo         [INFO] kenshi-online.mod not in package (mod template spawning disabled)
+)
+
 :: ── Copy Server ──
-echo  [6/6] Installing dedicated server...
+echo  [7/7] Installing dedicated server...
 
 if exist "%~dp0KenshiMP.Server.exe" (
     copy /Y "%~dp0KenshiMP.Server.exe" "%KENSHI_DIR%\KenshiMP.Server.exe" >nul

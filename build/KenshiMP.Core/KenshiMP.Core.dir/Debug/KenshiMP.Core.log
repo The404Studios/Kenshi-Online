@@ -1,0 +1,33 @@
+﻿  Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.Core/CMakeLists.txt
+  dllmain.cpp
+  core.cpp
+  render_hooks.cpp
+  input_hooks.cpp
+  entity_hooks.cpp
+  movement_hooks.cpp
+  combat_hooks.cpp
+  world_hooks.cpp
+  save_hooks.cpp
+  time_hooks.cpp
+  game_tick_hooks.cpp
+  game_character.cpp
+  game_squad.cpp
+  game_world.cpp
+  game_inventory.cpp
+  spawn_manager.cpp
+  client.cpp
+  packet_handler.cpp
+  entity_registry.cpp
+  interpolation.cpp
+  Generating Code...
+  Compiling...
+  ownership.cpp
+  zone_interest.cpp
+  overlay.cpp
+  chat.cpp
+  player_list.cpp
+  connection_ui.cpp
+  Generating Code...
+     Creating library C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/Debug/KenshiMP.Core.lib and object C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/build/lib/Debug/KenshiMP.Core.exp
+  KenshiMP.Core.vcxproj -> C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\Debug\KenshiMP.Core.dll
+  Copying KenshiMP.Core.dll to Kenshi directory

@@ -44,8 +44,6 @@ static void __fastcall Hook_GameFrameUpdate(void* rcx, void* rdx) {
         char buf[256];
         sprintf_s(buf, "KMP: GameFrameUpdate ENTER tick #%d rcx=0x%p rdx=0x%p\n", tick, rcx, rdx);
         OutputDebugStringA(buf);
-        spdlog::info("game_tick_hooks: ENTER tick #{} rcx=0x{:X} rdx=0x{:X}",
-                     tick, (uintptr_t)rcx, (uintptr_t)rdx);
     }
 
     // ═══ SPAWN DIAGNOSTICS (no spawning here) ═══
@@ -59,12 +57,15 @@ static void __fastcall Hook_GameFrameUpdate(void* rcx, void* rdx) {
         bool connected = core.IsConnected();
 
         // Log spawn conditions every 3000 ticks (~20 seconds at 150 fps)
+        // NO spdlog inside MovRaxRsp detour — use OutputDebugStringA only
         if (tick % 3000 == 0 && connected) {
             auto& spawnMgr = core.GetSpawnManager();
             size_t pendingCount = spawnMgr.GetPendingSpawnCount();
             int inPlaceCount = entity_hooks::GetInPlaceSpawnCount();
-            spdlog::info("game_tick_hooks: tick={} pending={} inPlaceSpawns={}",
-                         tick, pendingCount, inPlaceCount);
+            char diagBuf[128];
+            sprintf_s(diagBuf, "KMP: tick=%d pending=%zu inPlace=%d\n",
+                      tick, pendingCount, inPlaceCount);
+            OutputDebugStringA(diagBuf);
         }
     }
 
@@ -92,7 +93,6 @@ static void __fastcall Hook_GameFrameUpdate(void* rcx, void* rdx) {
         char buf[128];
         sprintf_s(buf, "KMP: GameFrameUpdate tick #%d DONE\n", tick);
         OutputDebugStringA(buf);
-        spdlog::info("game_tick_hooks: tick #{} DONE", tick);
     }
 }
 

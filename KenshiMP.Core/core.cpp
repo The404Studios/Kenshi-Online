@@ -15,8 +15,11 @@
 #include "hooks/building_hooks.h"
 #include "hooks/ai_hooks.h"
 #include "hooks/resource_hooks.h"
+#include "hooks/squad_spawn_hooks.h"
+#include "hooks/char_tracker_hooks.h"
 #include "game/game_types.h"
 #include "game/asset_facilitator.h"
+#include "game/shared_save_sync.h"
 #include "game/game_inventory.h"
 #include "kmp/protocol.h"
 #include "kmp/messages.h"
@@ -27,6 +30,8 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <chrono>
 #include <algorithm>
+#include <cmath>
+#include <unordered_map>
 #include <csignal>
 #include <Windows.h>
 
@@ -134,7 +139,42 @@ static LONG CALLBACK VectoredCrashHandler(EXCEPTION_POINTERS* ep) {
     // System DLLs are at 0x7FFE... which is above this range — no false positives.
     bool inHookStub = (rip >= 0x10000 && rip < 0x80000000);
 
-    if (!inGame && !isNull && !inOurDll && !inHookStub) {
+    // Also detect crashes in Ogre/MyGUI DLLs — our code interacts with these,
+    // and crashes there are invisible without explicit tracking.
+    // PhysX is resolved to EXCLUDE it from inHookStub — PhysXCore64.dll loads at
+    // ~0x70800000 which falls inside the 0x10000..0x80000000 hook stub range.
+    // PhysX crashes aren't caused by our code and should not be logged.
+    static uintptr_t s_ogreBase = 0, s_ogreEnd = 0;
+    static uintptr_t s_myguiBase = 0, s_myguiEnd = 0;
+    static uintptr_t s_physxBase = 0, s_physxEnd = 0;
+    static uintptr_t s_physx3Base = 0, s_physx3End = 0;
+    static bool s_gameDllsResolved = false;
+    if (!s_gameDllsResolved) {
+        s_gameDllsResolved = true;
+        auto resolveModule = [](const char* name, uintptr_t& base, uintptr_t& end) {
+            HMODULE h = GetModuleHandleA(name);
+            if (h) {
+                base = reinterpret_cast<uintptr_t>(h);
+                auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(h);
+                auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(
+                    reinterpret_cast<const uint8_t*>(h) + dos->e_lfanew);
+                end = base + nt->OptionalHeader.SizeOfImage;
+            }
+        };
+        resolveModule("OgreMain_x64.dll", s_ogreBase, s_ogreEnd);
+        resolveModule("MyGUIEngine_x64.dll", s_myguiBase, s_myguiEnd);
+        resolveModule("PhysXCore64.dll", s_physxBase, s_physxEnd);
+        resolveModule("PhysX3_x64.dll", s_physx3Base, s_physx3End);
+    }
+    bool inOgre = (s_ogreBase && rip >= s_ogreBase && rip < s_ogreEnd);
+    bool inMyGUI = (s_myguiBase && rip >= s_myguiBase && rip < s_myguiEnd);
+    bool inPhysX = (s_physxBase && rip >= s_physxBase && rip < s_physxEnd) ||
+                   (s_physx3Base && rip >= s_physx3Base && rip < s_physx3End);
+
+    // Exclude PhysX from hook stub detection — PhysX crashes are not our fault
+    if (inPhysX) inHookStub = false;
+
+    if (!inGame && !isNull && !inOurDll && !inHookStub && !inOgre && !inMyGUI) {
         return EXCEPTION_CONTINUE_SEARCH;  // System DLL exception — let SEH handle it
     }
 
@@ -205,7 +245,7 @@ static LONG CALLBACK VectoredCrashHandler(EXCEPTION_POINTERS* ep) {
         "  R8 =0x%016llX  R9 =0x%016llX  R10=0x%016llX  R11=0x%016llX\n"
         "  R12=0x%016llX  R13=0x%016llX  R14=0x%016llX  R15=0x%016llX\n"
         "  Last CharacterCreate: #%d, OnGameTick step: %d (%s), tick #%d\n"
-        "  Filter: inGame=%d inNull=%d inDll=%d inStub=%d dllBase=0x%llX dllEnd=0x%llX\n",
+        "  Filter: inGame=%d inNull=%d inDll=%d inStub=%d inOgre=%d inMyGUI=%d dllBase=0x%llX dllEnd=0x%llX\n",
         code, (unsigned long long)rip, (unsigned long long)ripOffset,
         ctx->Rax, ctx->Rbx, ctx->Rcx, ctx->Rdx,
         ctx->Rsp, ctx->Rbp, ctx->Rsi, ctx->Rdi,
@@ -214,6 +254,7 @@ static LONG CALLBACK VectoredCrashHandler(EXCEPTION_POINTERS* ep) {
         g_lastCharacterCreateNum,
         g_lastTickStep, g_lastStepName ? g_lastStepName : "?", g_tickNumber,
         (int)inGame, (int)isNull, (int)inOurDll, (int)inHookStub,
+        (int)inOgre, (int)inMyGUI,
         (unsigned long long)s_dllBase, (unsigned long long)s_dllEnd);
 
     // Log access violation details with correct type classification
@@ -281,6 +322,24 @@ bool Core::Initialize() {
     // SetUnhandledExceptionFilter gets overridden by Kenshi, so we use VEH instead.
     // Filtered to only log crashes in game module or NULL (skips system DLL noise).
     g_vehHandle = AddVectoredExceptionHandler(1, VectoredCrashHandler);
+
+    // ── Session header in CRASH.log ──
+    // Mark session boundaries so crash analysis can tell which entries belong together.
+    {
+        FILE* cf = nullptr;
+        fopen_s(&cf, "KenshiOnline_CRASH.log", "a");
+        if (cf) {
+            SYSTEMTIME st;
+            GetLocalTime(&st);
+            fprintf(cf, "\n═══ KMP SESSION START %04d-%02d-%02d %02d:%02d:%02d PID=%lu "
+                        "gameBase=0x%llX ═══\n",
+                    st.wYear, st.wMonth, st.wDay,
+                    st.wHour, st.wMinute, st.wSecond,
+                    GetCurrentProcessId(),
+                    (unsigned long long)g_gameModuleBase);
+            fclose(cf);
+        }
+    }
 
     // ── Breadcrumb file for crash diagnosis ──
     // Opened once at startup, written before every dangerous operation, fflush'd.
@@ -447,8 +506,8 @@ bool Core::Initialize() {
     m_spawnManager.SetOnSpawnedCallback(
         [this](EntityID netId, void* gameObject) {
             m_entityRegistry.SetGameObject(netId, gameObject);
-            const auto* info = m_entityRegistry.GetInfo(netId);
-            PlayerID owner = info ? info->ownerPlayerId : 0;
+            auto infoCopy = m_entityRegistry.GetInfoCopy(netId);
+            PlayerID owner = infoCopy ? infoCopy->ownerPlayerId : 0;
             m_playerController.OnRemoteCharacterSpawned(netId, gameObject, owner);
             game::CharacterAccessor accessor(gameObject);
             std::string charName = accessor.GetName();
@@ -508,6 +567,10 @@ static bool SEH_ShutdownStep(void (*fn)()) {
         return false;
     }
 }
+
+// Forward declaration — defined after OnGameTick in "Staged Pipeline Methods" section
+static int SEH_ValidateEntityFaction(void* gameObj, uintptr_t goodFaction,
+                                      uintptr_t modBase, size_t modSize);
 
 // SEH-protected sync orchestrator tick. If the game crashes inside
 // position reads/writes (e.g., freed character objects), catch it
@@ -572,6 +635,10 @@ void Core::Shutdown() {
 
     m_client.Disconnect();
 
+    // Uninstall inline hooks before HookManager (which only handles MinHook hooks)
+    squad_spawn_hooks::Uninstall();
+    char_tracker_hooks::Uninstall();
+
     // These touch MyGUI — most likely to crash during Kenshi's own shutdown
     if (!SEH_ShutdownStep([](){ Core::Get().GetNativeHud().Shutdown(); })) {
         OutputDebugStringA("KMP: SEH — NativeHud::Shutdown crashed\n");
@@ -589,8 +656,8 @@ void Core::Shutdown() {
         g_vehHandle = nullptr;
     }
 
-    // Save config
-    m_config.Save(ClientConfig::GetDefaultPath());
+    // Save config to PID-specific path (avoids stomping another instance's config)
+    m_config.Save(ClientConfig::GetInstancePath());
 
     spdlog::info("Kenshi-Online shutdown complete");
 }
@@ -742,13 +809,16 @@ bool Core::InitScanner() {
             if (sig.IsValid()) {
                 bool ok = FunctionAnalyzer::ValidateSignature(sig, check.hookParamCount);
                 if (!ok) {
-                    spdlog::warn("Core: SIGNATURE MISMATCH for '{}' — hook expects {} params, analysis suggests ~{} — DISABLING",
-                                 check.name, check.hookParamCount, sig.estimatedParams);
-                    // Null out the function pointer so it won't be hooked (prevents crashes)
+                    // Only null functions that are known to be dangerous with wrong signatures
                     auto it = funcPtrs.find(check.name);
                     if (it != funcPtrs.end() && it->second) {
                         *(it->second) = nullptr;
-                        spdlog::warn("Core: Nulled '{}' to prevent crash from bad pattern match", check.name);
+                        spdlog::warn("Core: SIGNATURE MISMATCH for '{}' — hook expects {} params, analysis suggests ~{} — NULLED",
+                                     check.name, check.hookParamCount, sig.estimatedParams);
+                    } else {
+                        // MovRaxRsp functions confuse param detection — warn but don't disable
+                        spdlog::warn("Core: Signature analysis for '{}' — hook expects {} params, analysis suggests ~{} (MovRaxRsp may confuse analyzer — keeping)",
+                                     check.name, check.hookParamCount, sig.estimatedParams);
                     }
                 }
                 sigs.push_back(std::move(sig));
@@ -799,15 +869,17 @@ bool Core::InitHooks() {
     // input_hooks not needed
 
     // ═══════════════════════════════════════════════════════════════════
-    // CharacterCreate hook installed IMMEDIATELY — it must be active during
-    // game loading to capture the factory pointer and template database.
-    // The hook has SEH protection and burst detection, making it safe during
-    // loading. All OTHER gameplay hooks remain deferred to OnGameLoaded().
+    // CharacterCreate hook is INSTALLED but DISABLED immediately.
+    // It must NOT be active during game loading — the 130+ rapid-fire
+    // CharacterCreate calls through the MovRaxRsp naked detour corrupt
+    // the heap. The hook is only enabled when connecting to a multiplayer
+    // server (via ResumeForNetwork). Character discovery during/after
+    // loading uses CharacterIterator instead.
     // ═══════════════════════════════════════════════════════════════════
     if (m_gameFuncs.CharacterSpawn) {
         m_nativeHud.LogStep("HOOK", "Entity hooks (CharacterCreate)...");
         if (SEH_InstallEntityHooks()) {
-            m_nativeHud.LogStep("OK", "CharacterCreate hook active (captures factory during loading)");
+            m_nativeHud.LogStep("OK", "CharacterCreate installed (captures 2, then bypasses)");
         } else {
             m_nativeHud.LogStep("ERR", "CharacterCreate hook FAILED");
             allOk = false;
@@ -816,7 +888,96 @@ bool Core::InitHooks() {
         m_nativeHud.LogStep("ERR", "CharacterSpawn pattern NOT FOUND");
     }
 
-    m_nativeHud.LogStep("HOOK", "Other gameplay hooks DEFERRED (after game loads)");
+    // ═══════════════════════════════════════════════════════════════════
+    // Combat, Inventory, and Faction hooks installed EARLY.
+    // These fire on individual game events (not loading bursts), so the
+    // MovRaxRsp wrapper handles them fine. Each hook has SEH protection
+    // and checks IsConnected()/loading guards before sending packets.
+    // Previously deferred to OnGameLoaded which often never fired due
+    // to a timing bug in the loading gap detection during Startup phase.
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Set loading guards so hooks don't send packets during save load
+    inventory_hooks::SetLoading(true);
+    faction_hooks::SetLoading(true);
+
+    // Combat hooks (ApplyDamage, CharacterDeath, CharacterKO)
+    if (m_gameFuncs.ApplyDamage) {
+        m_nativeHud.LogStep("HOOK", "Combat hooks...");
+        if (combat_hooks::Install()) {
+            m_nativeHud.LogStep("OK", "Combat hooks installed");
+        } else {
+            m_nativeHud.LogStep("WARN", "Combat hooks FAILED");
+        }
+    } else {
+        m_nativeHud.LogStep("WARN", "ApplyDamage not resolved — combat hooks skipped");
+    }
+
+    // Squad spawn bypass hooks (for reliable remote character spawning)
+    {
+        m_nativeHud.LogStep("HOOK", "Squad spawn bypass...");
+        if (squad_spawn_hooks::Install()) {
+            m_nativeHud.LogStep("OK", "Squad spawn bypass installed");
+        } else {
+            m_nativeHud.LogStep("WARN", "Squad spawn bypass not available (pattern not found)");
+        }
+    }
+
+    // Character tracker hooks (animation update — tracks all chars by name)
+    {
+        m_nativeHud.LogStep("HOOK", "Character tracker...");
+        if (char_tracker_hooks::Install()) {
+            m_nativeHud.LogStep("OK", "Character tracker installed");
+        } else {
+            m_nativeHud.LogStep("WARN", "Character tracker not available (pattern not found)");
+        }
+    }
+
+    // Inventory hooks (ItemPickup, ItemDrop, BuyItem)
+    if (m_gameFuncs.ItemPickup) {
+        m_nativeHud.LogStep("HOOK", "Inventory hooks...");
+        if (inventory_hooks::Install()) {
+            m_nativeHud.LogStep("OK", "Inventory hooks installed");
+        } else {
+            m_nativeHud.LogStep("WARN", "Inventory hooks FAILED");
+        }
+    } else {
+        m_nativeHud.LogStep("WARN", "ItemPickup not resolved — inventory hooks skipped");
+    }
+
+    // Faction hooks (FactionRelation)
+    if (m_gameFuncs.FactionRelation) {
+        m_nativeHud.LogStep("HOOK", "Faction hooks...");
+        if (faction_hooks::Install()) {
+            m_nativeHud.LogStep("OK", "Faction hooks installed");
+        } else {
+            m_nativeHud.LogStep("WARN", "Faction hooks FAILED");
+        }
+    } else {
+        m_nativeHud.LogStep("WARN", "FactionRelation not resolved — faction hooks skipped");
+    }
+
+    // Time hooks — drives OnGameTick (essential for game loop)
+    if (m_gameFuncs.TimeUpdate) {
+        m_nativeHud.LogStep("HOOK", "Time hooks...");
+        if (time_hooks::Install()) {
+            m_nativeHud.LogStep("OK", "Time hooks installed");
+        } else {
+            m_nativeHud.LogStep("WARN", "Time hooks FAILED");
+        }
+    }
+
+    // AI hooks (AICreate + AIPackages)
+    if (m_gameFuncs.AICreate) {
+        m_nativeHud.LogStep("HOOK", "AI hooks...");
+        if (ai_hooks::Install()) {
+            m_nativeHud.LogStep("OK", "AI hooks installed");
+        } else {
+            m_nativeHud.LogStep("WARN", "AI hooks FAILED");
+        }
+    }
+
+    m_nativeHud.LogStep("OK", "All hooks installed");
 
     return allOk;
 }
@@ -1014,14 +1175,168 @@ install_hook:
     return true;
 }
 
+// ── Client Phase State Machine ──
+
+void Core::TransitionTo(ClientPhase newPhase) {
+    ClientPhase old = m_clientPhase.exchange(newPhase, std::memory_order_release);
+    if (old != newPhase) {
+        spdlog::info("Core: Phase {} -> {}", ClientPhaseToString(old), ClientPhaseToString(newPhase));
+        m_nativeHud.LogStep("PHASE", std::string(ClientPhaseToString(old)) + " -> " + ClientPhaseToString(newPhase));
+    }
+}
+
+void Core::OnLoadingGapDetected() {
+    ClientPhase current = m_clientPhase.load(std::memory_order_acquire);
+
+    // Accept from MainMenu (normal flow) or GameReady (in-game Load button,
+    // detected by render_hooks as >10s gap). NOT from Startup — engine initialization
+    // gaps are not save game loads.
+    if (current == ClientPhase::MainMenu || current == ClientPhase::GameReady) {
+        // Reset game-loaded state so OnGameLoaded() can fire again for the new save.
+        // Without this, a second load would never trigger OnGameLoaded because
+        // m_gameLoaded is already true from the first load.
+        m_gameLoaded = false;
+        m_initialEntityScanDone = false;
+        m_spawnTeleportDone = false;
+        m_needPollReset = true; // Reset PollForGameLoad statics on next call
+
+        // If we were in GameReady, all cached game pointers (local AND remote)
+        // are now stale. Clear everything to prevent UAF on freed game objects.
+        if (current == ClientPhase::GameReady) {
+            spdlog::info("Core: In-game save load — clearing ALL stale state");
+            m_entityRegistry.Clear();
+            m_interpolation.Clear();
+            m_playerController.Reset();
+            m_frameData[0].Clear();
+            m_frameData[1].Clear();
+            m_pipelineStarted = false;
+            game::ResetProbeState();  // animClassOffset may differ between saves
+        }
+
+        // Apply faction patch BEFORE loading starts — this determines which
+        // faction the player controls when the save loads.
+        // Research mod approach: patch the 17-byte faction string in .rdata
+        // so the game assigns us the correct player faction.
+        if (m_lobbyManager.HasFaction()) {
+            if (m_lobbyManager.ApplyFactionPatch()) {
+                spdlog::info("Core: Faction string patched before save load");
+                m_nativeHud.LogStep("LOBBY", "Faction patched: " + m_lobbyManager.GetFactionString());
+            } else {
+                spdlog::warn("Core: Faction patch FAILED — player may get wrong faction");
+            }
+        }
+
+        // Disable CharacterCreate hook BEFORE loading starts.
+        // The 130+ character creates during load would fire through the
+        // MovRaxRsp wrapper and corrupt its global RSP slots (DEP crash).
+        // The hook is re-enabled in OnGameLoaded() after the burst completes.
+        entity_hooks::SuspendForDisconnect();
+
+        TransitionTo(ClientPhase::Loading);
+    }
+}
+
+// SEH-protected CharacterIterator count (no C++ objects with destructors in __try)
+static int SEH_CharacterIteratorCount() {
+    __try {
+        game::CharacterIterator iter;
+        return iter.Count();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        static int s_crashCount = 0;
+        if (++s_crashCount <= 5) {
+            OutputDebugStringA("KMP: SEH_CharacterIteratorCount crashed (SEH caught)\n");
+        }
+        return -1;
+    }
+}
+
+void Core::PollForGameLoad() {
+    if (m_gameLoaded) return;
+    // Poll during Loading (normal), but also Startup/MainMenu as fallback.
+    // Loading gap detection can miss fast loads (user clicks Continue immediately),
+    // but globals + CharacterIterator still detect game loaded from any phase.
+    ClientPhase phase = m_clientPhase.load(std::memory_order_acquire);
+    if (phase == ClientPhase::Connected || phase == ClientPhase::Connecting) return;
+
+    // Try to resolve PlayerBase/GameWorld globals.
+    // During initial scan (before game loads), these point into the module or are 0.
+    // After the game loads, they contain heap pointers to live game objects.
+    SEH_RetryGlobalDiscovery(m_scanner, m_gameFuncs);
+
+    // Validate: must point to heap-allocated objects (outside module image)
+    uintptr_t moduleBase = m_scanner.GetBase();
+    size_t moduleSize = m_scanner.GetSize();
+    auto validateGlobal = [moduleBase, moduleSize](uintptr_t addr) -> bool {
+        if (addr == 0) return false;
+        uintptr_t val = 0;
+        if (!Memory::Read(addr, val)) return false;
+        if (val < 0x10000 || val >= 0x00007FFFFFFFFFFF) return false;
+        if (val >= moduleBase && val < moduleBase + moduleSize) return false;
+        return true;
+    };
+
+    bool playerBaseValid = validateGlobal(m_gameFuncs.PlayerBase);
+    bool gameWorldValid = validateGlobal(m_gameFuncs.GameWorldSingleton);
+
+    // Reset statics on second load (flag set by OnLoadingGapDetected)
+    static int s_pollCount = 0;
+    static int s_noCharCount = 0;
+    if (m_needPollReset) {
+        m_needPollReset = false;
+        s_pollCount = 0;
+        s_noCharCount = 0;
+        spdlog::info("Core::PollForGameLoad — reset statics for new load");
+    }
+
+    if (!playerBaseValid && !gameWorldValid) {
+        if (++s_pollCount <= 5 || s_pollCount % 10 == 0) {
+            spdlog::debug("Core::PollForGameLoad — globals not ready yet (poll #{})", s_pollCount);
+        }
+        return;
+    }
+
+    // Set bridges so CharacterIterator can find characters
+    if (playerBaseValid) game::SetResolvedPlayerBase(m_gameFuncs.PlayerBase);
+    if (gameWorldValid) game::SetResolvedGameWorld(m_gameFuncs.GameWorldSingleton);
+
+    // Try CharacterIterator — if it finds characters, the game is loaded
+    int charCount = SEH_CharacterIteratorCount();
+    if (charCount > 0) {
+        spdlog::info("Core::PollForGameLoad — {} characters detected! Triggering OnGameLoaded",
+                     charCount);
+        m_nativeHud.LogStep("GAME", "Characters detected (" + std::to_string(charCount) + ") — game loaded!");
+        OnGameLoaded();
+    } else {
+        s_noCharCount++;
+        if (s_noCharCount <= 5 || s_noCharCount % 10 == 0) {
+            spdlog::debug("Core::PollForGameLoad — globals valid but {} characters (poll #{})",
+                         charCount, s_noCharCount);
+        }
+
+        // Fallback: if globals are valid for 60+ seconds (30+ polls at 2s interval)
+        // but CharacterIterator still returns 0, assume game is loaded anyway.
+        // CharacterIterator may fail to find the character list structure on Steam.
+        // Raised from 5 to 30 to avoid false triggering on the character creation screen
+        // (which has valid-looking globals but no actual game world).
+        if (s_noCharCount >= 30) {
+            spdlog::warn("Core::PollForGameLoad — CharacterIterator returned 0 for {} polls with valid globals. "
+                         "Assuming game loaded (fallback).", s_noCharCount);
+            m_nativeHud.LogStep("GAME", "Game assumed loaded (CharacterIterator fallback after 60s)");
+            OnGameLoaded();
+        }
+    }
+}
+
 void Core::OnGameLoaded() {
     if (m_gameLoaded.exchange(true)) return; // Only run once
+
+    // Transition to GameReady phase
+    TransitionTo(ClientPhase::GameReady);
 
     m_nativeHud.LogStep("GAME", "=== Game world loaded! ===");
     OutputDebugStringA("KMP: === Core::OnGameLoaded() START ===\n");
 
     // ── Clear loading guard ──
-    m_isLoading = false;
     building_hooks::SetLoading(false);
     inventory_hooks::SetLoading(false);
     squad_hooks::SetLoading(false);
@@ -1029,61 +1344,13 @@ void Core::OnGameLoaded() {
     m_loadingOrch.OnGameLoaded();
     m_nativeHud.LogStep("GAME", "Loading guard cleared (hooks active)");
 
-    // ═══ Install remaining gameplay hooks now that loading is complete ═══
-    // (CharacterCreate was already installed in InitHooks to capture the loading burst)
-    //
-    // BISECT TEST: Enable hooks in groups to find which one causes the #314 crash.
-    //   0 = skip all deferred hooks (PASSES — game loads to #410+)
-    //   1 = Time + GameFrameUpdate only
-    //   2 = + Movement only
-    //   3 = + Squad only
-    //   4 = + AI only
-    //   5 = + Combat only
-    //   6 = + Inventory only
-    //   7 = + Faction + Resource (everything EXCEPT Building — disabled, see below)
-    // HOOK_PHASE bisect: controls which deferred hooks install.
-    // Phase 1: TimeUpdate + GameFrameUpdate
-    // Phase 2: Movement  Phase 3: Squad  Phase 4: AI
-    // Phase 5: Combat    Phase 6: Inventory  Phase 7: Faction+Resource
-    //
-    // MovRaxRsp hooks cause cumulative heap corruption on Steam.
-    // Phase 4 disables Combat/Inventory/Faction (all have MovRaxRsp hooks).
-    // GameFrameUpdate (MovRaxRsp, Phase 1) is also skipped below.
-    static constexpr int HOOK_PHASE = 4;
-    {
-        char buf[128];
-        sprintf_s(buf, "KMP: Hook bisect phase %d\n", HOOK_PHASE);
-        OutputDebugStringA(buf);
-        spdlog::info("Core::OnGameLoaded — Hook bisect PHASE {}", HOOK_PHASE);
-        m_nativeHud.LogStep("HOOK", ("Bisect phase " + std::to_string(HOOK_PHASE)).c_str());
-    }
-    if (HOOK_PHASE >= 1) {
-    m_nativeHud.LogStep("HOOK", "Installing deferred gameplay hooks...");
+    // ═══ Install remaining hooks that were deferred to post-load ═══
+    // Combat, inventory, faction, time, and AI hooks are already installed
+    // in InitHooks. Only movement, squad, and resource hooks remain deferred.
+    m_nativeHud.LogStep("HOOK", "Installing post-load hooks...");
+    OutputDebugStringA("KMP: OnGameLoaded — installing post-load hooks\n");
 
-    // ═══ MULTIPLAYER HOOKS ═══
-
-    // Time hooks — ESSENTIAL (drives OnGameTick from the game's own time system)
-    if (m_gameFuncs.TimeUpdate) {
-        m_nativeHud.LogStep("HOOK", "Time hooks...");
-        if (time_hooks::Install()) {
-            m_nativeHud.LogStep("OK", "Time hooks installed");
-        } else {
-            m_nativeHud.LogStep("WARN", "Time hooks partial failure");
-        }
-    }
-
-    // GameFrameUpdate — DISABLED: MovRaxRsp hook firing every frame causes
-    // cumulative heap corruption on Steam. TimeUpdate alone drives OnGameTick.
-    // GameFrameUpdate only did spawn diagnostics, nothing essential.
-    spdlog::info("Core::OnGameLoaded — GameFrameUpdate SKIPPED (MovRaxRsp heap corruption)");
-    m_nativeHud.LogStep("INFO", "GameFrameUpdate skipped (MovRaxRsp — using TimeUpdate only)");
-
-    } // end phase 1
-    if (HOOK_PHASE >= 2) {
-    // Movement hooks — install if CharacterMoveTo resolved (it's null on Steam due to
-    // mid-function pattern match). Movement sync works without it via position polling +
-    // ai_hooks blocking, but the hook provides better AI movement blocking for remotes
-    // and C2S_MoveCommand for precision movement sync.
+    // Movement hooks (CharacterMoveTo — null on Steam, position polling works instead)
     if (m_gameFuncs.CharacterMoveTo) {
         if (movement_hooks::Install()) {
             m_nativeHud.LogStep("OK", "Movement hooks installed");
@@ -1091,89 +1358,24 @@ void Core::OnGameLoaded() {
             m_nativeHud.LogStep("WARN", "Movement hooks FAILED");
         }
     } else {
-        spdlog::info("Core::OnGameLoaded — Movement hooks SKIPPED (CharacterMoveTo not resolved)");
         m_nativeHud.LogStep("INFO", "Movement hooks skipped (position polling active)");
     }
 
-    } // end phase 2 (Movement only)
-    if (HOOK_PHASE >= 3) {
-    // Squad hooks (SquadAddMember only — SquadCreate is skipped due to mov rax rsp)
-    // If pattern scan failed, vtable discovery (above) may have already found it.
-    // If not, OnGameTick will keep trying vtable discovery as a deferred fallback.
+    // Squad hooks
     if (m_gameFuncs.SquadAddMember) {
         if (squad_hooks::Install()) {
             m_nativeHud.LogStep("OK", "Squad hooks installed");
         } else {
             m_nativeHud.LogStep("WARN", "Squad hooks FAILED");
         }
-    } else {
-        m_nativeHud.LogStep("INFO", "SquadAddMember: deferred to vtable discovery in OnGameTick");
     }
 
-    } // end phase 3 (Squad)
-    if (HOOK_PHASE >= 4) {
-    // AI hooks (AICreate + AIPackages — suppress decisions for remote characters)
-    if (m_gameFuncs.AICreate) {
-        if (ai_hooks::Install()) {
-            m_nativeHud.LogStep("OK", "AI hooks installed");
-        } else {
-            m_nativeHud.LogStep("WARN", "AI hooks FAILED");
-        }
-    }
-
-    } // end phase 4 (AI only)
-    if (HOOK_PHASE >= 5) {
-    // Combat hooks (ApplyDamage, CharacterDeath, CharacterKO)
-    if (m_gameFuncs.ApplyDamage) {
-        if (combat_hooks::Install()) {
-            m_nativeHud.LogStep("OK", "Combat hooks installed");
-        } else {
-            m_nativeHud.LogStep("WARN", "Combat hooks FAILED");
-        }
-    }
-
-    } // end phase 5 (Combat only)
-    if (HOOK_PHASE >= 6) {
-    // Inventory hooks (ItemPickup, ItemDrop, BuyItem)
-    if (m_gameFuncs.ItemPickup) {
-        if (inventory_hooks::Install()) {
-            m_nativeHud.LogStep("OK", "Inventory hooks installed");
-        } else {
-            m_nativeHud.LogStep("WARN", "Inventory hooks FAILED");
-        }
-    }
-
-    } // end phase 6 (Inventory only)
-
-    // ═══ BUILDING HOOKS DISABLED ═══
-    // All 5 building functions have `mov rax, rsp` prologues requiring the MovRaxRsp
-    // naked detour fix. Installing them causes a deterministic crash during zone loading.
-    // Root cause TBD — possibly the sheer volume of MovRaxRsp hooks (9 total) or
-    // one of the building function addresses is wrong despite passing .pdata + alignment.
-    // Building sync is non-critical for core multiplayer connectivity.
-    spdlog::info("Core::OnGameLoaded — Building hooks SKIPPED (crash during zone loading)");
-    m_nativeHud.LogStep("INFO", "Building hooks SKIPPED (crash investigation pending)");
-
-    if (HOOK_PHASE >= 7) {
-    // Faction hooks (FactionRelation)
-    if (m_gameFuncs.FactionRelation) {
-        if (faction_hooks::Install()) {
-            m_nativeHud.LogStep("OK", "Faction hooks installed");
-        } else {
-            m_nativeHud.LogStep("WARN", "Faction hooks FAILED");
-        }
-    }
-
-    // Resource hooks — attempt Ogre VTable discovery for asset loading control.
-    // Non-critical: LoadingOrchestrator falls back to burst-detection timing if this fails.
-    m_nativeHud.LogStep("HOOK", "Resource hooks (Ogre VTable discovery)...");
+    // Resource hooks (Ogre VTable discovery)
     if (resource_hooks::Install()) {
-        m_nativeHud.LogStep("OK", "Resource hooks installed (Ogre monitoring active)");
+        m_nativeHud.LogStep("OK", "Resource hooks installed");
     } else {
-        m_nativeHud.LogStep("INFO", "Resource hooks: Ogre discovery deferred (burst-detection fallback)");
+        m_nativeHud.LogStep("INFO", "Resource hooks deferred (burst-detection fallback)");
     }
-    } // end phase 7 (Faction + Resource)
-
     // Run deferred global discovery — both PlayerBase and GameWorld.
     // During initial scan (before game loads), these globals are typically 0
     // because Kenshi hasn't initialized them yet. Now that the game is loaded,
@@ -1264,29 +1466,30 @@ void Core::OnGameLoaded() {
         m_nativeHud.LogStep("GAME", "Early heap scan for templates...");
         SEH_ScanGameDataHeap(m_spawnManager);
         m_nativeHud.LogStep("OK", "Heap scan done (" + std::to_string(m_spawnManager.GetTemplateCount()) + " templates)");
+        m_spawnManager.FindModTemplates();
+        if (m_spawnManager.GetModTemplateCount() > 0) {
+            m_nativeHud.LogStep("MOD", "Found " + std::to_string(m_spawnManager.GetModTemplateCount()) + " mod player templates");
+        }
     } else if (m_spawnManager.IsReady()) {
         // Factory captured but no manager pointer yet — still try scan
         m_nativeHud.LogStep("GAME", "Heap scan (factory only, no manager ptr)...");
         SEH_ScanGameDataHeap(m_spawnManager);
         m_nativeHud.LogStep("OK", "Heap scan done (" + std::to_string(m_spawnManager.GetTemplateCount()) + " templates)");
+        m_spawnManager.FindModTemplates();
+        if (m_spawnManager.GetModTemplateCount() > 0) {
+            m_nativeHud.LogStep("MOD", "Found " + std::to_string(m_spawnManager.GetModTemplateCount()) + " mod player templates");
+        }
     }
 
-    // ═══ DISABLE CharacterCreate hook after loading ═══
-    // The MovRaxRsp naked detour causes a silent crash ~3-5s after loading completes.
-    // The hook is only needed during loading (factory capture + template collection).
-    // Disable it now; re-enable when a multiplayer connection is established
-    // (needed to register new characters created while connected).
-    spdlog::info("Core::OnGameLoaded — About to disable CharacterCreate (m_connected={})", m_connected.load());
-    if (!m_connected) {
-        if (HookManager::Get().Disable("CharacterCreate")) {
-            spdlog::info("Core::OnGameLoaded — CharacterCreate hook DISABLED (MovRaxRsp crash prevention)");
-            m_nativeHud.LogStep("HOOK", "CharacterCreate disabled (re-enabled on connect)");
-        } else {
-            spdlog::error("Core::OnGameLoaded — CharacterCreate Disable() FAILED!");
-            m_nativeHud.LogStep("ERR", "CharacterCreate disable FAILED");
-        }
+    // CharacterCreate hook was installed DISABLED to survive the 130+ loading burst.
+    // Now that loading is complete, enable it so runtime NPC spawns capture
+    // factory data + pre-call struct for the spawn system.
+    if (HookManager::Get().Enable("CharacterCreate")) {
+        spdlog::info("Core::OnGameLoaded — CharacterCreate hook ENABLED (safe for runtime spawns)");
+        m_nativeHud.LogStep("HOOK", "CharacterCreate enabled (post-load)");
     } else {
-        spdlog::warn("Core::OnGameLoaded — Skipping CharacterCreate disable (already connected)");
+        spdlog::warn("Core::OnGameLoaded — CharacterCreate Enable() returned false");
+        m_nativeHud.LogStep("WARN", "CharacterCreate enable failed");
     }
 
     // ═══ DUMP ALL FUNCTIONS AND OFFSETS ═══
@@ -1430,136 +1633,77 @@ void Core::NetworkThreadFunc() {
 void Core::SendExistingEntitiesToServer() {
     // After connecting, scan existing characters and register+send them.
     // IMPORTANT: Only send characters from the player's faction (squad members).
-    // Sending ALL characters would flood the server with hundreds of NPCs.
-    //
-    // TWO character sources are tried:
-    //   1. CharacterIterator (PlayerBase/GameWorld — fast but may fail on Steam)
-    //   2. entity_hooks loading cache (populated during game loading — always available)
+    // Uses CharacterIterator which was already validated by PollForGameLoad.
 
     int count = 0;
     int skippedFaction = 0;
 
     // ── Resolve faction ──
-    // Priority: PlayerController → entity_hooks captured faction
     uintptr_t playerFaction = m_playerController.GetLocalFactionPtr();
-    if (playerFaction == 0) {
-        playerFaction = entity_hooks::GetCapturedFaction();
-        if (playerFaction != 0) {
-            spdlog::info("Core: Using entity_hooks captured faction 0x{:X} (PlayerController had none)",
-                         playerFaction);
-            m_playerController.SetLocalFactionPtr(playerFaction);
-        }
-    }
 
-    // ── Strategy 1: CharacterIterator ──
+    // ── CharacterIterator ──
     game::CharacterIterator iter;
     bool iteratorWorked = (iter.Count() > 0);
 
-    if (iteratorWorked && playerFaction != 0) {
-        spdlog::info("Core: Scanning {} characters via CharacterIterator (faction=0x{:X})...",
-                     iter.Count(), playerFaction);
+    uintptr_t firstPlayerCharPtr = 0;
+    uintptr_t firstNpcCharPtr = 0;
 
-        while (iter.HasNext()) {
-            game::CharacterAccessor character = iter.Next();
-            if (!character.IsValid()) continue;
-
-            Vec3 pos = character.GetPosition();
-            if (pos.x == 0.f && pos.y == 0.f && pos.z == 0.f) continue;
-
-            uintptr_t charFaction = character.GetFactionPtr();
-            if (charFaction != playerFaction) {
-                skippedFaction++;
-                continue;
+    if (iteratorWorked) {
+        // If faction unknown, discover it from the first character with isPlayerControlled
+        if (playerFaction == 0) {
+            // First pass: find a character that looks like it belongs to the player
+            // (heuristic: first character in the list is often the player's)
+            game::CharacterIterator factionIter;
+            while (factionIter.HasNext()) {
+                game::CharacterAccessor ch = factionIter.Next();
+                if (!ch.IsValid()) continue;
+                uintptr_t fPtr = ch.GetFactionPtr();
+                if (fPtr > 0x10000 && fPtr < 0x00007FFFFFFFFFFF && (fPtr & 0x7) == 0) {
+                    // Reject if within module image (not a real heap-allocated faction)
+                    uintptr_t modBase = Memory::GetModuleBase();
+                    if (fPtr >= modBase && fPtr < modBase + 0x4000000) continue;
+                    playerFaction = fPtr;
+                    m_playerController.SetLocalFactionPtr(playerFaction);
+                    spdlog::info("Core: Faction discovered from CharacterIterator: 0x{:X}", playerFaction);
+                    break;
+                }
             }
-
-            void* gameObj = reinterpret_cast<void*>(character.GetPtr());
-            if (m_entityRegistry.GetNetId(gameObj) != INVALID_ENTITY) continue;
-
-            EntityID netId = m_entityRegistry.Register(gameObj, EntityType::NPC, m_localPlayerId);
-            m_entityRegistry.UpdatePosition(netId, pos);
-
-            Quat rot = character.GetRotation();
-            m_entityRegistry.UpdateRotation(netId, rot);
-
-            uintptr_t factionPtr = character.GetFactionPtr();
-            uint32_t factionId = 0;
-            if (factionPtr != 0) Memory::Read(factionPtr + 0x08, factionId);
-
-            std::string charName = character.GetName();
-
-            PacketWriter writer;
-            writer.WriteHeader(MessageType::C2S_EntitySpawnReq);
-            writer.WriteU32(netId);
-            writer.WriteU8(static_cast<uint8_t>(EntityType::NPC));
-            writer.WriteU32(m_localPlayerId);
-            writer.WriteU32(0);
-            writer.WriteF32(pos.x);
-            writer.WriteF32(pos.y);
-            writer.WriteF32(pos.z);
-            writer.WriteU32(rot.Compress());
-            writer.WriteU32(factionId);
-            uint16_t nameLen = static_cast<uint16_t>(std::min<size_t>(charName.size(), 255));
-            writer.WriteU16(nameLen);
-            if (nameLen > 0) writer.WriteRaw(charName.data(), nameLen);
-
-            m_client.SendReliable(writer.Data(), writer.Size());
-            count++;
         }
-    }
 
-    // ── Strategy 2: entity_hooks loading cache fallback ──
-    // If CharacterIterator found nothing OR faction was unknown, try the loading cache.
-    // Characters were cached during Hook_CharacterCreate before connection.
-    if (count == 0) {
-        const auto& cached = entity_hooks::GetLoadingCharacters();
+        if (playerFaction != 0) {
+            spdlog::info("Core: Scanning {} characters via CharacterIterator (faction=0x{:X})...",
+                         iter.Count(), playerFaction);
 
-        if (!cached.empty()) {
-            // If faction STILL unknown, take it from the most common faction in the cache
-            if (playerFaction == 0 && !cached.empty()) {
-                // Use first character's faction as player faction heuristic
-                for (const auto& cc : cached) {
-                    if (cc.factionPtr != 0) {
-                        playerFaction = cc.factionPtr;
-                        m_playerController.SetLocalFactionPtr(playerFaction);
-                        spdlog::info("Core: FALLBACK — captured faction 0x{:X} from loading cache", playerFaction);
-                        break;
-                    }
-                }
-            }
+            while (iter.HasNext()) {
+                game::CharacterAccessor character = iter.Next();
+                if (!character.IsValid()) continue;
 
-            spdlog::info("Core: CharacterIterator {} — using loading cache ({} chars, faction=0x{:X})",
-                         iteratorWorked ? "found no squad members" : "FAILED (0 chars)",
-                         cached.size(), playerFaction);
+                Vec3 pos = character.GetPosition();
+                if (pos.x == 0.f && pos.y == 0.f && pos.z == 0.f) continue;
 
-            // Lambda to send one cached character to server
-            auto trySendCached = [&](const entity_hooks::CachedCharacter& cc) -> bool {
-                if (m_entityRegistry.GetNetId(cc.gameObj) != INVALID_ENTITY) return false;
-
-                // Re-read LIVE position from game object (cached position may be stale/zero)
-                game::CharacterAccessor accessor(cc.gameObj);
-                if (!accessor.IsValid()) return false;
-                Vec3 pos = accessor.GetPosition();
-                if (pos.x == 0.f && pos.y == 0.f && pos.z == 0.f) {
-                    // Fall back to cached position if live read returns zero
-                    pos = Vec3(cc.x, cc.y, cc.z);
-                    if (pos.x == 0.f && pos.y == 0.f && pos.z == 0.f) return false;
+                uintptr_t charFaction = character.GetFactionPtr();
+                if (charFaction != playerFaction) {
+                    skippedFaction++;
+                    if (firstNpcCharPtr == 0) firstNpcCharPtr = character.GetPtr();
+                    continue;
                 }
 
-                EntityID netId = m_entityRegistry.Register(cc.gameObj, EntityType::NPC, m_localPlayerId);
+                if (firstPlayerCharPtr == 0) firstPlayerCharPtr = character.GetPtr();
+
+                void* gameObj = reinterpret_cast<void*>(character.GetPtr());
+                if (m_entityRegistry.GetNetId(gameObj) != INVALID_ENTITY) continue;
+
+                EntityID netId = m_entityRegistry.Register(gameObj, EntityType::NPC, m_localPlayerId);
                 m_entityRegistry.UpdatePosition(netId, pos);
 
-                Quat rot = accessor.GetRotation();
+                Quat rot = character.GetRotation();
                 m_entityRegistry.UpdateRotation(netId, rot);
 
-                std::string charName = accessor.GetName();
-                uintptr_t liveFaction = accessor.GetFactionPtr();
-                uint32_t fId = cc.factionId;
-                if (liveFaction != 0) {
-                    Memory::Read(liveFaction + 0x08, fId);
-                }
+                uintptr_t factionPtr = character.GetFactionPtr();
+                uint32_t factionId = 0;
+                if (factionPtr != 0) Memory::Read(factionPtr + game::GetOffsets().faction.id, factionId);
 
-                spdlog::info("Core: Sending cached entity {} '{}' at ({:.0f},{:.0f},{:.0f}) faction=0x{:X}",
-                             netId, charName, pos.x, pos.y, pos.z, liveFaction);
+                std::string charName = character.GetName();
 
                 PacketWriter writer;
                 writer.WriteHeader(MessageType::C2S_EntitySpawnReq);
@@ -1571,61 +1715,55 @@ void Core::SendExistingEntitiesToServer() {
                 writer.WriteF32(pos.y);
                 writer.WriteF32(pos.z);
                 writer.WriteU32(rot.Compress());
-                writer.WriteU32(fId);
+                writer.WriteU32(factionId);
                 uint16_t nameLen = static_cast<uint16_t>(std::min<size_t>(charName.size(), 255));
                 writer.WriteU16(nameLen);
                 if (nameLen > 0) writer.WriteRaw(charName.data(), nameLen);
 
+                // Extended state: per-limb health + alive flag
+                // This ensures the server starts with correct health state rather
+                // than defaulting to 100% for all limbs.
+                writer.WriteU8(1); // hasExtendedState flag
+                for (int bp = 0; bp < 7; bp++) {
+                    float h = character.GetHealth(static_cast<BodyPart>(bp));
+                    writer.WriteF32(h);
+                }
+                writer.WriteU8(character.IsAlive() ? 1 : 0);
+
                 m_client.SendReliable(writer.Data(), writer.Size());
-                return true;
-            };
-
-            // Pass 1: faction-filtered scan
-            for (const auto& cc : cached) {
-                if (playerFaction != 0 && cc.factionPtr != playerFaction) {
-                    skippedFaction++;
-                    continue;
-                }
-                if (playerFaction == 0 && count >= 4) break;
-                if (trySendCached(cc)) count++;
+                count++;
             }
-
-            // Pass 2: if faction filter found NOTHING, retry WITHOUT filter (cap at 4)
-            // This handles the case where s_capturedFaction is an NPC faction, not the
-            // player's faction (common on Steam where the first CharacterCreate is an NPC).
-            if (count == 0 && playerFaction != 0) {
-                spdlog::warn("Core: Faction filter 0x{:X} matched 0 chars — retrying WITHOUT faction filter (cap 4)",
-                             playerFaction);
-                int unfilteredCount = 0;
-                for (const auto& cc : cached) {
-                    if (unfilteredCount >= 4) break;
-                    if (trySendCached(cc)) {
-                        count++;
-                        unfilteredCount++;
-                        // Update faction from the first successfully sent character
-                        if (unfilteredCount == 1 && cc.factionPtr != 0) {
-                            playerFaction = cc.factionPtr;
-                            m_playerController.SetLocalFactionPtr(playerFaction);
-                            spdlog::info("Core: Updated player faction to 0x{:X} from first sent character",
-                                         playerFaction);
-                        }
-                    }
-                }
-            }
-        } else {
-            spdlog::warn("Core: Both CharacterIterator AND loading cache empty — no characters to send");
         }
     }
 
-    spdlog::info("Core: Sent {} squad characters to server (skipped {} non-squad NPCs, "
-                 "iterator={}, cache={})",
-                 count, skippedFaction,
-                 iteratorWorked ? "ok" : "FAILED",
-                 entity_hooks::GetLoadingCharacters().size());
+    // Discover isPlayerControlled offset by comparing a player char vs NPC char
+    if (firstPlayerCharPtr != 0 && firstNpcCharPtr != 0) {
+        game::ProbePlayerControlledOffset(firstPlayerCharPtr, firstNpcCharPtr);
+    }
+
+    if (count == 0) {
+        spdlog::warn("Core: CharacterIterator found 0 squad characters (iterator={}, faction=0x{:X})",
+                     iteratorWorked ? "ok" : "FAILED", playerFaction);
+    }
+
+    spdlog::info("Core: Sent {} squad characters to server (skipped {} non-squad NPCs)",
+                 count, skippedFaction);
 
     if (count > 0) {
         m_overlay.AddSystemMessage("Syncing " + std::to_string(count) + " squad characters...");
     }
+}
+
+// ── Entity scan statics (file scope for cross-function reset) ──
+// Used in OnGameTick for retry logic, reset in HandleSpawnQueue on reconnect.
+static int s_entityScanRetries = 0;
+static bool s_wasScanning = false;
+
+// Keepalive timer — reset on reconnect via ResetKeepaliveTimer().
+static auto s_lastKeepalive = std::chrono::steady_clock::now();
+
+void ResetKeepaliveTimer() {
+    s_lastKeepalive = std::chrono::steady_clock::now();
 }
 
 void Core::OnGameTick(float deltaTime) {
@@ -1652,6 +1790,22 @@ void Core::OnGameTick(float deltaTime) {
         auto sinceLast = std::chrono::duration_cast<std::chrono::microseconds>(now - s_lastTickTime);
         if (sinceLast.count() < 4000) return; // Skip if called within 4ms (same frame)
         s_lastTickTime = now;
+    }
+
+    // ── Keepalive ──
+    // The server has a 10-second idle timeout. When a player stands still and
+    // stops sending position updates, the server disconnects them. Send a
+    // keepalive every 5 seconds (well under the timeout) to prevent this.
+    // Placed before the game-loaded gate so keepalives fire even during loading.
+    // s_lastKeepalive is file-scope so it can be reset on reconnect.
+    {
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::seconds>(now - s_lastKeepalive).count() >= 5) {
+            s_lastKeepalive = now;
+            PacketWriter writer;
+            writer.WriteHeader(MessageType::C2S_Keepalive);
+            m_client.SendReliable(writer.Data(), writer.Size());
+        }
     }
 
     // ── Game-loaded gate ──
@@ -1694,6 +1848,38 @@ void Core::OnGameTick(float deltaTime) {
     WriteBreadcrumb("tick_entry", s_tickCallCount);
     SetLastCompletedStep(0);
 
+    // ── Step 0: Force unpause ──
+    // Kenshi allows pausing (Space key) which freezes the game world. In multiplayer
+    // this must be prevented — the server keeps ticking regardless. Every tick, force
+    // GameWorld.paused = false and write server game speed to prevent local overrides.
+    {
+        uintptr_t gwSingleton = game::GetResolvedGameWorld();
+        if (gwSingleton != 0) {
+            uintptr_t gwPtr = 0;
+            if (Memory::Read(gwSingleton, gwPtr) && gwPtr > 0x10000 && gwPtr < 0x00007FFFFFFFFFFF) {
+                auto& offsets = game::GetOffsets();
+                // Force unpause
+                uint8_t paused = 0;
+                Memory::Read(gwPtr + offsets.world.paused, paused);
+                if (paused != 0) {
+                    uint8_t unpaused = 0;
+                    Memory::Write(gwPtr + offsets.world.paused, unpaused);
+                    static int s_unpauseCount = 0;
+                    if (++s_unpauseCount <= 5) {
+                        spdlog::info("Core: Forced unpause (multiplayer — pause disabled)");
+                    }
+                }
+                // Force game speed to 1.0 (server-controlled; prevents local speed changes)
+                float currentSpeed = 0.f;
+                Memory::Read(gwPtr + offsets.world.gameSpeed, currentSpeed);
+                if (currentSpeed < 0.5f || currentSpeed > 3.5f) {
+                    float normalSpeed = 1.0f;
+                    Memory::Write(gwPtr + offsets.world.gameSpeed, normalSpeed);
+                }
+            }
+        }
+    }
+
     // ── Step 1: Entity scan with retry ──
     // SendExistingEntitiesToServer may fail on first attempt if CharacterIterator
     // can't resolve PlayerBase/GameWorld. Retry every 150 ticks (~1 second) for
@@ -1702,8 +1888,8 @@ void Core::OnGameTick(float deltaTime) {
         // Reset retry counter when starting fresh (after disconnect/reconnect).
         // Without this, the static counter persists across connections and may
         // exhaust retries prematurely on the second connection.
-        static int s_entityScanRetries = 0;
-        static bool s_wasScanning = false;
+        // s_entityScanRetries and s_wasScanning are file-scope statics
+        // (declared above OnGameTick) so HandleSpawnQueue can reset them.
         if (!s_wasScanning) {
             s_entityScanRetries = 0;
             s_wasScanning = true;
@@ -1785,8 +1971,27 @@ void Core::OnGameTick(float deltaTime) {
         WriteBreadcrumb("loading_orch", s_tickCallCount, 4);
         SEH_LoadingOrchTick(&m_loadingOrch);
 
-        g_lastTickStep = 5; g_lastStepName = "host_teleport";
-        WriteBreadcrumb("host_teleport", s_tickCallCount, 5);
+        g_lastTickStep = 5; g_lastStepName = "handle_spawns";
+        WriteBreadcrumb("handle_spawns_sync", s_tickCallCount, 5);
+        HandleSpawnQueue();
+
+        // Process deferred AnimClass probes (discovers physics position chain)
+        game::ProcessDeferredAnimClassProbes();
+
+        // Process deferred combat events (death/KO queued from hook context)
+        combat_hooks::ProcessDeferredEvents();
+
+        // Process deferred character discoveries (new chars found by animation hook)
+        char_tracker_hooks::ProcessDeferredDiscovery();
+
+        // Process deferred zone events (load/unload queued from hook context)
+        world_hooks::ProcessDeferredZoneEvents();
+
+        // Shared-save sync: discover characters by name, sync positions
+        shared_save_sync::Update(deltaTime);
+
+        g_lastTickStep = 6; g_lastStepName = "host_teleport";
+        WriteBreadcrumb("host_teleport", s_tickCallCount, 6);
         HandleHostTeleport();
         SetLastCompletedStep(8);
         SetLastCompletedStep(9);
@@ -1801,20 +2006,25 @@ void Core::OnGameTick(float deltaTime) {
         g_lastTickStep = 3; g_lastStepName = "swap_buffers";
         WriteBreadcrumb("swap_buffers", s_tickCallCount, 3);
         if (m_pipelineStarted) {
-            std::swap(m_readBuffer, m_writeBuffer);
+            // WaitForFrameWork() guarantees workers are done — safe to swap
+            int w = m_writeBuffer.load(std::memory_order_relaxed);
+            int r = m_readBuffer.load(std::memory_order_relaxed);
+            m_writeBuffer.store(r, std::memory_order_release);
+            m_readBuffer.store(w, std::memory_order_release);
         }
         SetLastCompletedStep(3);
 
         g_lastTickStep = 4; g_lastStepName = "interpolation";
         WriteBreadcrumb("interpolation_alt", s_tickCallCount, 4);
-        m_interpolation.Update(deltaTime);
+        SEH_InterpolationUpdate(&m_interpolation, deltaTime);
         SetLastCompletedStep(4);
 
         g_lastTickStep = 5; g_lastStepName = "apply_remote_pos";
         WriteBreadcrumb("apply_remote_pos", s_tickCallCount, 5);
-        if (m_pipelineStarted) {
-            ApplyRemotePositions();
-        }
+        // Direct interpolation → game character write. Always runs (no double-buffer dependency).
+        // The old ApplyRemotePositions() required BackgroundInterpolate to have filled
+        // the read buffer — this direct path reads interpolation results immediately.
+        ApplyRemotePositionsDirect();
         SetLastCompletedStep(5);
 
         g_lastTickStep = 6; g_lastStepName = "poll_local_pos";
@@ -1822,9 +2032,10 @@ void Core::OnGameTick(float deltaTime) {
         PollLocalPositions();
 
         g_lastTickStep = 7; g_lastStepName = "send_packets";
-        if (m_pipelineStarted) {
-            SendCachedPackets();
-        }
+        // NOTE: SendCachedPackets() removed — PollLocalPositions() already
+        // sends fresh per-entity position updates on the main thread.
+        // The background thread's cached packetBytes is a duplicate; sending
+        // both doubled outbound bandwidth.
         SetLastCompletedStep(6);
 
         g_lastTickStep = 8; g_lastStepName = "loading_orch";
@@ -1834,6 +2045,21 @@ void Core::OnGameTick(float deltaTime) {
         g_lastTickStep = 9; g_lastStepName = "handle_spawns";
         WriteBreadcrumb("handle_spawns", s_tickCallCount, 9);
         HandleSpawnQueue();
+
+        // Process deferred AnimClass probes (discovers physics position chain)
+        game::ProcessDeferredAnimClassProbes();
+
+        // Process deferred combat events (death/KO queued from hook context)
+        combat_hooks::ProcessDeferredEvents();
+
+        // Process deferred character discoveries (new chars found by animation hook)
+        char_tracker_hooks::ProcessDeferredDiscovery();
+
+        // Process deferred zone events (load/unload queued from hook context)
+        world_hooks::ProcessDeferredZoneEvents();
+
+        // Shared-save sync: discover characters by name, sync positions
+        shared_save_sync::Update(deltaTime);
         SetLastCompletedStep(7);
 
         g_lastTickStep = 10; g_lastStepName = "host_teleport";
@@ -1843,7 +2069,7 @@ void Core::OnGameTick(float deltaTime) {
 
         g_lastTickStep = 11; g_lastStepName = "kick_bg_work";
         WriteBreadcrumb("kick_bg_work", s_tickCallCount, 11);
-        m_frameData[m_writeBuffer].Clear();
+        m_frameData[m_writeBuffer.load()].Clear();
         KickBackgroundWork();
         m_pipelineStarted = true;
         SetLastCompletedStep(9);
@@ -1851,6 +2077,54 @@ void Core::OnGameTick(float deltaTime) {
 
     // ── Step 9b: Deferred probes — DISABLED ──
     g_lastTickStep = 12; g_lastStepName = "probes_skipped";
+
+    // ── Step 9c: Periodic faction validation for remote entities ──
+    // The game reads faction+0x250 on EVERY character update tick (game+0x927E94).
+    // If a remote character's faction is freed (zone unload), the game crashes.
+    // Fix: periodically validate and repair faction pointers for all remote entities.
+    if (s_tickCallCount % 50 == 0) { // Every ~0.5 seconds
+        g_lastTickStep = 12; g_lastStepName = "faction_validate";
+        auto remoteEntities = m_entityRegistry.GetRemoteEntities();
+        if (!remoteEntities.empty()) {
+            void* primaryChar = m_playerController.GetPrimaryCharacter();
+            uintptr_t goodFaction = 0;
+            if (primaryChar) {
+                uintptr_t primaryPtr = reinterpret_cast<uintptr_t>(primaryChar);
+                Memory::Read(primaryPtr + 0x10, goodFaction);
+                if (goodFaction < 0x10000 || goodFaction >= 0x00007FFFFFFFFFFF ||
+                    (goodFaction & 0x7) != 0) {
+                    goodFaction = 0;
+                } else {
+                    uintptr_t modBase = m_scanner.GetBase();
+                    size_t modSize = m_scanner.GetSize();
+                    if (goodFaction >= modBase && goodFaction < modBase + modSize) {
+                        goodFaction = 0;
+                    }
+                }
+            }
+            if (goodFaction != 0) {
+                uintptr_t modBase = m_scanner.GetBase();
+                size_t modSize = m_scanner.GetSize();
+                for (EntityID eid : remoteEntities) {
+                    void* gameObj = m_entityRegistry.GetGameObject(eid);
+                    if (!gameObj) continue;
+                    uintptr_t charPtr = reinterpret_cast<uintptr_t>(gameObj);
+                    if (charPtr < 0x10000 || charPtr >= 0x00007FFFFFFFFFFF) continue;
+
+                    int result = SEH_ValidateEntityFaction(gameObj, goodFaction, modBase, modSize);
+                    if (result == 1) {
+                        static int s_factionFixCount = 0;
+                        if (++s_factionFixCount <= 20) {
+                            spdlog::warn("Core: Fixed stale faction for remote entity {} "
+                                         "(char=0x{:X})", eid, charPtr);
+                        }
+                    } else if (result == -1) {
+                        m_entityRegistry.SetGameObject(eid, nullptr);
+                    }
+                }
+            }
+        }
+    }
 
     // ── Step 10: Diagnostics ──
     g_lastTickStep = 13; g_lastStepName = "diagnostics";
@@ -1872,6 +2146,47 @@ void Core::OnGameTick(float deltaTime) {
 // Staged Pipeline Methods
 // ════════════════════════════════════════════════════════════════════════════
 
+// SEH-protected faction validation for a single remote entity.
+// Returns: 0=ok, 1=fixed, -1=freed (should unlink).
+// Only POD types inside __try — safe with MSVC structured exceptions.
+//
+// IMPORTANT: Only fixes truly stale/freed faction pointers. Does NOT overwrite
+// valid factions with the local player's faction. Remote characters need to be
+// on a DIFFERENT faction for PvP combat and theft to work. If we assign the
+// local player's faction, the game treats them as allies and crashes on
+// "attack unprovoked" and theft interactions.
+static int SEH_ValidateEntityFaction(void* gameObj, uintptr_t goodFaction,
+                                      uintptr_t modBase, size_t modSize) {
+    __try {
+        uintptr_t charPtr = reinterpret_cast<uintptr_t>(gameObj);
+        uintptr_t faction = 0;
+        Memory::Read(charPtr + 0x10, faction);
+
+        bool isStale = false;
+        if (faction == 0 || faction < 0x10000 || faction >= 0x00007FFFFFFFFFFF ||
+            (faction & 0x7) != 0) {
+            isStale = true;
+        } else {
+            // Check if faction object's vtable is still valid (not freed)
+            uintptr_t vtable = 0;
+            Memory::Read(faction, vtable);
+            // Vtable should point into .rdata (within the game module)
+            if (vtable == 0 || vtable < modBase || vtable >= modBase + modSize) {
+                isStale = true;
+            }
+        }
+        if (isStale) {
+            // Only fix if the pointer is truly invalid (freed/null/out-of-range).
+            // Use goodFaction as a last resort to prevent crash on faction+0x250 read.
+            Memory::Write(charPtr + 0x10, goodFaction);
+            return 1;
+        }
+        return 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return -1; // Character was freed
+    }
+}
+
 // SEH-protected per-entity position/rotation write.
 // WritePosition follows chains of game memory pointers (physics engine, Havok, etc.)
 // that may become invalid if the character is freed or mid-transition.
@@ -1884,8 +2199,40 @@ static bool SEH_WritePositionRotation(void* gameObj, Vec3 pos, Quat rot) {
 
         auto& offsets = game::GetOffsets().character;
         if (offsets.rotation >= 0) {
-            uintptr_t charPtr = reinterpret_cast<uintptr_t>(gameObj);
-            Memory::Write(charPtr + offsets.rotation, rot);
+            // Validate quaternion before writing — prevents Ogre crash where
+            // a quaternion w=1.0 (0x3F800000) was read as a pointer.
+            // NaN/Inf check + magnitude sanity check.
+            bool quatValid = true;
+            float magSq = rot.w * rot.w + rot.x * rot.x + rot.y * rot.y + rot.z * rot.z;
+            if (std::isnan(magSq) || std::isinf(magSq) || magSq < 0.5f || magSq > 1.5f) {
+                quatValid = false;
+            }
+            if (std::isnan(rot.w) || std::isnan(rot.x) || std::isnan(rot.y) || std::isnan(rot.z) ||
+                std::isinf(rot.w) || std::isinf(rot.x) || std::isinf(rot.y) || std::isinf(rot.z)) {
+                quatValid = false;
+            }
+
+            if (quatValid) {
+                uintptr_t charPtr = reinterpret_cast<uintptr_t>(gameObj);
+
+                // Safety: read current value first — if the existing value at +0x58
+                // looks like a pointer (>0x10000), DON'T overwrite it. It might be
+                // a SceneNode* or other Ogre pointer, not a quaternion.
+                uintptr_t existingVal = 0;
+                Memory::Read(charPtr + offsets.rotation, existingVal);
+                bool looksLikePointer = (existingVal > 0x10000 && existingVal < 0x00007FFFFFFFFFFF
+                                          && (existingVal & 0x3) == 0);
+                if (!looksLikePointer) {
+                    Memory::Write(charPtr + offsets.rotation, rot);
+                } else {
+                    static int s_skipCount = 0;
+                    if (++s_skipCount <= 5) {
+                        spdlog::warn("SEH_WritePositionRotation: SKIPPED rotation write — "
+                                     "char+0x{:X} = 0x{:X} looks like pointer, not quaternion",
+                                     offsets.rotation, existingVal);
+                    }
+                }
+            }
         }
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -1899,24 +2246,55 @@ static bool SEH_WritePositionRotation(void* gameObj, Vec3 pos, Quat rot) {
     }
 }
 
-// Fix stale faction pointer on a spawned character by copying the LIVE
-// faction from the host's primary character.  Must be called BEFORE the
-// game engine's next character-update tick to prevent a use-after-free
-// crash at game+0x927E94 (reads faction+0x250 on every character).
+// Validate faction pointer on a spawned character. Only writes if the existing
+// faction is STALE (null, freed, or invalid vtable). Does NOT overwrite valid
+// factions — remote characters must stay on a different faction from the local
+// player so that PvP combat ("attack unprovoked") and theft mechanics work.
+// The game crashes at game+0x927E94 if faction+0x250 is unreadable.
 static bool SEH_FixUpFaction_Core(void* spawnedChar) {
     __try {
-        void* primaryChar = Core::Get().GetPlayerController().GetPrimaryCharacter();
-        if (!primaryChar) return false;
-
-        uintptr_t primaryPtr = reinterpret_cast<uintptr_t>(primaryChar);
         uintptr_t spawnedPtr = reinterpret_cast<uintptr_t>(spawnedChar);
 
-        uintptr_t faction = 0;
-        Memory::Read(primaryPtr + 0x10, faction);
-        if (faction == 0 || faction < 0x10000 || faction > 0x00007FFFFFFFFFFF)
-            return false;
+        // First check: is the character's CURRENT faction valid?
+        uintptr_t currentFaction = 0;
+        Memory::Read(spawnedPtr + 0x10, currentFaction);
 
-        // Validate: faction object should be readable (not freed)
+        bool currentIsValid = false;
+        if (currentFaction != 0 && currentFaction >= 0x10000 &&
+            currentFaction < 0x00007FFFFFFFFFFF && (currentFaction & 0x7) == 0) {
+            uintptr_t vtable = 0;
+            Memory::Read(currentFaction, vtable);
+            uintptr_t modBase = Core::Get().GetScanner().GetBase();
+            size_t modSize = Core::Get().GetScanner().GetSize();
+            if (vtable != 0 && vtable >= modBase && vtable < modBase + modSize) {
+                currentIsValid = true;
+            }
+        }
+
+        // If current faction is valid, leave it alone. The mod template's faction
+        // or the NPC's original faction is fine — it gives remote characters a
+        // different allegiance so combat/theft interactions work properly.
+        if (currentIsValid) {
+            return false; // No fix needed
+        }
+
+        // Current faction is stale/freed — need a replacement to prevent crash.
+        // Use fallback faction (any valid faction seen during character creation).
+        uintptr_t faction = entity_hooks::GetFallbackFaction();
+
+        if (faction == 0 || faction < 0x10000 || faction > 0x00007FFFFFFFFFFF) {
+            faction = entity_hooks::GetEarlyPlayerFaction();
+        }
+
+        if (faction == 0 || faction < 0x10000 || faction > 0x00007FFFFFFFFFFF) {
+            faction = Core::Get().GetPlayerController().GetLocalFactionPtr();
+        }
+
+        if (faction == 0 || faction < 0x10000 || faction > 0x00007FFFFFFFFFFF) {
+            return false; // No valid faction available, leave as-is
+        }
+
+        // Validate the replacement faction
         uintptr_t vtable = 0;
         Memory::Read(faction, vtable);
         if (vtable == 0) return false;
@@ -1935,49 +2313,69 @@ static bool SEH_FixUpFaction_Core(void* spawnedChar) {
 // created inside __try — safe with MSVC structured exception handling.
 static bool SEH_FallbackPostSpawnSetup(void* character, EntityID netId,
                                         PlayerID owner, Vec3 pos) {
+    bool allOk = true;
+
+    // 1. Teleport to desired position
     __try {
-        // 1. Teleport to desired position
         game::CharacterAccessor accessor(character);
         if (pos.x != 0.f || pos.y != 0.f || pos.z != 0.f) {
             accessor.WritePosition(pos);
         }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        OutputDebugStringA("KMP: FallbackPostSpawn — WritePosition AV\n");
+        allOk = false;
+    }
 
-        // 2. Set name + faction
+    // 2. Set name + faction
+    __try {
         Core::Get().GetPlayerController().OnRemoteCharacterSpawned(
             netId, character, owner);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        OutputDebugStringA("KMP: FallbackPostSpawn — OnRemoteCharacterSpawned AV\n");
+        allOk = false;
+    }
 
-        // 3. Mark as remote-controlled (AI decisions overridden)
+    // 3. Mark as remote-controlled (AI decisions overridden)
+    __try {
         ai_hooks::MarkRemoteControlled(character);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        OutputDebugStringA("KMP: FallbackPostSpawn — MarkRemoteControlled AV\n");
+        allOk = false;
+    }
 
-        // 4. Squad injection (engine exploit — makes char selectable)
-        squad_hooks::AddCharacterToLocalSquad(character);
+    // 4. Squad injection DISABLED — activePlatoon resolution picks up code-section
+    //    pointers on Steam builds → WRITE AV at game+0xE85340 → cascading crash.
+    //    Remote characters are visible in the world without squad injection.
 
-        // 5. Set isPlayerControlled flag (engine exploit)
-        game::WritePlayerControlled(
-            reinterpret_cast<uintptr_t>(character), true);
+    // 5. WritePlayerControlled DISABLED — not needed for visibility, and can crash
+    //    if the character's internal state isn't fully initialized.
 
-        // 6. Schedule deferred AnimClass probe
+    // 6. Schedule deferred AnimClass probe
+    __try {
         game::ScheduleDeferredAnimClassProbe(
             reinterpret_cast<uintptr_t>(character));
-
-        return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
+        OutputDebugStringA("KMP: FallbackPostSpawn — AnimClassProbe AV\n");
+        allOk = false;
+    }
+
+    if (!allOk) {
         static int s_crashCount = 0;
         if (++s_crashCount <= 10) {
             char buf[256];
-            sprintf_s(buf, "KMP: SEH_FallbackPostSpawnSetup CRASHED for entity %u "
-                      "char=0x%p (AV caught — entity linked, will receive updates)\n",
+            sprintf_s(buf, "KMP: SEH_FallbackPostSpawnSetup partial failure for entity %u "
+                      "char=0x%p (surviving steps completed)\n",
                       netId, character);
             OutputDebugStringA(buf);
         }
-        spdlog::error("Core: Fallback post-spawn setup crashed for entity {} char=0x{:X}",
+        spdlog::error("Core: Fallback post-spawn setup partial failure for entity {} char=0x{:X}",
                       netId, reinterpret_cast<uintptr_t>(character));
-        return false;
     }
+    return allOk;
 }
 
 void Core::ApplyRemotePositions() {
-    auto& readFrame = m_frameData[m_readBuffer];
+    auto& readFrame = m_frameData[m_readBuffer.load()];
     if (!readFrame.ready) return;
 
     static int s_applyCount = 0;
@@ -2018,6 +2416,94 @@ void Core::ApplyRemotePositions() {
         spdlog::info("Core::ApplyRemotePositions: applied {} this frame (total={}, noObj={}, avErrors={})",
                      applied, s_applyCount, s_noObjCount, s_avCount);
     }
+
+    // CRITICAL: Log when we have remote entities with positions but no game objects.
+    // This means SpawnCharacterDirect hasn't run yet or failed for these entities.
+    // Without this warning, "players can't see each other" is impossible to diagnose.
+    static int s_noObjWarnings = 0;
+    static auto s_lastNoObjLog = std::chrono::steady_clock::time_point{};
+    if (noObj > 0 && applied == 0) {
+        auto now = std::chrono::steady_clock::now();
+        auto sinceLog = std::chrono::duration_cast<std::chrono::seconds>(now - s_lastNoObjLog);
+        if (s_noObjWarnings < 10 || sinceLog.count() >= 5) {
+            spdlog::warn("Core::ApplyRemotePositions: {} remote entities have NO game object — "
+                         "positions arriving but characters not spawned yet! "
+                         "(spawns pending={}, spawnReady={}, gate={})",
+                         noObj, m_spawnManager.GetPendingSpawnCount(),
+                         m_spawnManager.IsReady() && m_spawnManager.HasPreCallData(),
+                         m_loadingOrch.GetSpawnBlockReason());
+            s_noObjWarnings++;
+            s_lastNoObjLog = now;
+        }
+    }
+}
+
+// ── Direct remote position application (bypass double-buffer pipeline) ──
+// Reads interpolation results directly on the main thread and writes them
+// to game characters. This eliminates timing issues with the double-buffer
+// swap and ensures remote characters are updated every frame.
+void Core::ApplyRemotePositionsDirect() {
+    auto remoteEntities = m_entityRegistry.GetRemoteEntities();
+    if (remoteEntities.empty()) return;
+
+    float now = SessionTime();
+    static int s_directApplyTotal = 0;
+    static int s_directNoObjTotal = 0;
+    int applied = 0;
+    int noObj = 0;
+
+    for (EntityID remoteId : remoteEntities) {
+        void* gameObj = m_entityRegistry.GetGameObject(remoteId);
+        if (!gameObj) {
+            noObj++;
+            continue;
+        }
+
+        // Validate gameObj pointer
+        uintptr_t objAddr = reinterpret_cast<uintptr_t>(gameObj);
+        if (objAddr < 0x10000 || objAddr >= 0x00007FFFFFFFFFFF || (objAddr & 0x7) != 0) {
+            m_entityRegistry.SetGameObject(remoteId, nullptr);
+            continue;
+        }
+
+        Vec3 pos;
+        Quat rot;
+        uint8_t moveSpeed = 0, animState = 0;
+        if (m_interpolation.GetInterpolated(remoteId, now, pos, rot, moveSpeed, animState)) {
+            if (SEH_WritePositionRotation(gameObj, pos, rot)) {
+                m_entityRegistry.UpdatePosition(remoteId, pos);
+                m_entityRegistry.UpdateRotation(remoteId, rot);
+                applied++;
+            } else {
+                // Bad game object — unlink so we stop crashing
+                m_entityRegistry.SetGameObject(remoteId, nullptr);
+            }
+        }
+    }
+
+    s_directApplyTotal += applied;
+    s_directNoObjTotal += noObj;
+
+    if (applied > 0 && (s_directApplyTotal <= 5 || s_directApplyTotal % 200 == 0)) {
+        spdlog::info("Core::ApplyRemotePositionsDirect: applied {} this frame (total={}, noObj={})",
+                     applied, s_directApplyTotal, s_directNoObjTotal);
+    }
+
+    // Warn when positions are arriving but characters aren't spawned
+    static int s_noObjWarnings = 0;
+    static auto s_lastNoObjLog = std::chrono::steady_clock::time_point{};
+    if (noObj > 0 && applied == 0) {
+        auto nowClock = std::chrono::steady_clock::now();
+        auto sinceLog = std::chrono::duration_cast<std::chrono::seconds>(nowClock - s_lastNoObjLog);
+        if (s_noObjWarnings < 10 || sinceLog.count() >= 5) {
+            spdlog::warn("Core::ApplyRemotePositionsDirect: {} remote entities have NO game object — "
+                         "spawns pending={}, factory={}",
+                         noObj, m_spawnManager.GetPendingSpawnCount(),
+                         m_spawnManager.IsReady());
+            s_noObjWarnings++;
+            s_lastNoObjLog = nowClock;
+        }
+    }
 }
 
 // SEH-protected position read from a game character object.
@@ -2055,6 +2541,14 @@ void Core::PollLocalPositions() {
 
         void* gameObj = m_entityRegistry.GetGameObject(netId);
         if (!gameObj) continue;
+
+        // Validate gameObj pointer: must be aligned and in reasonable user-space range
+        uintptr_t objAddr = reinterpret_cast<uintptr_t>(gameObj);
+        if (objAddr < 0x10000 || objAddr >= 0x00007FFFFFFFFFFF || (objAddr & 0x7) != 0) {
+            m_entityRegistry.SetGameObject(netId, nullptr);
+            spdlog::warn("PollLocalPositions: Invalid gameObj 0x{:X} for entity {} — unlinked", objAddr, netId);
+            continue;
+        }
 
         Vec3 pos;
         Quat rotation;
@@ -2111,21 +2605,24 @@ void Core::PollLocalPositions() {
 }
 
 void Core::SendCachedPackets() {
-    auto& readFrame = m_frameData[m_readBuffer];
+    auto& readFrame = m_frameData[m_readBuffer.load()];
     if (!readFrame.ready || readFrame.packetBytes.empty()) return;
 
     m_client.SendUnreliable(readFrame.packetBytes.data(), readFrame.packetBytes.size());
 }
 
 void Core::HandleHostTeleport() {
-    if (!m_hasHostSpawnPoint || m_spawnTeleportDone || m_isHost) return;
+    if (!HasHostSpawnPoint() || m_spawnTeleportDone || m_isHost) return;
+
+    // Snapshot host spawn point (mutex-protected)
+    Vec3 hostPos = GetHostSpawnPoint();
 
     if (!m_hostTpTimerStarted) {
         m_hostTpTimerStarted = true;
         m_hostTpTimer = std::chrono::steady_clock::now();
         spdlog::info("Core: Host spawn point received ({:.1f}, {:.1f}, {:.1f}), "
                      "waiting 2s before teleport",
-                     m_hostSpawnPoint.x, m_hostSpawnPoint.y, m_hostSpawnPoint.z);
+                     hostPos.x, hostPos.y, hostPos.z);
         m_nativeHud.LogStep("GAME", "Host position received, teleporting in 2s...");
     }
 
@@ -2148,7 +2645,7 @@ void Core::HandleHostTeleport() {
         game::CharacterAccessor accessor(gameObj);
         if (!accessor.IsValid()) continue;
 
-        Vec3 spawnPos = m_hostSpawnPoint;
+        Vec3 spawnPos = hostPos;
         spawnPos.x += static_cast<float>(teleported % 4) * 3.0f;
         spawnPos.z += static_cast<float>(teleported / 4) * 3.0f;
 
@@ -2161,7 +2658,7 @@ void Core::HandleHostTeleport() {
     if (teleported > 0) {
         m_spawnTeleportDone = true;
         spdlog::info("Core: Teleported {} local characters to host at ({:.1f}, {:.1f}, {:.1f})",
-                     teleported, m_hostSpawnPoint.x, m_hostSpawnPoint.y, m_hostSpawnPoint.z);
+                     teleported, hostPos.x, hostPos.y, hostPos.z);
         m_overlay.AddSystemMessage("Teleported to host location!");
         m_nativeHud.AddSystemMessage("Teleported " + std::to_string(teleported)
                                      + " characters to host!");
@@ -2175,29 +2672,103 @@ void Core::HandleSpawnQueue() {
     // pending resources). This replaces the old 20-second fixed grace period
     // with resource-aware gating via AssetFacilitator.
     if (!m_gameLoaded) return;
-    if (!AssetFacilitator::Get().CanSpawn()) return;
-
-    // One-shot heap scan
-    static bool heapScanned = false;
-    if (!heapScanned && m_spawnManager.IsReady()) {
-        if (m_spawnManager.GetManagerPointer() != 0 || m_spawnManager.GetTemplateCount() < 10) {
-            spdlog::info("Core: Triggering GameData heap scan (manager=0x{:X}, templates={})...",
-                         m_spawnManager.GetManagerPointer(), m_spawnManager.GetTemplateCount());
-            m_spawnManager.ScanGameDataHeap();
-            heapScanned = true;
-            spdlog::info("Core: Heap scan complete, {} templates available",
-                         m_spawnManager.GetTemplateCount());
+    if (!AssetFacilitator::Get().CanSpawn() && !m_forceSpawnBypass.load()) {
+        // Log gate reason once per second when spawns are pending
+        static auto s_lastGateLog = std::chrono::steady_clock::time_point{};
+        static auto s_gateBlockStart = std::chrono::steady_clock::time_point{};
+        static bool s_gateLoggedOnce = false;
+        static bool s_gateTimerStarted = false;
+        size_t queueSize = m_spawnManager.GetPendingSpawnCount();
+        if (queueSize > 0) {
+            auto now = std::chrono::steady_clock::now();
+            if (!s_gateTimerStarted) {
+                s_gateBlockStart = now;
+                s_gateTimerStarted = true;
+            }
+            auto sinceLastLog = std::chrono::duration_cast<std::chrono::seconds>(now - s_lastGateLog);
+            auto gateBlockDuration = std::chrono::duration_cast<std::chrono::seconds>(now - s_gateBlockStart);
+            if (!s_gateLoggedOnce || sinceLastLog.count() >= 5) {
+                std::string reason = m_loadingOrch.GetSpawnBlockReason();
+                spdlog::warn("Core: HandleSpawnQueue BLOCKED — {} pending, gate: {} (blocked {}s)",
+                             queueSize, reason, gateBlockDuration.count());
+                m_nativeHud.LogStep("SPAWN", "Gate blocked: " + reason);
+                s_lastGateLog = now;
+                s_gateLoggedOnce = true;
+            }
+            // PLAYTEST BYPASS: After 8 seconds of blocking, force through.
+            // The game is loaded — the gate is being too conservative.
+            if (gateBlockDuration.count() >= 8) {
+                spdlog::warn("Core: FORCE BYPASS — spawn gate blocked for {}s, forcing spawn through!",
+                             gateBlockDuration.count());
+                m_nativeHud.AddSystemMessage("Spawn gate bypassed (timeout) — forcing spawn...");
+                s_gateTimerStarted = false;
+                // Fall through to spawn logic below
+            } else {
+                return;
+            }
+        } else {
+            s_gateTimerStarted = false;
         }
+        if (queueSize == 0) return;
     }
 
-    // Spawn queue fallback logic
+    // Reset statics on reconnect (flag set by SetConnected(false))
+    static bool heapScanned = false;
+    static int heapScanAttempts = 0;
+    static auto s_lastHeapScan = std::chrono::steady_clock::time_point{};
     static auto s_lastSpawnLog = std::chrono::steady_clock::now();
     static auto s_firstPendingTime = std::chrono::steady_clock::time_point{};
     static bool s_hasPendingTimer = false;
     static int s_directSpawnAttempts = 0;
     static bool s_shownWaitingMsg = false;
     static bool s_shownTimeoutMsg = false;
+    static bool s_retriedHookEnable = false;
+    static int64_t s_lastNotReadyLog = 0;
+    static auto s_lastDirectAttempt = std::chrono::steady_clock::time_point{};
 
+    if (m_needSpawnQueueReset) {
+        m_needSpawnQueueReset = false;
+        heapScanned = false;
+        heapScanAttempts = 0;
+        s_lastHeapScan = std::chrono::steady_clock::time_point{};
+        s_hasPendingTimer = false;
+        s_directSpawnAttempts = 0;
+        s_shownWaitingMsg = false;
+        s_shownTimeoutMsg = false;
+        s_retriedHookEnable = false;
+        s_lastNotReadyLog = 0;
+        s_wasScanning = false;
+        s_entityScanRetries = 0;
+        s_lastDirectAttempt = std::chrono::steady_clock::time_point{};
+        spdlog::info("Core::HandleSpawnQueue: Reset statics for new connection");
+    }
+
+    // Heap scan — runs once, then retries if mod templates weren't found.
+    // The first scan may fail if GameDataManager wasn't captured yet (hook was
+    // disabled during loading). After ResumeForNetwork + first NPC creation,
+    // m_managerPointer gets set, enabling a successful re-scan.
+    bool needsScan = !heapScanned ||
+        (heapScanned && m_spawnManager.GetModTemplateCount() == 0 && heapScanAttempts < 5);
+    // Cooldown: don't re-scan more than once every 5 seconds
+    auto timeSinceLastScan = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - s_lastHeapScan);
+    if (needsScan && m_spawnManager.IsReady() && timeSinceLastScan.count() >= 5) {
+        if (m_spawnManager.GetManagerPointer() != 0 || m_spawnManager.GetTemplateCount() < 10) {
+            heapScanAttempts++;
+            s_lastHeapScan = std::chrono::steady_clock::now();
+            spdlog::info("Core: Triggering GameData heap scan #{} (manager=0x{:X}, templates={})...",
+                         heapScanAttempts, m_spawnManager.GetManagerPointer(),
+                         m_spawnManager.GetTemplateCount());
+            SEH_ScanGameDataHeap(m_spawnManager);
+            m_spawnManager.FindModTemplates();
+            heapScanned = true;
+            spdlog::info("Core: Heap scan #{} complete, {} templates available ({} mod templates)",
+                         heapScanAttempts, m_spawnManager.GetTemplateCount(),
+                         m_spawnManager.GetModTemplateCount());
+        }
+    }
+
+    // Spawn queue fallback logic
     size_t pending = m_spawnManager.GetPendingSpawnCount();
 
     if (pending > 0 && !s_hasPendingTimer) {
@@ -2205,9 +2776,9 @@ void Core::HandleSpawnQueue() {
         s_hasPendingTimer = true;
         s_shownWaitingMsg = false;
         s_shownTimeoutMsg = false;
-        spdlog::info("Core: {} spawn(s) queued — waiting for game to create an NPC...", pending);
+        spdlog::info("Core: {} spawn(s) queued — spawning remote player(s)...", pending);
         m_nativeHud.LogStep("GAME", std::to_string(pending) + " spawn(s) queued");
-        m_nativeHud.AddSystemMessage("Waiting for game to create an NPC for remote player...");
+        m_nativeHud.AddSystemMessage("Spawning remote player...");
     } else if (pending == 0) {
         s_hasPendingTimer = false;
         s_directSpawnAttempts = 0;
@@ -2220,20 +2791,19 @@ void Core::HandleSpawnQueue() {
         auto pendingDuration = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - s_firstPendingTime);
 
-        // At 10s, show encouraging message
+        // At 10s, show helpful message (direct spawn should work by 2s)
         if (pendingDuration.count() >= 10 && !s_shownWaitingMsg) {
             s_shownWaitingMsg = true;
-            m_nativeHud.AddSystemMessage("Still waiting for NPC creation... Walk near a town or camp.");
-            m_nativeHud.LogStep("GAME", "Waiting for NPC spawn event (walk near town)...");
+            m_nativeHud.AddSystemMessage("Spawning taking longer than expected...");
+            m_nativeHud.LogStep("GAME", "Spawn delayed 10s+");
         }
 
         // At 30s, show timeout warning
         if (pendingDuration.count() >= 30 && !s_shownTimeoutMsg) {
             s_shownTimeoutMsg = true;
-            spdlog::warn("Core: Spawn queue waiting 30s+ — no NPC creation events detected. "
-                         "The CharacterCreate hook may not be firing.");
-            m_nativeHud.AddSystemMessage("Spawn timeout! Try walking near NPCs or entering a town.");
-            m_nativeHud.LogStep("WARN", "Spawn queue timeout (30s) — need NPC activity");
+            spdlog::warn("Core: Spawn queue waiting 30s+ — check kenshi-online.mod is in load order.");
+            m_nativeHud.AddSystemMessage("Spawn timeout! Ensure kenshi-online.mod is loaded.");
+            m_nativeHud.LogStep("WARN", "Spawn timeout (30s) — check mod load order");
         }
     }
 
@@ -2249,22 +2819,160 @@ void Core::HandleSpawnQueue() {
                      m_spawnManager.HasPreCallData());
     }
 
-    // SpawnCharacterDirect DISABLED — the copied pre-call struct from loading
-    // contains a faction pointer that becomes a use-after-free when the source
-    // NPC's zone unloads, crashing at game+0x927E94 (faction+0x250).
-    //
-    // Remote characters spawn ONLY via in-place replay (entity_hooks):
-    // Hook_CharacterCreate piggybacks on natural NPC creation events.
-    // The player must walk near NPCs (town, camp) to trigger spawns.
+    // ═══ DIRECT SPAWN (mod template + createRandomChar immediate fallback) ═══
+    // Try mod template spawn ASAP (2s for heap scan). If that fails, immediately
+    // try createRandomChar as fallback (wrong appearance but functional).
+    // No more "walk near NPCs" — direct spawn is the primary path.
     if (pending > 0 && s_hasPendingTimer) {
         auto pendingDuration = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - s_firstPendingTime);
-        if (pendingDuration.count() >= 10 && pendingDuration.count() % 10 == 0) {
-            static int64_t s_lastLogSec = 0;
-            if (pendingDuration.count() != s_lastLogSec) {
-                s_lastLogSec = pendingDuration.count();
-                spdlog::info("Core: {} spawns pending for {}s — waiting for in-place replay "
-                             "(walk near NPCs)", pending, pendingDuration.count());
+
+        bool hasModTemplates = m_spawnManager.GetModTemplateCount() > 0;
+        bool hasFactory = m_spawnManager.IsReady(); // factory captured
+
+        // Try direct spawn after 2s (gives heap scan time to find mod templates).
+        // CallFactoryCreate uses RootObjectFactory::create which builds a fresh
+        // request struct from the mod GameData — no stale pointers.
+        auto timeSinceLastAttempt = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - s_lastDirectAttempt);
+        if (hasFactory && pendingDuration.count() >= 2
+            && timeSinceLastAttempt.count() >= 1) {
+            s_lastDirectAttempt = std::chrono::steady_clock::now();
+            SpawnRequest spawnReq;
+            if (m_spawnManager.PopNextSpawn(spawnReq)) {
+                // ── Per-player spawn cap ──
+                // Only spawn 1 character per remote player to prevent squad panel flooding.
+                // The remote player's primary character is sufficient for co-op gameplay.
+                // Additional squad members are tracked as registry-only ghosts (position synced
+                // but no game object) to keep the world clean.
+                static constexpr int MAX_DIRECT_SPAWNS_PER_PLAYER = 1;
+                static std::unordered_map<PlayerID, int> s_directSpawnsPerPlayer;
+                if (s_directSpawnsPerPlayer[spawnReq.owner] >= MAX_DIRECT_SPAWNS_PER_PLAYER) {
+                    // Already spawned enough for this player — drop remaining requests silently.
+                    // The entity stays in the registry (position tracked) but has no game object.
+                    spdlog::debug("Core: Skipping spawn for entity {} — player {} already has {} char(s)",
+                                  spawnReq.netId, spawnReq.owner, s_directSpawnsPerPlayer[spawnReq.owner]);
+                    // Don't requeue — just let it go
+                } else {
+
+                // Map owner PlayerID to mod template slot (0-based).
+                int templateCount = m_spawnManager.GetModTemplateCount();
+                int modSlot = 0;
+                if (templateCount > 0 && spawnReq.owner > 0) {
+                    modSlot = (static_cast<int>(spawnReq.owner) - 1) % templateCount;
+                }
+                if (modSlot < 0 || modSlot >= templateCount) modSlot = 0;
+
+                void* newChar = nullptr;
+                bool usedModTemplate = false;
+
+                // ── PATH 1: Mod template (preferred — correct appearance) ──
+                if (hasModTemplates) {
+                    spdlog::info("Core: MOD TEMPLATE SPAWN for entity {} owner={} slot={} "
+                                 "pos=({:.1f},{:.1f},{:.1f})",
+                                 spawnReq.netId, spawnReq.owner, modSlot,
+                                 spawnReq.position.x, spawnReq.position.y, spawnReq.position.z);
+
+                    newChar = m_spawnManager.SpawnCharacterDirect(&spawnReq.position, modSlot);
+                    if (newChar) usedModTemplate = true;
+                }
+
+                // ── PATH 2: createRandomChar (immediate fallback — wrong appearance) ──
+                if (!newChar) {
+                    spdlog::info("Core: createRandomChar FALLBACK for entity {} owner={} "
+                                 "(modTemplate {})",
+                                 spawnReq.netId, spawnReq.owner,
+                                 hasModTemplates ? "failed" : "not available");
+
+                    newChar = entity_hooks::CallFactoryCreateRandom(m_spawnManager.GetFactory());
+                }
+
+                uintptr_t newCharAddr = reinterpret_cast<uintptr_t>(newChar);
+                if (newChar && newCharAddr > 0x10000 && newCharAddr < 0x00007FFFFFFFFFFF
+                    && (newCharAddr & 0x7) == 0) {
+                    spdlog::info("Core: Spawn SUCCESS — char 0x{:X} for entity {} (modTemplate={})",
+                                 newCharAddr, spawnReq.netId, usedModTemplate);
+
+                    // Only apply faction fix for non-mod-template spawns (random chars).
+                    // Mod template characters have persistent factions from kenshi-online.mod
+                    // that are always loaded. Writing the LOCAL player's faction causes them
+                    // to appear in the squad panel, flooding it and crashing the game.
+                    if (!usedModTemplate) {
+                        SEH_FixUpFaction_Core(newChar);
+                    }
+                    m_entityRegistry.SetGameObject(spawnReq.netId, newChar);
+                    m_entityRegistry.UpdatePosition(spawnReq.netId, spawnReq.position);
+                    SEH_FallbackPostSpawnSetup(newChar, spawnReq.netId, spawnReq.owner, spawnReq.position);
+
+                    s_directSpawnAttempts++;
+                    s_directSpawnsPerPlayer[spawnReq.owner]++;
+                    if (usedModTemplate) {
+                        m_nativeHud.AddSystemMessage("Remote player spawned!");
+                    } else {
+                        m_nativeHud.AddSystemMessage("Remote player spawned (fallback appearance)");
+                    }
+                    m_nativeHud.LogStep("OK", "Entity " + std::to_string(spawnReq.netId) + " spawned");
+                } else {
+                    spdlog::warn("Core: Both spawn paths returned null for entity {} (attempt {})",
+                                 spawnReq.netId, spawnReq.retryCount);
+                    spawnReq.retryCount++;
+                    if (spawnReq.retryCount < MAX_SPAWN_RETRIES) {
+                        m_spawnManager.RequeueSpawn(spawnReq);
+                    } else {
+                        spdlog::error("Core: Entity {} exceeded max retries ({}), removing",
+                                      spawnReq.netId, MAX_SPAWN_RETRIES);
+                        m_entityRegistry.Unregister(spawnReq.netId);
+                        m_nativeHud.AddSystemMessage("Failed to spawn remote player after retries.");
+                    }
+                }
+
+                } // end spawn cap else
+            }
+        } else if (!hasFactory) {
+            // Factory not captured yet — try re-enabling CharacterCreate hook.
+            if (!s_retriedHookEnable && pendingDuration.count() >= 5) {
+                s_retriedHookEnable = true;
+                spdlog::warn("Core: Factory not captured after 5s — re-enabling CharacterCreate hook");
+                entity_hooks::ResumeForNetwork();
+                m_nativeHud.LogStep("SPAWN", "Re-enabling CharacterCreate hook...");
+            }
+            if (pendingDuration.count() / 5 != s_lastNotReadyLog) {
+                s_lastNotReadyLog = pendingDuration.count() / 5;
+                spdlog::warn("Core: {} spawns pending for {}s but factory not ready "
+                             "(factory={}, templates={}, modTemplates={})",
+                             pending, pendingDuration.count(),
+                             m_spawnManager.IsReady(),
+                             m_spawnManager.GetTemplateCount(), m_spawnManager.GetModTemplateCount());
+            }
+        }
+    }
+
+    // Clear force bypass flag after processing
+    if (m_forceSpawnBypass.load()) {
+        m_forceSpawnBypass.store(false);
+        spdlog::info("Core: Force spawn bypass cleared");
+    }
+
+    // ═══ STUCK ENTITY CLEANUP ═══
+    // Detect remote entities registered but never spawned (stuck in Spawning state).
+    // This catches entities that fell through the cracks — e.g., spawn queue drained
+    // but SetGameObject was never called.
+    static auto s_lastStuckCheck = std::chrono::steady_clock::now();
+    auto sinceStuckCheck = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - s_lastStuckCheck);
+    if (sinceStuckCheck.count() >= 10) {
+        s_lastStuckCheck = std::chrono::steady_clock::now();
+        auto remoteIds = m_entityRegistry.GetRemoteEntities();
+        for (EntityID rid : remoteIds) {
+            auto info = m_entityRegistry.GetInfoCopy(rid);
+            if (info && info->state == EntityState::Spawning && info->gameObject == nullptr) {
+                // If spawn queue is empty, this entity is truly orphaned
+                if (m_spawnManager.GetPendingSpawnCount() == 0) {
+                    spdlog::warn("Core: Stuck entity {} (owner={}) in Spawning state with no "
+                                 "game object and empty spawn queue — unregistering",
+                                 rid, info->ownerPlayerId);
+                    m_entityRegistry.Unregister(rid);
+                }
             }
         }
     }
@@ -2330,7 +3038,7 @@ static BGReadResult SEH_ReadCharacterBG(void* gameObj) {
 }
 
 void Core::BackgroundReadEntities() {
-    auto& writeFrame = m_frameData[m_writeBuffer];
+    auto& writeFrame = m_frameData[m_writeBuffer.load()];
 
     auto localEntities = m_entityRegistry.GetPlayerEntities(m_localPlayerId);
 
@@ -2432,12 +3140,10 @@ void Core::BackgroundReadEntities() {
 }
 
 void Core::BackgroundInterpolate() {
-    auto& writeFrame = m_frameData[m_writeBuffer];
+    auto& writeFrame = m_frameData[m_writeBuffer.load()];
 
     auto remoteEntities = m_entityRegistry.GetRemoteEntities();
-    float now = static_cast<float>(
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
+    float now = SessionTime();
 
     static int s_interpCallCount = 0;
     int validCount = 0;
@@ -2466,6 +3172,44 @@ void Core::BackgroundInterpolate() {
         spdlog::info("Core::BackgroundInterpolate: {} remote entities, {} valid interp results (call #{})",
                      remoteEntities.size(), validCount, s_interpCallCount);
     }
+}
+
+void Core::ForceSpawnRemotePlayers() {
+    if (!m_connected) {
+        m_nativeHud.AddSystemMessage("Not connected to a server.");
+        return;
+    }
+    size_t pending = m_spawnManager.GetPendingSpawnCount();
+    if (pending == 0) {
+        m_nativeHud.AddSystemMessage("No pending spawns in queue.");
+        // Check for remote entities without game objects
+        auto remoteEntities = m_entityRegistry.GetRemoteEntities();
+        int noObj = 0;
+        for (auto eid : remoteEntities) {
+            if (!m_entityRegistry.GetGameObject(eid)) noObj++;
+        }
+        if (noObj > 0) {
+            m_nativeHud.AddSystemMessage(std::to_string(noObj) + " remote entities without game objects — re-queuing...");
+            for (auto eid : remoteEntities) {
+                if (!m_entityRegistry.GetGameObject(eid)) {
+                    auto infoCopy = m_entityRegistry.GetInfoCopy(eid);
+                    if (infoCopy) {
+                        SpawnRequest req;
+                        req.netId = eid;
+                        req.owner = infoCopy->ownerPlayerId;
+                        req.type = infoCopy->type;
+                        req.position = infoCopy->lastPosition;
+                        m_spawnManager.QueueSpawn(req);
+                    }
+                }
+            }
+        }
+        return;
+    }
+    spdlog::info("Core::ForceSpawnRemotePlayers: {} pending spawns, forcing bypass", pending);
+    m_nativeHud.AddSystemMessage("Force-spawning " + std::to_string(pending) + " remote player(s)...");
+    m_forceSpawnBypass.store(true);
+    // HandleSpawnQueue will run next tick with the bypass active
 }
 
 bool Core::TeleportToNearestRemotePlayer() {
@@ -2503,10 +3247,10 @@ bool Core::TeleportToNearestRemotePlayer() {
     PlayerID bestOwner = 0;
 
     for (EntityID remoteId : remoteEntities) {
-        auto* info = m_entityRegistry.GetInfo(remoteId);
-        if (!info) continue;
+        auto infoCopy = m_entityRegistry.GetInfoCopy(remoteId);
+        if (!infoCopy) continue;
 
-        Vec3 rPos = info->lastPosition;
+        Vec3 rPos = infoCopy->lastPosition;
         if (rPos.x == 0.f && rPos.y == 0.f && rPos.z == 0.f) continue;
 
         float dist = localPos.DistanceTo(rPos);
@@ -2514,7 +3258,7 @@ bool Core::TeleportToNearestRemotePlayer() {
             bestDist = dist;
             bestPos = rPos;
             bestId = remoteId;
-            bestOwner = info->ownerPlayerId;
+            bestOwner = infoCopy->ownerPlayerId;
         }
     }
 

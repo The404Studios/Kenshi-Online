@@ -297,13 +297,20 @@ bool HookManager::InstallRaw(const std::string& name, void* target, void* detour
             return false;
         }
 
-        // Phase 6: Record
+        // Phase 6: Start with bypass=1 (passthrough) — hook is installed but disabled.
+        // Caller must explicitly Enable() to activate the hook. This prevents
+        // the hook from intercepting calls during loading/startup.
+        if (fix.bypassFlag) {
+            *fix.bypassFlag = 1;
+        }
+
+        // Phase 7: Record
         HookEntry entry;
         entry.name = name;
         entry.target = target;
         entry.detour = detour;
         entry.original = original ? *original : rawTrampoline;
-        entry.enabled = true;
+        entry.enabled = false;  // Starts disabled (bypass=1)
         entry.hasMovRaxRsp = true;
         entry.movRaxRspHook = fix;
         entry.customCaller = nullptr;  // deprecated
@@ -311,7 +318,7 @@ bool HookManager::InstallRaw(const std::string& name, void* target, void* detour
         m_hooks[name] = std::move(entry);
 
         spdlog::info("HookManager: Installed hook '{}' at 0x{:X} "
-                     "(MovRaxRsp fix — naked detour + trampoline wrapper)",
+                     "(MovRaxRsp fix — naked detour + trampoline wrapper, starts BYPASSED)",
                      name, reinterpret_cast<uintptr_t>(target));
         return true;
     }
@@ -439,6 +446,16 @@ bool HookManager::Enable(const std::string& name) {
         return false;
     }
 
+    // For MovRaxRsp hooks: use the software bypass flag instead of MH_EnableHook.
+    // MH_EnableHook re-patches function bytes + suspends all threads — unsafe after
+    // a Disable/Enable cycle for MovRaxRsp hooks (corrupts the detour chain).
+    if (it->second.hasMovRaxRsp && it->second.movRaxRspHook.bypassFlag) {
+        *it->second.movRaxRspHook.bypassFlag = 0;  // Clear bypass → hook active
+        it->second.enabled = true;
+        spdlog::info("HookManager::Enable('{}') — bypass flag cleared (hook active)", name);
+        return true;
+    }
+
     if (!it->second.isVtable) {
         MH_STATUS status = MH_EnableHook(it->second.target);
         if (status != MH_OK) {
@@ -467,6 +484,18 @@ bool HookManager::Disable(const std::string& name) {
     spdlog::info("HookManager::Disable('{}') — found, isVtable={}, enabled={}, target=0x{:X}",
                  name, it->second.isVtable, it->second.enabled,
                  reinterpret_cast<uintptr_t>(it->second.target));
+
+    // For MovRaxRsp hooks: use the software bypass flag instead of MH_DisableHook.
+    // MH_DisableHook restores original bytes + suspends all threads — after re-enable
+    // via MH_EnableHook, the detour chain can be corrupted for MovRaxRsp hooks.
+    // The bypass flag makes the naked detour JMP straight to the raw trampoline
+    // (pure passthrough, zero hook overhead, no thread suspension).
+    if (it->second.hasMovRaxRsp && it->second.movRaxRspHook.bypassFlag) {
+        *it->second.movRaxRspHook.bypassFlag = 1;  // Set bypass → passthrough
+        it->second.enabled = false;
+        spdlog::info("HookManager::Disable('{}') — bypass flag set (passthrough)", name);
+        return true;
+    }
 
     if (!it->second.isVtable) {
         MH_STATUS status = MH_DisableHook(it->second.target);

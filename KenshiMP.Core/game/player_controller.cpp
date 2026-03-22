@@ -28,7 +28,10 @@ void PlayerController::InitializeLocalPlayer(PlayerID localId, const std::string
         if (!accessor.IsValid()) continue;
 
         uintptr_t faction = accessor.GetFactionPtr();
-        if (faction != 0 && m_localFactionPtr == 0) {
+        if (faction > 0x10000 && faction < 0x00007FFFFFFFFFFF &&
+            (faction & 0x7) == 0 && m_localFactionPtr == 0) {
+            uintptr_t modBase = Memory::GetModuleBase();
+            if (faction >= modBase && faction < modBase + 0x4000000) continue;
             m_localFactionPtr = faction;
             spdlog::info("PlayerController: Captured local faction ptr 0x{:X} from entity {}",
                          faction, eid);
@@ -190,9 +193,7 @@ int PlayerController::GatherLocalEntityUpdates(float deltaTime) {
 void PlayerController::ApplyRemotePositionUpdate(EntityID entityId, const Vec3& pos,
                                                    const Quat& rot, uint8_t moveSpeed, uint8_t animState) {
     // Delegate to interpolation system
-    float now = static_cast<float>(
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
+    float now = SessionTime();
     Core::Get().GetInterpolation().AddSnapshot(entityId, now, pos, rot, moveSpeed, animState);
 }
 
@@ -206,11 +207,15 @@ void PlayerController::OnGameWorldLoaded() {
         if (!character.IsValid()) continue;
 
         uintptr_t faction = character.GetFactionPtr();
-        if (faction != 0 && m_localFactionPtr == 0) {
-            // Read faction ID to verify it's a player faction
+        // Must be in user-space heap range and 8-byte aligned
+        if (faction > 0x10000 && faction < 0x00007FFFFFFFFFFF &&
+            (faction & 0x7) == 0 && m_localFactionPtr == 0) {
+            // Reject if faction pointer is within the module image (not a heap object)
+            uintptr_t modBase = Memory::GetModuleBase();
+            if (faction >= modBase && faction < modBase + 0x4000000) continue;
+
             uint32_t factionId = 0;
-            Memory::Read(faction + 0x08, factionId);
-            // Faction ID 0 or very low IDs are typically player factions in Kenshi
+            Memory::Read(faction + game::GetOffsets().faction.id, factionId);
             m_localFactionPtr = faction;
             spdlog::info("PlayerController: Captured local faction 0x{:X} (id={}) from game world",
                          faction, factionId);

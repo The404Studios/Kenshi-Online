@@ -11,11 +11,13 @@
 #include "kmp/hook_manager.h"
 #include "kmp/protocol.h"
 #include "kmp/memory.h"
+#include "kmp/string_convert.h"
 #include <spdlog/spdlog.h>
 #include <Windows.h>
 #include <chrono>
 #include <cmath>
 #include <unordered_map>
+#include <mutex>
 
 // Declared in core.cpp — updated here so VEH crash handler shows which create# crashed
 namespace kmp { extern volatile int g_lastCharacterCreateNum; }
@@ -23,12 +25,6 @@ namespace kmp { extern volatile int g_lastCharacterCreateNum; }
 namespace kmp::entity_hooks {
 
 // ── Function Types ──
-// CharacterSpawn prologue: mov rax,rsp + 7 pushes + lea rbp,[rax-0x158] + sub rsp,0x220
-// Confirmed 2-param: RCX=factory(this), RDX=GameData*
-// RBP is derived from RAX, so ALL [rbp+XX] locals depend on RAX being correct.
-// HookManager builds a custom caller stub that sets RAX = real RSP, then jumps
-// to original+3 (past the original's `mov rax, rsp`). This bypasses MinHook's
-// trampoline entirely for the "call original" path.
 using CharacterCreateFn = void*(__fastcall*)(void* factory, void* templateData);
 using CharacterDestroyFn = void(__fastcall*)(void* character);
 
@@ -37,131 +33,79 @@ static uintptr_t s_createTargetAddr = 0;
 static uintptr_t s_destroyTargetAddr = 0;
 
 // s_origCreate: Points to the TRAMPOLINE WRAPPER built by MovRaxRsp fix.
-// The wrapper restores RAX to the game caller's RSP (captured by the naked
-// detour at hook entry), then jumps to trampoline+3 (past `mov rax, rsp`).
-// This keeps RAX correct so `lea rbp, [rax-0x158]` computes the right frame
-// pointer. The stack swap ensures push/pop slots are at correct offsets.
 static CharacterCreateFn  s_origCreate  = nullptr;
 static CharacterDestroyFn s_origDestroy = nullptr;
 
 // s_rawTrampoline: MinHook's raw trampoline (starts with `mov rax, rsp`).
 // Used for REENTRANT calls to avoid corrupting the MovRaxRsp wrapper's global
-// data slots (captured_rsp, stub_rsp, saved_game_ret). When s_hookDepth > 0,
-// we call through the raw trampoline which does NOT manipulate any global state.
+// data slots (captured_rsp, stub_rsp, saved_game_ret).
 static CharacterCreateFn  s_rawCreateTrampoline = nullptr;
 
-// Whether CharacterDestroy hook is actually installed (may be skipped if wrong function found)
+// s_directCallStub: Custom caller stub for CallFactoryDirect.
+// Does `mov rax, rsp; jmp rawTrampoline+3` — gives the original function the
+// correct RAX (caller's RSP after CALL pushed return address) then enters the
+// original body past its own `mov rax, rsp`. Without this, calling the raw
+// trampoline from C++ gives wrong RAX → wrong RBP → all [rbp+XX] accesses
+// read/write wrong memory → sign-extended faction pointers → crash.
+static CharacterCreateFn  s_directCallStub = nullptr;
+static void*              s_directCallStubAlloc = nullptr;
+
+// Whether CharacterDestroy hook is actually installed
 static bool s_destroyHookInstalled = false;
 
 // ── Diagnostic Counters ──
 static std::atomic<int> s_totalCreates{0};
 static std::atomic<int> s_totalDestroys{0};
 
-// ── Loading Burst Detection ──
-static std::atomic<int>  s_burstCreateCount{0};
-static std::atomic<bool> s_inBurst{false};
-static auto s_lastCreateTime = std::chrono::steady_clock::now();
-static constexpr int    BURST_THRESHOLD = 5;
-static constexpr int    BURST_WINDOW_MS = 500;
-static constexpr int    MIN_CREATES_BEFORE_READY = 30;
-
-// ── Loading Completion Gate ──
-// Unlike IsInLoadingBurst() which is reactive (needs 5+ creates to trigger),
-// this flag is only set AFTER a burst has ended. Spawns are blocked until then.
-// This prevents spawns at CharacterCreate #1-#10 before burst detection kicks in.
-static std::atomic<bool> s_loadingComplete{false};
-static auto s_burstEndTime = std::chrono::steady_clock::now();
-static constexpr int BURST_SETTLE_SECONDS = 3;
-
-static bool IsInLoadingBurst() {
-    return s_inBurst.load();
-}
-
-static void TrackCreationRate() {
-    // Once game is loaded, burst detection is irrelevant — NPCs spawning in new zones
-    // are normal gameplay, not a loading burst. Don't re-trigger the loading guard.
-    if (Core::Get().IsGameLoaded()) return;
-
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - s_lastCreateTime);
-
-    if (elapsed.count() < BURST_WINDOW_MS) {
-        int count = s_burstCreateCount.fetch_add(1) + 1;
-        if (count >= BURST_THRESHOLD && !s_inBurst.load()) {
-            s_inBurst.store(true);
-            s_loadingComplete.store(false); // Block spawns until burst finishes
-            // Signal Core that game is actually loading (enables Overlay polling)
-            Core::Get().SetLoading(true);
-            // Notify LoadingOrchestrator + PipelineOrchestrator
-            Core::Get().GetLoadingOrch().OnBurstDetected(count);
-            Core::Get().GetPipelineOrch().RecordEvent(
-                PipelineEventType::BurstDetected, 1, 0, count,
-                "Burst: " + std::to_string(count) + " creates in " + std::to_string(elapsed.count()) + "ms");
-            spdlog::info("entity_hooks: BURST DETECTED ({} creates in {}ms) — loading guard ON, spawns BLOCKED",
-                         count, elapsed.count());
-        }
-    } else {
-        s_burstCreateCount.store(1);
-        s_lastCreateTime = now;
-
-        if (s_inBurst.load()) {
-            s_inBurst.store(false);
-            s_burstEndTime = std::chrono::steady_clock::now();
-
-            // Loading complete once a burst has ended with enough total creates
-            if (!s_loadingComplete.load() && s_totalCreates.load() >= MIN_CREATES_BEFORE_READY) {
-                s_loadingComplete.store(true);
-                spdlog::info("entity_hooks: LOADING COMPLETE — spawns now allowed after {}s settle (total creates={})",
-                             BURST_SETTLE_SECONDS, s_totalCreates.load());
-            }
-
-            // Notify LoadingOrchestrator + PipelineOrchestrator
-            Core::Get().GetLoadingOrch().OnBurstEnded(s_totalCreates.load());
-            Core::Get().GetPipelineOrch().RecordEvent(
-                PipelineEventType::BurstEnded, 0, 0, s_totalCreates.load(),
-                "Burst ended, total=" + std::to_string(s_totalCreates.load()));
-
-            spdlog::info("entity_hooks: BURST ENDED — total creates={}, destroys={}, loadingComplete={}",
-                         s_totalCreates.load(), s_totalDestroys.load(), s_loadingComplete.load());
-        }
-    }
-}
-
 // ── Position offset in request struct ──
-// Detected by scanning the pre-call struct for float values matching the
-// character's actual spawn position. Once found, we can write desired
-// positions into the struct before replay to spawn at the right location.
-static int s_positionOffsetInStruct = -1;  // -1 = not yet detected
+static int s_positionOffsetInStruct = -1;
 static int s_positionDetectAttempts = 0;
 
+// ── GameData pointer offset in request struct ──
+static int s_gameDataOffsetInStruct = -1;
+static int s_gameDataDetectAttempts = 0;
+
 // ── Direct spawn bypass ──
-// When SpawnManager::SpawnCharacterDirect() calls the factory from GameFrameUpdate,
-// the call triggers Hook_CharacterCreate (because the function is hooked).
-// This flag tells the hook to skip all spawn/registration logic and just pass through.
 static std::atomic<bool> s_directSpawnBypass{false};
 
+// ── Higher-level factory functions (resolved from known RVAs) ──
+// RootObjectFactory::create (0x583400) — dispatches to process() but builds request struct internally.
+// Takes (factory, GameData*), not a raw request struct. This bypasses the stale-pointer problem.
+static CharacterCreateFn s_factoryCreate = nullptr;
+// RootObjectFactory::createRandomChar (0x5836E0) — creates a random NPC character.
+static CharacterCreateFn s_factoryCreateRandomChar = nullptr;
+
 // ── In-place replay tracking ──
-// Tracks successful in-place replays so game_tick_hooks can avoid competing.
 static std::atomic<int> s_inPlaceSpawnCount{0};
 static auto s_lastInPlaceSpawnTime = std::chrono::steady_clock::now();
 
+// ── Connected-mode counters (file scope for reset from ResumeForNetwork) ──
+// These are accessed from game thread (Hook_CharacterCreate) and network thread
+// (ResumeForNetwork), so use atomics for the counters.
+static std::atomic<int> s_connectedCreateNum{0};
+static auto s_connectedBurstStart = std::chrono::steady_clock::now();
+static std::atomic<int> s_connectedBurstCount{0};
+static std::atomic<int> s_earlyProbeCount{0};
+
 // ── Per-player spawn cap ──
-// Prevents any single remote player from overwhelming the engine with spawns.
-// Without this, a host with 40+ NPCs registered would crash the joiner.
+// Accessed from game thread (Hook_CharacterCreate) and network thread (ResumeForNetwork).
 static constexpr int MAX_SPAWNS_PER_PLAYER = 4;
+static std::mutex s_spawnsPerPlayerMutex;
 static std::unordered_map<PlayerID, int> s_spawnsPerPlayer;
 
-// ── Loading-phase character cache ──
-// Characters seen during game loading (before connect). Used as a fallback
-// by SendExistingEntitiesToServer when CharacterIterator can't find characters
-// (PlayerBase/GameWorld not resolved on Steam).
-static std::vector<CachedCharacter> s_loadingCharacters;
-static uintptr_t s_capturedFaction = 0;
-static constexpr int MAX_CACHED_CHARACTERS = 200;
+// ── Request struct handling ──
+static constexpr size_t REQUEST_STRUCT_SIZE = 1024;
+static uint8_t s_preCallStruct[REQUEST_STRUCT_SIZE] = {};
+static bool s_havePreCallData = false;
+static void* s_savedFactory = nullptr;
+
+// ── Loading capture gate ──
+// After capturing pre-call data + factory + faction from the first CharacterCreate,
+// the hook disables itself so all remaining loading creates (100+) go directly
+// to the original function — zero MovRaxRsp overhead, zero corruption risk.
+static bool s_loadingCapturesDone = false;
 
 // ── SEH-safe memcpy for request struct capture ──
-// templateData may point to a stack-allocated struct near a page boundary.
-// Reading 1024 bytes past the struct's actual size could fault on uncommitted memory.
 static bool SEH_MemcpySafe(void* dst, const void* src, size_t size) {
     __try {
         memcpy(dst, src, size);
@@ -171,11 +115,40 @@ static bool SEH_MemcpySafe(void* dst, const void* src, size_t size) {
     }
 }
 
-// ── SEH-safe character memory reads ──
-// CharacterAccessor reads follow pointers in game memory. During loading bursts,
-// characters may be partially initialized or freed. These wrappers prevent AVs
-// from propagating up and crashing the game (which triggers exit(1) → atexit → crash).
+// ── Player faction pointer (captured during savegame loading) ──
+// The FIRST character created during savegame load is the player's squad leader.
+// Kenshi loads player characters before NPCs/buildings, so char #1's faction
+// is reliably the player faction. Locked after first capture — never overwritten.
+static std::atomic<uintptr_t> s_earlyPlayerFaction{0};
+static std::atomic<bool>      s_earlyFactionLocked{false};
 
+// SEH-protected faction read from a character pointer.
+// Returns the faction pointer at char+0x10, or 0 on failure.
+static uintptr_t SEH_ReadFaction(void* character) {
+    __try {
+        uintptr_t charPtr = reinterpret_cast<uintptr_t>(character);
+        if (charPtr < 0x10000 || charPtr > 0x00007FFFFFFFFFFF) return 0;
+        uintptr_t factionPtr = 0;
+        Memory::Read(charPtr + 0x10, factionPtr);
+        if (factionPtr > 0x10000 && factionPtr < 0x00007FFFFFFFFFFF && (factionPtr & 0x7) == 0) {
+            return factionPtr;
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {}
+    return 0;
+}
+
+// ── Fallback faction pointer ──
+// Updated whenever we see a character with a valid faction during ANY creation.
+// Used as last-resort when local faction hasn't been discovered yet.
+static std::atomic<uintptr_t> s_fallbackFaction{0};
+
+static void UpdateFallbackFaction(uintptr_t factionPtr) {
+    if (factionPtr > 0x10000 && factionPtr < 0x00007FFFFFFFFFFF && (factionPtr & 0x7) == 0) {
+        s_fallbackFaction.store(factionPtr, std::memory_order_relaxed);
+    }
+}
+
+// ── SEH-safe character memory reads ──
 struct SEH_CharData {
     Vec3 position;
     Quat rotation;
@@ -191,21 +164,19 @@ static SEH_CharData SEH_ReadCharacterData(void* character) {
         uintptr_t charPtr = reinterpret_cast<uintptr_t>(character);
         if (charPtr < 0x10000 || charPtr > 0x00007FFFFFFFFFFF) return result;
 
-        // Position at +0x48
         Memory::Read(charPtr + 0x48, result.position.x);
         Memory::Read(charPtr + 0x4C, result.position.y);
         Memory::Read(charPtr + 0x50, result.position.z);
 
-        // Rotation at +0x58
         Memory::Read(charPtr + 0x58, result.rotation.w);
         Memory::Read(charPtr + 0x5C, result.rotation.x);
         Memory::Read(charPtr + 0x60, result.rotation.y);
         Memory::Read(charPtr + 0x64, result.rotation.z);
 
-        // Faction at +0x10 (pointer)
         Memory::Read(charPtr + 0x10, result.factionPtr);
-        if (result.factionPtr > 0x10000 && result.factionPtr < 0x00007FFFFFFFFFFF) {
-            Memory::Read(result.factionPtr + 0x08, result.factionId);
+        if (result.factionPtr > 0x10000 && result.factionPtr < 0x00007FFFFFFFFFFF && (result.factionPtr & 0x7) == 0) {
+            Memory::Read(result.factionPtr + game::GetOffsets().faction.id, result.factionId);
+            UpdateFallbackFaction(result.factionPtr);
         }
 
         result.valid = true;
@@ -231,71 +202,60 @@ static bool SEH_FeedSpawnManager(void* factory, void* templateData, void* charac
     }
 }
 
-// ── SEH-protected post-spawn setup ──
-// After in-place replay creates a character, we need to:
-//   1. Link game object to EntityRegistry (SAFE — our own code, done FIRST)
-//   2. Teleport it to the remote player's position (WritePosition follows pointer chains)
-//   3. Feed SpawnManager for template capture (follows game pointers)
-//   4. Set name + faction via PlayerController (WriteName/WriteFaction follow pointers)
-//
-// Steps 2-4 follow game memory pointers that may be invalid for freshly-spawned
-// characters (partially initialized, physics not ready, etc.).
-// An AV here propagates up → Kenshi exception handler → exit(1) → atexit crash.
-//
-// CRITICAL ORDERING: SetGameObject MUST happen BEFORE the SEH-protected block.
-// If WritePosition AVs, we still need the game object linked so that
-// ApplyRemotePositions() can write interpolated positions on subsequent frames.
-// Without this, a single AV permanently freezes the character (gameObject=nullptr).
-//
-// This function MUST NOT have C++ objects with non-trivial destructors on the stack
-// (MSVC restriction: __try can't coexist with unwinding). CharacterAccessor and Vec3
-// are both trivially destructible so they're safe.
-static bool SEH_PostSpawnSetup(void* newChar, EntityID netId, PlayerID owner,
-                                Vec3 spawnPos, void* factory, void* templateData) {
-    // ── SAFE PHASE (no SEH needed) ──
-    // Link game object to EntityRegistry FIRST. This is our own code (just sets a
-    // pointer in a map) and cannot AV. Even if the dangerous phase below crashes,
-    // the entity is linked and ApplyRemotePositions() will move it next frame.
-    Core::Get().GetEntityRegistry().SetGameObject(netId, newChar);
+// ── SEH-protected NPC hijack ──
+// Instead of creating a new character, TAKE OVER an existing NPC.
+// The NPC already has a valid faction, model, animations — zero crash risk.
+// We just: register it, teleport it, rename it, disable AI.
+static bool SEH_HijackNPC(void* npcChar, EntityID netId, PlayerID owner, Vec3 spawnPos) {
+    uintptr_t charAddr = reinterpret_cast<uintptr_t>(npcChar);
+    if (charAddr < 0x10000 || charAddr >= 0x00007FFFFFFFFFFF || (charAddr & 0x7) != 0) {
+        spdlog::warn("SEH_HijackNPC: Invalid char 0x{:X} for entity {} — skipped", charAddr, netId);
+        return false;
+    }
+
+    __try {
+        // Vtable check: first qword must point into module (.rdata)
+        uintptr_t vtable = 0;
+        if (!Memory::Read(charAddr, vtable)) return false;
+        uintptr_t modBase = Memory::GetModuleBase();
+        if (vtable < modBase || vtable >= modBase + 0x4000000) {
+            spdlog::warn("SEH_HijackNPC: Bad vtable 0x{:X} for entity {} — not a game object", vtable, netId);
+            return false;
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        spdlog::warn("SEH_HijackNPC: Vtable read crashed for entity {}", netId);
+        return false;
+    }
+
+    // Link to entity registry
+    Core::Get().GetEntityRegistry().SetGameObject(netId, npcChar);
     Core::Get().GetEntityRegistry().UpdatePosition(netId, spawnPos);
 
-    // ── DANGEROUS PHASE (SEH-protected) ──
-    // These all follow chains of game memory pointers that may be invalid.
     __try {
-        // 1. Teleport to desired position
-        game::CharacterAccessor accessor(newChar);
+        game::CharacterAccessor accessor(npcChar);
+
+        // Teleport to remote player's position
         if (spawnPos.x != 0.f || spawnPos.y != 0.f || spawnPos.z != 0.f) {
             accessor.WritePosition(spawnPos);
         }
 
-        // 2. Feed SpawnManager for template capture
-        Core::Get().GetSpawnManager().OnGameCharacterCreated(factory, templateData, newChar);
+        // Rename to remote player's name + disable AI
+        Core::Get().GetPlayerController().OnRemoteCharacterSpawned(netId, npcChar, owner);
+        ai_hooks::MarkRemoteControlled(npcChar);
 
-        // 3. Set up character name + faction
-        Core::Get().GetPlayerController().OnRemoteCharacterSpawned(netId, newChar, owner);
+        // DO NOT touch the faction — the NPC's original faction is already valid.
+        // This is the whole point of hijacking: zero faction issues.
 
-        // 4. Mark as remote-controlled for AI decision override
-        ai_hooks::MarkRemoteControlled(newChar);
+        game::ScheduleDeferredAnimClassProbe(charAddr);
 
-        // 5. Inject into local player's squad (engine exploit)
-        // This makes the character selectable, orderable, visible in squad panel.
-        squad_hooks::AddCharacterToLocalSquad(newChar);
-
-        // 6. Set isPlayerControlled flag (engine exploit — Phase 4)
-        // Makes the engine treat this character as player-owned, enabling
-        // selection via click, order giving, and full UI interaction.
-        game::WritePlayerControlled(reinterpret_cast<uintptr_t>(newChar), true);
-
-        // 7. Schedule deferred AnimClass probe (Phase 3)
-        game::ScheduleDeferredAnimClassProbe(reinterpret_cast<uintptr_t>(newChar));
-
+        spdlog::info("SEH_HijackNPC: HIJACKED NPC 0x{:X} as entity {} for player {} at ({:.1f},{:.1f},{:.1f})",
+                     charAddr, netId, owner, spawnPos.x, spawnPos.y, spawnPos.z);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        static int s_postSpawnCrash = 0;
-        if (++s_postSpawnCrash <= 10) {
+        static int s_hijackCrash = 0;
+        if (++s_hijackCrash <= 10) {
             char buf[256];
-            sprintf_s(buf, "KMP: SEH_PostSpawnSetup CRASHED for entity %u "
-                      "(AV caught — gameObject linked, will receive position updates)\n", netId);
+            sprintf_s(buf, "KMP: SEH_HijackNPC CRASHED for entity %u (AV caught)\n", netId);
             OutputDebugStringA(buf);
         }
         return false;
@@ -306,151 +266,199 @@ void SetDirectSpawnBypass(bool bypass) {
     s_directSpawnBypass.store(bypass, std::memory_order_release);
 }
 
-// Hook suspension is NO LONGER NEEDED. HookManager builds a custom caller stub
-// for mov-rax-rsp functions that bypasses MinHook's trampoline entirely.
-// The hook stays active for the lifetime of the session, enabling real-time
-// entity registration and in-place spawn replay for multiplayer.
+// Direct call to original CharacterCreate.
+// No __try wrapper: the raw trampoline starts with mov rax,rsp and the original
+// function derives its frame from RAX. Extra stack frames shift RSP and corrupt
+// the frame. If it crashes, VEH logs it and the game handler deals with it.
+#pragma optimize("", off)
+static void* CallOriginalCreate(void* factory, void* templateData) {
+    // CRITICAL: Prefer the MovRaxRsp wrapper (s_origCreate) over the raw trampoline.
+    // When called from within Hook_CharacterCreate (which was invoked via the naked
+    // detour), the wrapper correctly restores the captured game RSP before calling
+    // the original function. The raw trampoline's `mov rax, rsp` would get the WRONG
+    // RSP (our C++ stack instead of the game caller's stack), corrupting the frame.
+    // This fixes CallFactoryCreate: create() → process() → hook → wrapper → correct RSP.
+    CharacterCreateFn fn = s_origCreate ? s_origCreate : s_rawCreateTrampoline;
+    return fn(factory, templateData);
+}
+#pragma optimize("", on)
 
-// ── SEH wrapper for calling the original CharacterCreate ──
-// s_origCreate now points to the MovRaxRsp trampoline wrapper, which:
-//   1. Reads the captured RSP (saved by naked detour at hook entry)
-//   2. Swaps to the game caller's stack
-//   3. Sets RAX = captured RSP (what the function expects)
-//   4. Pushes a return address and JMPs to trampoline+3
-//   5. Original function executes with correct RAX/RBP/RSP
-//   6. Returns to wrapper, which restores our stack and returns here
-static void* SEH_CallOriginalCreate(CharacterCreateFn trampoline, void* factory, void* templateData) {
+// ── SEH wrapper for in-place spawn replay via trampoline ──
+// CRITICAL: Must restore reqStruct even on crash to prevent stack corruption
+static uint8_t s_replayBackup[REQUEST_STRUCT_SIZE];
+static void* SEH_ReplayFactory(CharacterCreateFn trampoline, void* factory, void* reqStruct,
+                                const uint8_t* preCallData, size_t structSize) {
+    // Save original BEFORE __try (so we can always restore)
+    memcpy(s_replayBackup, reqStruct, structSize);
+    memcpy(reqStruct, preCallData, structSize);
     __try {
-        return trampoline(factory, templateData);
+        void* result = trampoline(factory, reqStruct);
+        // Restore original on success
+        memcpy(reqStruct, s_replayBackup, structSize);
+        return result;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        static int s_trampolineCrash = 0;
-        if (++s_trampolineCrash <= 5) {
-            OutputDebugStringA("KMP: CharacterCreate trampoline CRASHED (SEH caught)\n");
+        // ALWAYS restore original on crash — prevents stack corruption
+        memcpy(reqStruct, s_replayBackup, structSize);
+        static int s_replayCrash = 0;
+        if (++s_replayCrash <= 5) {
+            OutputDebugStringA("KMP: SEH_ReplayFactory CRASHED — reqStruct restored\n");
         }
         return nullptr;
     }
 }
 
-// ── Request struct handling ──
-// The factory's second parameter is a STACK-ALLOCATED REQUEST STRUCT, not a GameData*.
-// The struct contains internal pointers relative to the caller's stack frame.
-// To spawn remote characters, we RESTORE the pre-call struct to the SAME stack address
-// and replay the factory call. This keeps all internal pointers valid.
-static constexpr size_t REQUEST_STRUCT_SIZE = 1024; // Capture enough for self-ref at +0x230
-static uint8_t s_preCallStruct[REQUEST_STRUCT_SIZE] = {};
-static bool s_havePreCallData = false;
-static void* s_savedFactory = nullptr;
-
-// ── SEH helpers for lightweight loading path (no C++ objects allowed in __try) ──
-
-// Captures pre-call struct + feeds SpawnManager. Returns true if successful.
-static bool SEH_CaptureFactoryData(void* factory, void* templateData, void* character) {
+// ── SEH-safe loading data capture (pure C, no C++ objects) ──
+static void SEH_CaptureTemplateData(void* templateData) {
     __try {
-        memcpy(s_preCallStruct, templateData, REQUEST_STRUCT_SIZE);
-        s_havePreCallData = true;
-        Core::Get().GetSpawnManager().SetPreCallData(
-            s_preCallStruct, REQUEST_STRUCT_SIZE,
-            reinterpret_cast<uintptr_t>(templateData));
-        Core::Get().GetSpawnManager().SetSavedRequestStruct(
-            s_preCallStruct, REQUEST_STRUCT_SIZE);
-        Core::Get().GetSpawnManager().OnGameCharacterCreated(
-            factory, templateData, character);
-        return true;
+        if (templateData && !s_havePreCallData) {
+            SEH_MemcpySafe(s_preCallStruct, templateData, REQUEST_STRUCT_SIZE);
+            s_havePreCallData = true;
+            Core::Get().GetSpawnManager().SetPreCallData(
+                s_preCallStruct, REQUEST_STRUCT_SIZE,
+                reinterpret_cast<uintptr_t>(templateData));
+            Core::Get().GetSpawnManager().SetSavedRequestStruct(
+                s_preCallStruct, REQUEST_STRUCT_SIZE);
+        }
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
+        // Silent failure — factory capture is best-effort
     }
 }
 
-// Reads faction pointer from a character. Returns 0 on failure.
-static uintptr_t SEH_ReadFactionPtr(void* character) {
+// ── SEH-safe entity data reading (pure C, no C++ objects) ──
+struct SEH_EntityInfo {
+    SEH_CharData charData;
+    EntityID netId;
+    PlayerID owner;
+    uint32_t templateId;
+    char templateNameBuf[256];
+    int templateNameLen;
+    bool registered;
+};
+
+static SEH_EntityInfo SEH_ReadAndRegisterEntity(void* character, void* templateData) {
+    SEH_EntityInfo info{};
+    info.registered = false;
     __try {
-        uintptr_t charPtr = reinterpret_cast<uintptr_t>(character);
-        uintptr_t fPtr = 0;
-        Memory::Read(charPtr + 0x10, fPtr);
-        if (fPtr > 0x10000 && fPtr < 0x00007FFFFFFFFFFF)
-            return fPtr;
-        return 0;
+        auto& coreRef = Core::Get();
+        info.charData = SEH_ReadCharacterData(character);
+        if (!info.charData.valid) return info;
+        if (info.charData.position.x == 0.f && info.charData.position.y == 0.f && info.charData.position.z == 0.f) return info;
+
+        // ── Faction matching: only register entities that belong to the LOCAL player ──
+        // Priority chain: PlayerController → early loading capture → fallback
+        uintptr_t playerFaction = coreRef.GetPlayerController().GetLocalFactionPtr();
+
+        if (playerFaction == 0) {
+            // Use faction captured during savegame loading (first character = player's squad leader)
+            playerFaction = s_earlyPlayerFaction.load(std::memory_order_relaxed);
+        }
+        if (playerFaction == 0) {
+            // Last resort: any valid faction seen from recent creates
+            playerFaction = s_fallbackFaction.load(std::memory_order_relaxed);
+        }
+
+        // If we found a faction from loading/fallback but PlayerController doesn't have it, set it
+        if (playerFaction != 0 && coreRef.GetPlayerController().GetLocalFactionPtr() == 0) {
+            const_cast<PlayerController&>(coreRef.GetPlayerController())
+                .SetLocalFactionPtr(playerFaction);
+            spdlog::info("SEH_ReadAndRegisterEntity: Set local faction 0x{:X} from early/fallback capture", playerFaction);
+        }
+
+        // Must have a player faction AND entity must match it — prevents registering random NPCs/buildings
+        if (playerFaction == 0 || info.charData.factionPtr != playerFaction) return info;
+
+        info.owner = coreRef.GetLocalPlayerId();
+        info.netId = coreRef.GetEntityRegistry().Register(
+            character, EntityType::NPC, info.owner);
+        coreRef.GetEntityRegistry().UpdatePosition(info.netId, info.charData.position);
+
+        info.templateId = 0;
+        info.templateNameLen = 0;
+        memset(info.templateNameBuf, 0, sizeof(info.templateNameBuf));
+        if (templateData) {
+            Memory::Read(reinterpret_cast<uintptr_t>(templateData) + 0x08, info.templateId);
+            // Read Kenshi string manually (SSO-aware) to avoid std::string in SEH
+            uintptr_t strAddr = reinterpret_cast<uintptr_t>(templateData) + 0x28;
+            uint64_t strSize = 0, strCap = 0;
+            Memory::Read(strAddr + 0x10, strSize);
+            Memory::Read(strAddr + 0x18, strCap);
+            if (strSize > 0 && strSize < 255) {
+                uintptr_t dataPtr = strAddr; // SSO: data inline
+                if (strCap > 15) Memory::Read(strAddr, dataPtr); // heap
+                SEH_MemcpySafe(info.templateNameBuf, reinterpret_cast<void*>(dataPtr), (size_t)strSize);
+                // Convert from system ANSI codepage to UTF-8 (handles CJK on Chinese/Japanese/Korean Windows)
+                info.templateNameLen = kmp::AnsiToUtf8InPlace(
+                    info.templateNameBuf, (int)strSize, (int)sizeof(info.templateNameBuf));
+            }
+        }
+
+        info.registered = true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return 0;
+        static int s_readCrash = 0;
+        if (++s_readCrash <= 5) {
+            OutputDebugStringA("KMP: SEH_ReadAndRegisterEntity CRASHED (SEH caught)\n");
+        }
     }
+    return info;
 }
 
-// Reads position from a character into out_x/y/z. Returns true on success.
-static bool SEH_ReadCharPos(void* character, float& out_x, float& out_y, float& out_z) {
-    __try {
-        uintptr_t charPtr = reinterpret_cast<uintptr_t>(character);
-        Memory::Read(charPtr + 0x48, out_x);
-        Memory::Read(charPtr + 0x4C, out_y);
-        Memory::Read(charPtr + 0x50, out_z);
-        return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        out_x = out_y = out_z = 0;
-        return false;
+// ── Connected post-processing: reads entity data (SEH), then builds & sends packet ──
+// No __try here — PacketWriter has a destructor (C2712). The dangerous part
+// (game memory reads) is in SEH_ReadAndRegisterEntity above.
+static void SEH_ConnectedPostProcess(void* character, void* templateData, int connectedCreateNum) {
+    SEH_EntityInfo info = SEH_ReadAndRegisterEntity(character, templateData);
+    if (!info.registered) return;
+
+    if (info.charData.factionPtr != 0 && connectedCreateNum <= 3) {
+        char dbgBuf[128];
+        sprintf_s(dbgBuf, "KMP: FACTION BOOTSTRAP — faction 0x%llX\n",
+                  (unsigned long long)info.charData.factionPtr);
+        OutputDebugStringA(dbgBuf);
     }
+
+    PacketWriter writer;
+    writer.WriteHeader(MessageType::C2S_EntitySpawnReq);
+    writer.WriteU32(info.netId);
+    writer.WriteU8(static_cast<uint8_t>(EntityType::NPC));
+    writer.WriteU32(info.owner);
+    writer.WriteU32(info.templateId);
+    writer.WriteF32(info.charData.position.x);
+    writer.WriteF32(info.charData.position.y);
+    writer.WriteF32(info.charData.position.z);
+    writer.WriteU32(info.charData.rotation.Compress());
+    writer.WriteU32(info.charData.factionId);
+    writer.WriteU16(static_cast<uint16_t>(info.templateNameLen));
+    if (info.templateNameLen > 0)
+        writer.WriteRaw(info.templateNameBuf, info.templateNameLen);
+
+    Core::Get().GetClient().SendReliable(writer.Data(), writer.Size());
 }
 
-// Reads faction ID from a faction pointer. Returns 0 on failure.
-static uint32_t SEH_ReadFactionId(uintptr_t factionPtr) {
-    __try {
-        uint32_t fId = 0;
-        Memory::Read(factionPtr + 0x08, fId);
-        return fId;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return 0;
-    }
-}
-
-// Triggers OnGameLoaded(). SEH-protected because it does a LOT of work.
-static bool SEH_TriggerGameLoaded() {
-    __try {
-        Core::Get().OnGameLoaded();
-        return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        OutputDebugStringA("KMP: OnGameLoaded() crashed from lightweight path\n");
-        return false;
-    }
-}
-
-// ── Hooks ──
-
-// SEH wrapper for in-place spawn replay via trampoline (no C++ objects allowed).
-// Uses a LOCAL buffer for post-call state to avoid corruption when multiple
-// replays happen in the same Hook_CharacterCreate call (MAX_REPLAYS_PER_CALL=1).
-static void* SEH_ReplayFactory(CharacterCreateFn trampoline, void* factory, void* reqStruct,
-                                const uint8_t* preCallData, size_t structSize) {
-    __try {
-        // 1. Save post-call state to LOCAL buffer (not global — avoids multi-replay corruption)
-        uint8_t postCallBuffer[REQUEST_STRUCT_SIZE];
-        memcpy(postCallBuffer, reqStruct, structSize);
-
-        // 2. Restore pre-call data to the ORIGINAL stack address
-        memcpy(reqStruct, preCallData, structSize);
-
-        // 3. Call factory via trampoline
-        void* result = trampoline(factory, reqStruct);
-
-        // 4. Restore post-call state so the game caller sees expected data
-        memcpy(reqStruct, postCallBuffer, structSize);
-
-        return result;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return nullptr;
-    }
-}
+// ═══════════════════════════════════════════════════════════════════════════
+//  Hook_CharacterCreate
+//
+//  Two modes:
+//  (A) LOADING MODE (not connected): First 2 calls capture factory + template
+//      data for SpawnManager. After call 2, sets the software bypass flag so
+//      the remaining 100+ loading creates go directly to the raw trampoline
+//      (zero overhead, no MovRaxRsp stack swap).
+//  (B) CONNECTED MODE: Full hook body — entity registration, spawn replay,
+//      faction bootstrap, packet sending.
+// ═══════════════════════════════════════════════════════════════════════════
 
 static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) {
-    // ── Re-entrancy guard (no C++ destructors — manual increment/decrement) ──
+    // ── Re-entrancy guard ──
     static thread_local int s_hookDepth = 0;
     if (s_hookDepth > 0) {
         if (s_rawCreateTrampoline)
             return s_rawCreateTrampoline(factory, templateData);
-        return SEH_CallOriginalCreate(s_origCreate, factory, templateData);
+        return CallOriginalCreate(factory, templateData);
     }
     s_hookDepth++;
 
     // Direct spawn bypass (SpawnManager calling factory — skip all logic)
     if (s_directSpawnBypass.load(std::memory_order_acquire)) {
-        void* r = SEH_CallOriginalCreate(s_origCreate, factory, templateData);
+        void* r = CallOriginalCreate(factory, templateData);
         s_hookDepth--;
         return r;
     }
@@ -458,89 +466,83 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
     int createNum = s_totalCreates.fetch_add(1) + 1;
     g_lastCharacterCreateNum = createNum;
 
-    // One-time factory pointer save (no heap allocation)
+    // One-time factory pointer save
     if (!s_savedFactory) s_savedFactory = factory;
-
-    // ═══════════════════════════════════════════════════════════════════════
-    //  LIGHTWEIGHT LOADING PATH — when NOT connected to a server
-    //  The MovRaxRsp naked detour + heavy hook body (spdlog, vector, memcpy
-    //  on every call) causes cumulative heap corruption when firing 130+ times
-    //  during game loading. This path does ABSOLUTE MINIMUM work:
-    //    - Calls 1-2: capture pre-call struct + feed SpawnManager (one-time)
-    //    - Calls 3+: pure passthrough (just call original, zero extra work)
-    //    - Call MIN_CREATES_BEFORE_READY: trigger OnGameLoaded (once)
-    //  NO spdlog, NO vector push_back, NO 1KB stack alloc on every call.
-    // ═══════════════════════════════════════════════════════════════════════
-    if (!Core::Get().IsConnected()) {
-        void* character = nullptr;
-
-        // First 2 calls only: capture factory data for SpawnManager
-        if (createNum <= 2 && templateData && !s_havePreCallData) {
-            character = SEH_CallOriginalCreate(s_origCreate, factory, templateData);
-            SEH_CaptureFactoryData(factory, templateData, character);
-        } else {
-            // Pure passthrough — zero extra work
-            character = SEH_CallOriginalCreate(s_origCreate, factory, templateData);
-        }
-
-        // Cache ALL loading characters (cheap: just pointer + faction + position)
-        // SendExistingEntitiesToServer needs this as fallback when CharacterIterator
-        // fails on Steam (PlayerBase/GameWorld not resolved).
-        // Only operations: 3 Memory::Read + 1 vector push_back — no spdlog, no memcpy.
-        if (character && s_loadingCharacters.size() < MAX_CACHED_CHARACTERS) {
-            uintptr_t fPtr = SEH_ReadFactionPtr(character);
-            // Validate faction pointer is in user-mode range (below 0x7FFFFFFFFFFF)
-            if (fPtr != 0 && fPtr > 0x10000 && fPtr < 0x00007FFFFFFFFFFF) {
-                if (s_capturedFaction == 0) {
-                    s_capturedFaction = fPtr;
-                }
-                float cx = 0, cy = 0, cz = 0;
-                SEH_ReadCharPos(character, cx, cy, cz);
-                uint32_t fId = SEH_ReadFactionId(fPtr);
-                CachedCharacter cc;
-                cc.gameObj = character;
-                cc.factionPtr = fPtr;
-                cc.factionId = fId;
-                cc.x = cx; cc.y = cy; cc.z = cz;
-                s_loadingCharacters.push_back(cc);
-            }
-        }
-
-        // Trigger OnGameLoaded exactly once at the threshold
-        if (createNum == MIN_CREATES_BEFORE_READY) {
-            SEH_TriggerGameLoaded();
-        }
-
-        s_hookDepth--;
-        return character;
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    //  CONNECTED PATH — multiplayer hook body
-    //  Runs after connection when CharacterCreate is re-enabled.
-    //
-    //  ZONE-LOAD GUARD: During zone loads, 90+ characters spawn in one frame.
-    //  Running the full hook body (1KB memcpy, spdlog, Memory::Read, vector ops,
-    //  SpawnManager feed) on each call through the MovRaxRsp naked detour causes
-    //  cumulative heap corruption. Detect rapid-fire creates and use lightweight
-    //  passthrough for all but the first few.
-    // ═══════════════════════════════════════════════════════════════════════
 
     auto& coreRef = Core::Get();
 
-    // Debug: log ALL connected creates for first 100
-    static int s_connectedCreateNum = 0;
-    s_connectedCreateNum++;
-    if (s_connectedCreateNum <= 100 || s_connectedCreateNum % 50 == 0) {
-        spdlog::info("entity_hooks: CONNECTED CharacterCreate #{} factory=0x{:X} template=0x{:X}",
-                     s_connectedCreateNum,
-                     reinterpret_cast<uintptr_t>(factory),
-                     reinterpret_cast<uintptr_t>(templateData));
+    // ── NOT CONNECTED: capture factory+pre-call data, then passthrough ──
+    // Even when not connected, capture factory pointer and pre-call data so
+    // the spawn system is ready when the player connects. This prevents the
+    // "walk near a town" requirement — data is captured during loading.
+    // Uses s_origCreate (MovRaxRsp wrapper) which correctly restores RSP for
+    // the original function. Safe here because loading creates are sequential
+    // (not reentrant), so the wrapper's global slots don't conflict.
+    if (!coreRef.IsConnected()) {
+        // Capture pre-call data + factory + faction from the FIRST call only.
+        // Then DISABLE the hook so all subsequent loading creates go through
+        // the ORIGINAL function with zero hook overhead — no MovRaxRsp wrapper,
+        // no stack manipulation, nothing that could corrupt game state.
+        if (!s_loadingCapturesDone) {
+            if (templateData && !s_havePreCallData) {
+                if (SEH_MemcpySafe(s_preCallStruct, templateData, REQUEST_STRUCT_SIZE)) {
+                    s_havePreCallData = true;
+                    coreRef.GetSpawnManager().SetPreCallData(
+                        s_preCallStruct, REQUEST_STRUCT_SIZE,
+                        reinterpret_cast<uintptr_t>(templateData));
+                    coreRef.GetSpawnManager().SetSavedRequestStruct(
+                        s_preCallStruct, REQUEST_STRUCT_SIZE);
+                }
+            }
+            if (factory && !coreRef.GetSpawnManager().IsReady()) {
+                coreRef.GetSpawnManager().SetFactory(factory);
+            }
+
+            void* r = CallOriginalCreate(factory, templateData);
+
+            // Capture faction from this first character (player's squad leader)
+            if (r) {
+                uintptr_t fac = SEH_ReadFaction(r);
+                if (fac != 0) {
+                    s_earlyPlayerFaction.store(fac, std::memory_order_relaxed);
+                    s_earlyFactionLocked.store(true, std::memory_order_relaxed);
+                    UpdateFallbackFaction(fac);
+                }
+
+                // CRITICAL: Feed SpawnManager the first character so it captures
+                // the GameData backpointer and discovers GameDataManager. Without
+                // this, the heap scan has no m_managerPointer and fails on Steam.
+                SEH_FeedSpawnManager(factory, templateData, r);
+            }
+
+            // Got everything we need — DISABLE the hook for the rest of loading.
+            // This prevents 100+ calls through MovRaxRsp wrapper during savegame load.
+            if (s_havePreCallData && s_savedFactory) {
+                s_loadingCapturesDone = true;
+                HookManager::Get().Disable("CharacterCreate");
+                OutputDebugStringA("KMP: Hook DISABLED after loading capture — safe passthrough for remaining loads\n");
+            }
+
+            s_hookDepth--;
+            return r;
+        }
+
+        // If we reach here, captures are done but hook is somehow still active.
+        // Use CallOriginalCreate which prefers the MovRaxRsp wrapper (correct RSP).
+        void* r = CallOriginalCreate(factory, templateData);
+        s_hookDepth--;
+        return r;
     }
 
-    // Rapid-fire detection: if >5 creates in the same millisecond, go lightweight
-    static auto s_connectedBurstStart = std::chrono::steady_clock::now();
-    static int s_connectedBurstCount = 0;
+    // Connected create counter (minimal logging to avoid heap pressure in MovRaxRsp context)
+    int connNum = s_connectedCreateNum.fetch_add(1) + 1;
+    if (connNum <= 5) {
+        char dbgBuf[128];
+        sprintf_s(dbgBuf, "KMP: Connected CharacterCreate #%d\n", connNum);
+        OutputDebugStringA(dbgBuf);
+    }
+
+    // Rapid-fire detection: if >5 creates in 100ms, go lightweight (zone load burst)
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - s_connectedBurstStart);
     if (elapsed.count() < 100) {
@@ -550,12 +552,24 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
         s_connectedBurstCount = 1;
     }
 
-    // During zone-load burst (>5 creates in 100ms): pure passthrough
+    // During zone-load burst (>5 creates in 100ms): lightweight passthrough
+    // Still capture faction if we haven't locked one yet (backup path).
     if (s_connectedBurstCount > 5) {
         if (s_connectedBurstCount <= 10 || s_connectedBurstCount % 50 == 0) {
-            spdlog::debug("entity_hooks: BURST passthrough #{}", s_connectedBurstCount);
+            spdlog::debug("entity_hooks: BURST passthrough #{}", s_connectedBurstCount.load());
         }
-        void* character = SEH_CallOriginalCreate(s_origCreate, factory, templateData);
+        void* character = CallOriginalCreate(factory, templateData);
+
+        // Lightweight faction capture — only if we still don't have a player faction
+        if (character && !s_earlyFactionLocked.load(std::memory_order_relaxed)) {
+            uintptr_t fac = SEH_ReadFaction(character);
+            if (fac != 0) {
+                UpdateFallbackFaction(fac);
+                // Don't lock here — burst characters may be NPCs, not player chars.
+                // Loading path locks it; this is just a backup for fallback.
+            }
+        }
+
         s_hookDepth--;
         return character;
     }
@@ -568,7 +582,10 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
         if (SEH_MemcpySafe(localPreCall, templateData, REQUEST_STRUCT_SIZE)) {
             haveLocalPreCall = true;
         }
-        if (!s_havePreCallData) {
+        // Always refresh pre-call data from connected NPC spawns — the struct
+        // captured during loading has stale external pointers (faction, squad, etc.)
+        // that crash CallFactoryDirect. Fresh NPC structs have live heap pointers.
+        {
             SEH_MemcpySafe(s_preCallStruct, templateData, REQUEST_STRUCT_SIZE);
             s_havePreCallData = true;
             coreRef.GetSpawnManager().SetPreCallData(
@@ -580,14 +597,8 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
     }
 
     // ═══ CALL ORIGINAL FUNCTION ═══
-    if (s_connectedCreateNum <= 20) {
-        spdlog::info("entity_hooks: Connected create #{} — calling original function", s_connectedCreateNum);
-    }
-    void* character = SEH_CallOriginalCreate(s_origCreate, factory, templateData);
-    if (s_connectedCreateNum <= 20) {
-        spdlog::info("entity_hooks: Connected create #{} — original returned 0x{:X}",
-                     s_connectedCreateNum, reinterpret_cast<uintptr_t>(character));
-    }
+    void* character = CallOriginalCreate(factory, templateData);
+    bool wasHijacked = false;
 
     if (character && haveLocalPreCall) {
         // Position offset detection
@@ -610,33 +621,66 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
             }
         }
 
-        // In-place spawn replay
-        if (templateData && coreRef.IsGameLoaded()) {
-            bool canSpawn = AssetFacilitator::Get().CanSpawn();
-            if (canSpawn) {
-                auto& spawnMgr = coreRef.GetSpawnManager();
-                SpawnRequest spawnReq;
-                if (spawnMgr.PopNextSpawn(spawnReq)) {
-                    int& playerSpawns = s_spawnsPerPlayer[spawnReq.owner];
-                    if (playerSpawns < MAX_SPAWNS_PER_PLAYER) {
-                        spdlog::info("entity_hooks: IN-PLACE SPAWN for entity {} owner={}",
-                                     spawnReq.netId, spawnReq.owner);
-                        void* newChar = SEH_ReplayFactory(
-                            s_origCreate, factory, templateData,
-                            localPreCall, REQUEST_STRUCT_SIZE);
-                        if (newChar) {
-                            Vec3 spawnPos = spawnReq.position;
-                            SEH_PostSpawnSetup(newChar, spawnReq.netId, spawnReq.owner,
-                                               spawnPos, factory, templateData);
-                            s_inPlaceSpawnCount.fetch_add(1);
-                            s_lastInPlaceSpawnTime = std::chrono::steady_clock::now();
-                            playerSpawns++;
-                        } else {
-                            spawnReq.retryCount++;
-                            if (spawnReq.retryCount < MAX_SPAWN_RETRIES)
-                                spawnMgr.RequeueSpawn(spawnReq);
-                        }
+        // GameData pointer offset detection
+        // Finds where in the request struct the GameData* pointer lives, so
+        // SpawnManager can swap it with mod templates for remote spawns.
+        if (s_gameDataOffsetInStruct == -1 && s_gameDataDetectAttempts < 10) {
+            s_gameDataDetectAttempts++;
+            game::CharacterAccessor accessor(character);
+            uintptr_t charGameData = accessor.GetGameDataPtr();
+            if (charGameData != 0 && charGameData > 0x10000 && charGameData < 0x00007FFFFFFFFFFF) {
+                for (int off = 0; off + 8 <= (int)REQUEST_STRUCT_SIZE; off += 8) {
+                    uintptr_t val = 0;
+                    memcpy(&val, &localPreCall[off], 8);
+                    if (val == charGameData) {
+                        s_gameDataOffsetInStruct = off;
+                        coreRef.GetSpawnManager().SetGameDataOffset(off);
+                        spdlog::info("entity_hooks: GAMEDATA OFFSET at struct+0x{:X} = 0x{:X}",
+                                     off, charGameData);
+                        break;
                     }
+                }
+            }
+            // Also propagate position offset to SpawnManager
+            if (s_positionOffsetInStruct >= 0) {
+                coreRef.GetSpawnManager().SetPositionOffset(s_positionOffsetInStruct);
+            }
+        }
+
+        // ═══ NPC HIJACK ═══
+        // Instead of calling the factory again (replay), take over the NPC that
+        // the game just created. The NPC already has a valid faction, model, and
+        // animations — zero crash risk from faction pointer issues.
+        // We just: register it, teleport it to the remote player's position,
+        // rename it, and disable its AI.
+        if (character && coreRef.IsGameLoaded()) {
+            auto& spawnMgr = coreRef.GetSpawnManager();
+            SpawnRequest spawnReq;
+            if (spawnMgr.PopNextSpawn(spawnReq)) {
+                bool canSpawnForPlayer = false;
+                {
+                    std::lock_guard lock(s_spawnsPerPlayerMutex);
+                    canSpawnForPlayer = s_spawnsPerPlayer[spawnReq.owner] < MAX_SPAWNS_PER_PLAYER;
+                }
+                if (canSpawnForPlayer) {
+                    spdlog::info("entity_hooks: NPC HIJACK for entity {} owner={} — using just-created NPC",
+                                 spawnReq.netId, spawnReq.owner);
+
+                    if (SEH_HijackNPC(character, spawnReq.netId, spawnReq.owner, spawnReq.position)) {
+                        s_inPlaceSpawnCount.fetch_add(1);
+                        s_lastInPlaceSpawnTime = std::chrono::steady_clock::now();
+                        wasHijacked = true;
+                        {
+                            std::lock_guard lock(s_spawnsPerPlayerMutex);
+                            s_spawnsPerPlayer[spawnReq.owner]++;
+                        }
+                    } else {
+                        spawnReq.retryCount++;
+                        if (spawnReq.retryCount < MAX_SPAWN_RETRIES)
+                            spawnMgr.RequeueSpawn(spawnReq);
+                    }
+                } else {
+                    spawnMgr.RequeueSpawn(spawnReq);
                 }
             }
         }
@@ -649,93 +693,23 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
 
     // AnimClass probe (first 5 only)
     {
-        static int s_earlyProbeCount = 0;
         if (s_earlyProbeCount < 5) {
             game::ScheduleDeferredAnimClassProbe(reinterpret_cast<uintptr_t>(character));
             s_earlyProbeCount++;
         }
     }
 
-    // Feed SpawnManager (skip during burst)
-    SEH_FeedSpawnManager(factory, templateData, character);
+    // Skip local entity registration for hijacked NPCs — they are already
+    // registered as REMOTE via SEH_HijackNPC. Feeding them to SpawnManager
+    // and SEH_ConnectedPostProcess would re-register as LOCAL and send a
+    // spurious C2S_EntitySpawnReq to the server.
+    if (!wasHijacked) {
+        // Feed SpawnManager
+        SEH_FeedSpawnManager(factory, templateData, character);
 
-    // Register player faction characters in EntityRegistry
-    if (coreRef.IsGameLoaded()) {
-        SEH_CharData charData = SEH_ReadCharacterData(character);
-        if (s_connectedCreateNum <= 20) {
-            spdlog::info("entity_hooks: Connected #{} charData valid={} pos=({:.1f},{:.1f},{:.1f}) faction=0x{:X}",
-                         s_connectedCreateNum, charData.valid,
-                         charData.position.x, charData.position.y, charData.position.z,
-                         charData.factionPtr);
-        }
-        if (!charData.valid || (charData.position.x == 0.f && charData.position.y == 0.f && charData.position.z == 0.f)) {
-            s_hookDepth--;
-            return character;
-        }
-
-        Vec3 pos = charData.position;
-        uintptr_t playerFaction = coreRef.GetPlayerController().GetLocalFactionPtr();
-
-        if (playerFaction == 0) {
-            // Validate faction pointer is in user-mode range (0x10000..0x7FFFFFFFFFFF)
-            if (charData.factionPtr > 0x10000 && charData.factionPtr < 0x00007FFFFFFFFFFF) {
-                spdlog::info("entity_hooks: FACTION BOOTSTRAP — faction 0x{:X}", charData.factionPtr);
-                const_cast<PlayerController&>(coreRef.GetPlayerController())
-                    .SetLocalFactionPtr(charData.factionPtr);
-                playerFaction = charData.factionPtr;
-                coreRef.RequestEntityRescan();
-            } else {
-                if (s_connectedCreateNum <= 20) {
-                    spdlog::debug("entity_hooks: Connected #{} — invalid faction 0x{:X}, skipping",
-                                  s_connectedCreateNum, charData.factionPtr);
-                }
-                s_hookDepth--;
-                return character;
-            }
-        }
-
-        if (charData.factionPtr != playerFaction) {
-            if (s_connectedCreateNum <= 20) {
-                spdlog::debug("entity_hooks: Connected #{} — faction mismatch (0x{:X} vs 0x{:X}), skipping",
-                              s_connectedCreateNum, charData.factionPtr, playerFaction);
-            }
-            s_hookDepth--;
-            return character;
-        }
-
-        PlayerID owner = coreRef.GetLocalPlayerId();
-        EntityID netId = coreRef.GetEntityRegistry().Register(
-            character, EntityType::NPC, owner);
-        coreRef.GetEntityRegistry().UpdatePosition(netId, pos);
-
-        {
-            uint32_t compQuat = charData.rotation.Compress();
-            uint32_t templateId = 0;
-            std::string templateName;
-            if (templateData) {
-                Memory::Read(reinterpret_cast<uintptr_t>(templateData) + 0x08, templateId);
-                templateName = SpawnManager::ReadKenshiString(
-                    reinterpret_cast<uintptr_t>(templateData) + 0x28);
-            }
-
-            PacketWriter writer;
-            writer.WriteHeader(MessageType::C2S_EntitySpawnReq);
-            writer.WriteU32(netId);
-            writer.WriteU8(static_cast<uint8_t>(EntityType::NPC));
-            writer.WriteU32(owner);
-            writer.WriteU32(templateId);
-            writer.WriteF32(pos.x);
-            writer.WriteF32(pos.y);
-            writer.WriteF32(pos.z);
-            writer.WriteU32(compQuat);
-            writer.WriteU32(charData.factionId);
-            uint16_t nameLen = static_cast<uint16_t>(
-                std::min<size_t>(templateName.size(), 255));
-            writer.WriteU16(nameLen);
-            if (nameLen > 0)
-                writer.WriteRaw(templateName.data(), nameLen);
-
-            coreRef.GetClient().SendReliable(writer.Data(), writer.Size());
+        // Register player faction characters in EntityRegistry (SEH-protected, no C++ objects)
+        if (coreRef.IsGameLoaded()) {
+            SEH_ConnectedPostProcess(character, templateData, s_connectedCreateNum);
         }
     }
 
@@ -746,7 +720,6 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
 static void __fastcall Hook_CharacterDestroy(void* character) {
     int destroyNum = s_totalDestroys.fetch_add(1) + 1;
 
-    // Validate pointer before doing anything
     uintptr_t charAddr = reinterpret_cast<uintptr_t>(character);
     if (charAddr < 0x10000 || charAddr > 0x00007FFFFFFFFFFF) {
         s_origDestroy(character);
@@ -754,7 +727,7 @@ static void __fastcall Hook_CharacterDestroy(void* character) {
     }
 
     auto& core = Core::Get();
-    if (core.IsConnected() && !IsInLoadingBurst()) {
+    if (core.IsConnected()) {
         EntityID netId = core.GetEntityRegistry().GetNetId(character);
         if (netId != INVALID_ENTITY) {
             auto* info = core.GetEntityRegistry().GetInfo(netId);
@@ -772,9 +745,45 @@ static void __fastcall Hook_CharacterDestroy(void* character) {
         }
     }
 
-    // CharacterDestroy prologue: 48 89 5C 24 08 (saves RBX to shadow space)
-    // This does NOT start with mov rax,rsp — standard trampoline works.
     s_origDestroy(character);
+}
+
+// ── Direct Call Stub Builder ──
+
+// Build a small executable stub: `mov rax, rsp; jmp [rip+0]; dq target`
+// This gives the original function the correct RAX value (our caller's RSP)
+// and jumps to rawTrampoline+3 (skipping the trampoline's own `mov rax, rsp`).
+// Total: 17 bytes. Allocated as PAGE_EXECUTE_READWRITE, locked to PAGE_EXECUTE_READ.
+static void* BuildDirectCallStub(void* rawTrampoline) {
+    void* mem = VirtualAlloc(nullptr, 64, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!mem) return nullptr;
+
+    auto* code = static_cast<uint8_t*>(mem);
+    int off = 0;
+
+    // mov rax, rsp  (48 8B C4)
+    code[off++] = 0x48;
+    code[off++] = 0x8B;
+    code[off++] = 0xC4;
+
+    // jmp qword ptr [rip+0]  (FF 25 00 00 00 00)
+    code[off++] = 0xFF;
+    code[off++] = 0x25;
+    code[off++] = 0x00;
+    code[off++] = 0x00;
+    code[off++] = 0x00;
+    code[off++] = 0x00;
+
+    // 8-byte target: rawTrampoline + 3 (skip its mov rax, rsp)
+    uintptr_t target = reinterpret_cast<uintptr_t>(rawTrampoline) + 3;
+    memcpy(&code[off], &target, 8);
+
+    DWORD oldProtect;
+    VirtualProtect(mem, 64, PAGE_EXECUTE_READ, &oldProtect);
+
+    spdlog::info("entity_hooks: Built direct call stub at 0x{:X} -> trampoline+3 = 0x{:X}",
+                 reinterpret_cast<uintptr_t>(mem), target);
+    return mem;
 }
 
 // ── Install/Uninstall ──
@@ -785,6 +794,84 @@ bool Install() {
     auto& funcs = core.GetGameFunctions();
 
     bool success = true;
+
+    // ── Resolve higher-level factory functions from known RVAs ──
+    // These are NOT hooked — called directly via function pointer. No MinHook
+    // trampoline involved, so `mov rax, rsp` prologue works correctly when
+    // called from C++ (CPU pushes return address, then function reads RSP).
+    //
+    // Validation: .pdata check confirms address is a real function start,
+    // prologue byte check confirms it looks like executable code.
+    // If validation fails, the function pointer is left null and spawn
+    // falls back to createRandomChar or NPC hijack — never blocks startup.
+    {
+        uintptr_t modBase = Memory::GetModuleBase();
+
+        auto validateFactoryFunc = [](uintptr_t addr, const char* name) -> bool {
+            // .pdata validation — confirms this is a real function entry point
+            DWORD64 imageBase = 0;
+            auto* rtFunc = RtlLookupFunctionEntry(
+                static_cast<DWORD64>(addr), &imageBase, nullptr);
+            if (rtFunc) {
+                uintptr_t funcStart = static_cast<uintptr_t>(imageBase) + rtFunc->BeginAddress;
+                if (funcStart != addr) {
+                    spdlog::error("entity_hooks: {} at 0x{:X} is MID-FUNCTION "
+                                  "(real start 0x{:X}, offset +0x{:X}) — SKIPPING",
+                                  name, addr, funcStart, addr - funcStart);
+                    return false;
+                }
+            }
+            // Prologue byte check — verify it looks like a function start
+            __try {
+                auto* p = reinterpret_cast<const uint8_t*>(addr);
+                bool validPrologue =
+                    (p[0] == 0x48 && p[1] == 0x8B && p[2] == 0xC4) || // mov rax, rsp
+                    (p[0] == 0x48 && p[1] == 0x89)                  || // mov [rsp+xx], reg
+                    (p[0] == 0x48 && p[1] == 0x83 && p[2] == 0xEC)  || // sub rsp, imm8
+                    (p[0] == 0x48 && p[1] == 0x81 && p[2] == 0xEC)  || // sub rsp, imm32
+                    (p[0] == 0x40 && p[1] >= 0x53 && p[1] <= 0x57)  || // push r64
+                    (p[0] == 0x55);                                     // push rbp
+                spdlog::info("entity_hooks: {} at 0x{:X} prologue: {:02X} {:02X} {:02X} {}",
+                             name, addr, p[0], p[1], p[2],
+                             validPrologue ? "[OK]" : "[UNUSUAL]");
+                if (!validPrologue) {
+                    spdlog::warn("entity_hooks: {} has unexpected prologue — may crash on call", name);
+                }
+                return true; // Don't block on unusual prologue — SEH catches crashes
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                spdlog::error("entity_hooks: {} at 0x{:X} — cannot read memory", name, addr);
+                return false;
+            }
+        };
+
+        // RootObjectFactory::create — the dispatcher called by 11 game systems.
+        uintptr_t createAddr = modBase + 0x583400;
+        if (validateFactoryFunc(createAddr, "FactoryCreate")) {
+            s_factoryCreate = reinterpret_cast<CharacterCreateFn>(createAddr);
+            spdlog::info("entity_hooks: FactoryCreate VALIDATED at 0x{:X}", createAddr);
+        } else {
+            spdlog::warn("entity_hooks: FactoryCreate at 0x{:X} FAILED validation — "
+                         "mod template spawn disabled, will use createRandomChar or NPC hijack",
+                         createAddr);
+        }
+
+        // RootObjectFactory::createRandomChar — creates random NPC character.
+        uintptr_t createRandomAddr = modBase + 0x5836E0;
+        if (validateFactoryFunc(createRandomAddr, "CreateRandomChar")) {
+            s_factoryCreateRandomChar = reinterpret_cast<CharacterCreateFn>(createRandomAddr);
+            spdlog::info("entity_hooks: CreateRandomChar VALIDATED at 0x{:X}", createRandomAddr);
+        } else {
+            spdlog::warn("entity_hooks: CreateRandomChar at 0x{:X} FAILED validation — "
+                         "random char fallback disabled, will rely on NPC hijack only",
+                         createRandomAddr);
+        }
+
+        // Store in GameFunctions for other subsystems
+        core.GetGameFunctions().FactoryCreate = reinterpret_cast<void*>(
+            s_factoryCreate ? createAddr : 0);
+        core.GetGameFunctions().CreateRandomChar = reinterpret_cast<void*>(
+            s_factoryCreateRandomChar ? createRandomAddr : 0);
+    }
 
     if (funcs.CharacterSpawn) {
         s_createTargetAddr = reinterpret_cast<uintptr_t>(funcs.CharacterSpawn);
@@ -801,26 +888,39 @@ bool Install() {
             OutputDebugStringA("KMP: entity_hooks — InstallAt FAILED\n");
             success = false;
         } else {
-            // Get raw trampoline for reentrant calls (avoids MovRaxRsp wrapper corruption)
+            // Get raw trampoline for reentrant calls
             void* rawTramp = hookMgr.GetRawTrampoline("CharacterCreate");
             if (rawTramp) {
                 s_rawCreateTrampoline = reinterpret_cast<CharacterCreateFn>(rawTramp);
-                spdlog::info("entity_hooks: Raw trampoline at 0x{:X} (for reentrant calls)",
-                             reinterpret_cast<uintptr_t>(rawTramp));
-            } else {
-                spdlog::warn("entity_hooks: No raw trampoline — reentrant calls will use wrapper (crash risk)");
+                spdlog::info("entity_hooks: Raw trampoline at 0x{:X}", reinterpret_cast<uintptr_t>(rawTramp));
+
+                // Build direct call stub for CallFactoryDirect.
+                // The stub does `mov rax, rsp; jmp rawTrampoline+3` — correct RAX
+                // for functions that derive RBP from RAX (mov rax,rsp prologue).
+                s_directCallStubAlloc = BuildDirectCallStub(rawTramp);
+                if (s_directCallStubAlloc) {
+                    s_directCallStub = reinterpret_cast<CharacterCreateFn>(s_directCallStubAlloc);
+                    spdlog::info("entity_hooks: Direct call stub READY at 0x{:X}",
+                                 reinterpret_cast<uintptr_t>(s_directCallStubAlloc));
+                }
             }
 
             core.GetSpawnManager().SetOrigProcess(
                 reinterpret_cast<FactoryProcessFn>(s_createTargetAddr));
-            spdlog::info("entity_hooks: CharacterCreate hooked (MovRaxRsp fix — always active)");
-            OutputDebugStringA("KMP: entity_hooks — CharacterCreate hooked OK (MovRaxRsp fix)\n");
+
+            // Hook installed DISABLED during loading. The 130+ character creates
+            // during game load fire through the MovRaxRsp wrapper whose global
+            // RSP slots get corrupted, causing DEP violations (0x3FFD).
+            // The hook is enabled in OnGameLoaded() after the loading burst
+            // completes, so factory data is captured from the first runtime
+            // NPC spawn (safe — single calls don't corrupt the wrapper).
+            HookManager::Get().Disable("CharacterCreate");
+            spdlog::info("entity_hooks: CharacterCreate installed DISABLED (enabled after loading)");
+            OutputDebugStringA("KMP: entity_hooks — CharacterCreate installed DISABLED (safe during load)\n");
         }
     }
 
-    // CharacterDestroy hook NOT installed — despawn is handled by network events
-    // (S2C_EntityDespawn → packet_handler → EntityRegistry::Unregister).
-    // The resolved pattern was NodeList::destroyNodesByBuilding (wrong function).
+    // CharacterDestroy hook NOT installed
     s_destroyHookInstalled = false;
 
     spdlog::info("entity_hooks: Installed (create={}, destroy={})",
@@ -833,28 +933,71 @@ void Uninstall() {
     if (s_destroyHookInstalled) {
         HookManager::Get().Remove("CharacterDestroy");
     }
+    // Free direct call stub
+    if (s_directCallStubAlloc) {
+        VirtualFree(s_directCallStubAlloc, 0, MEM_RELEASE);
+        s_directCallStubAlloc = nullptr;
+        s_directCallStub = nullptr;
+    }
 }
 
 void ResumeForNetwork() {
     // Reset per-player spawn caps for new connection
-    s_spawnsPerPlayer.clear();
+    {
+        std::lock_guard lock(s_spawnsPerPlayerMutex);
+        s_spawnsPerPlayer.clear();
+    }
 
-    // KEEP loading cache — SendExistingEntitiesToServer needs it as fallback
-    // when CharacterIterator fails on Steam. The cached void* pointers are still
-    // valid (same game session, characters not despawned). SEH protects reads.
-    // s_capturedFaction also kept — it's the faction from loading, still valid.
-    spdlog::info("entity_hooks: ResumeForNetwork — keeping loading cache ({} chars, faction=0x{:X})",
-                 s_loadingCharacters.size(), s_capturedFaction);
+    // Reset connected-mode statics that don't reset naturally on reconnect
+    s_connectedCreateNum.store(0);
+    s_connectedBurstCount.store(0);
+    s_inPlaceSpawnCount.store(0);
+    s_earlyProbeCount.store(0);
 
-    // CharacterCreate hook stays DISABLED after loading.
-    // Zone-load bursts (100+ calls in <1s) through the MovRaxRsp naked detour
-    // cause cumulative heap corruption → delayed crash ~5s later.
-    // The loading cache already captured our squad characters.
-    // In-place spawn replay is not needed — HandleSpawnQueue uses SpawnCharacterDirect.
-    spdlog::info("entity_hooks: ResumeForNetwork — CharacterCreate stays DISABLED (zone-load crash prevention)");
+    // Reset loading capture state so fresh factory/template/faction data is
+    // captured on the next savegame load or reconnect.
+    s_loadingCapturesDone = false;
+    s_havePreCallData = false;
+    s_savedFactory = nullptr;
 
-    spdlog::info("entity_hooks: ResumeForNetwork — total creates={}, loadingComplete={}",
-                 s_totalCreates.load(), s_loadingComplete.load());
+    // Propagate early faction to PlayerController if we captured one during loading
+    // (must read BEFORE resetting the atomic)
+    uintptr_t earlyFac = s_earlyPlayerFaction.load(std::memory_order_relaxed);
+    if (earlyFac != 0 && Core::Get().GetPlayerController().GetLocalFactionPtr() == 0) {
+        const_cast<PlayerController&>(Core::Get().GetPlayerController())
+            .SetLocalFactionPtr(earlyFac);
+        spdlog::info("entity_hooks: ResumeForNetwork — set PlayerController faction to 0x{:X} (from loading capture)",
+                     earlyFac);
+    }
+
+    // Reset faction capture state after propagation so next load captures fresh data
+    s_earlyFactionLocked.store(false);
+    s_earlyPlayerFaction.store(0);
+
+    // Enable CharacterCreate hook for multiplayer.
+    // At this point loading is complete — only single/few runtime spawns will
+    // trigger the hook (new zone NPCs, remote player injection). MovRaxRsp
+    // handles single calls fine; it's only the 130+ loading burst that crashes.
+    if (HookManager::Get().Enable("CharacterCreate")) {
+        spdlog::info("entity_hooks: ResumeForNetwork — CharacterCreate hook ENABLED");
+    } else {
+        spdlog::warn("entity_hooks: ResumeForNetwork — CharacterCreate Enable() returned false");
+    }
+
+    spdlog::info("entity_hooks: ResumeForNetwork — hook active for runtime spawns "
+                 "(earlyFaction=0x{:X}, fallback=0x{:X})", earlyFac,
+                 s_fallbackFaction.load(std::memory_order_relaxed));
+}
+
+void SuspendForDisconnect() {
+    // Disable CharacterCreate hook when disconnecting from multiplayer.
+    // Zone-load bursts (90+ creates) go through MovRaxRsp and corrupt the heap
+    // when the hook body is active. With the hook disabled, zone loads are safe.
+    if (HookManager::Get().Disable("CharacterCreate")) {
+        spdlog::info("entity_hooks: SuspendForDisconnect — CharacterCreate hook DISABLED");
+    } else {
+        spdlog::warn("entity_hooks: SuspendForDisconnect — Disable() returned false");
+    }
 }
 
 bool HasRecentInPlaceSpawn(int withinSeconds) {
@@ -867,14 +1010,6 @@ int GetInPlaceSpawnCount() {
     return s_inPlaceSpawnCount.load();
 }
 
-uintptr_t GetCapturedFaction() {
-    return s_capturedFaction;
-}
-
-const std::vector<CachedCharacter>& GetLoadingCharacters() {
-    return s_loadingCharacters;
-}
-
 int GetTotalCreates() {
     return s_totalCreates.load();
 }
@@ -883,12 +1018,97 @@ int GetTotalDestroys() {
     return s_totalDestroys.load();
 }
 
-bool IsInBurst() {
-    return s_inBurst.load();
+void* CallFactoryDirect(void* factory, void* requestStruct) {
+    // Use the direct call stub which sets RAX = caller's RSP before entering
+    // the original function body. Without this, the raw trampoline's
+    // `mov rax, rsp` captures the wrong RSP, causing all [rbp+XX] accesses
+    // to read/write wrong memory (sign-extended faction pointers, stack corruption).
+    CharacterCreateFn callFn = s_directCallStub ? s_directCallStub : s_rawCreateTrampoline;
+    if (!callFn) {
+        spdlog::warn("entity_hooks: CallFactoryDirect — no trampoline available");
+        return nullptr;
+    }
+
+    s_directSpawnBypass.store(true, std::memory_order_release);
+    void* result = nullptr;
+    __try {
+        result = callFn(factory, requestStruct);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        static int s_crashCount = 0;
+        if (++s_crashCount <= 5) {
+            spdlog::error("entity_hooks: CallFactoryDirect CRASHED (SEH caught, attempt {})", s_crashCount);
+        }
+    }
+    s_directSpawnBypass.store(false, std::memory_order_release);
+
+    return result;
 }
 
-bool IsLoadingComplete() {
-    return s_loadingComplete.load();
+void* CallFactoryCreate(void* factory, void* gameData) {
+    // Call RootObjectFactory::create — the high-level dispatcher that builds
+    // a proper request struct from a GameData* and calls process() internally.
+    // This bypasses the stale-pointer problem entirely because create()
+    // constructs FRESH internal pointers (faction, squad, AI, etc.).
+    //
+    // NOT hooked by MinHook, so no trampoline/stub issues. The CPU naturally
+    // sets RAX = RSP after CALL pushes the return address, which is what the
+    // mov rax, rsp prologue expects.
+    if (!s_factoryCreate) {
+        spdlog::warn("entity_hooks: CallFactoryCreate — function not resolved");
+        return nullptr;
+    }
+
+    s_directSpawnBypass.store(true, std::memory_order_release);
+    void* result = nullptr;
+    __try {
+        result = s_factoryCreate(factory, gameData);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        static int s_crashCount = 0;
+        if (++s_crashCount <= 5) {
+            spdlog::error("entity_hooks: CallFactoryCreate CRASHED (SEH caught, attempt {})", s_crashCount);
+        }
+    }
+    s_directSpawnBypass.store(false, std::memory_order_release);
+    return result;
+}
+
+void* CallFactoryCreateRandom(void* factory) {
+    // Call RootObjectFactory::createRandomChar — creates a random NPC.
+    // Takes just the factory pointer (RCX=factory, RDX=0).
+    // Useful as last-resort when mod templates fail.
+    if (!s_factoryCreateRandomChar) {
+        spdlog::warn("entity_hooks: CallFactoryCreateRandom — function not resolved");
+        return nullptr;
+    }
+
+    s_directSpawnBypass.store(true, std::memory_order_release);
+    void* result = nullptr;
+    __try {
+        result = s_factoryCreateRandomChar(factory, nullptr);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        static int s_crashCount = 0;
+        if (++s_crashCount <= 5) {
+            spdlog::error("entity_hooks: CallFactoryCreateRandom CRASHED (SEH caught, attempt {})", s_crashCount);
+        }
+    }
+    s_directSpawnBypass.store(false, std::memory_order_release);
+    return result;
+}
+
+uintptr_t GetFallbackFaction() {
+    return s_fallbackFaction.load(std::memory_order_relaxed);
+}
+
+uintptr_t GetEarlyPlayerFaction() {
+    return s_earlyPlayerFaction.load(std::memory_order_relaxed);
+}
+
+int GetGameDataOffsetInStruct() {
+    return s_gameDataOffsetInStruct;
+}
+
+int GetPositionOffsetInStruct() {
+    return s_positionOffsetInStruct;
 }
 
 } // namespace kmp::entity_hooks

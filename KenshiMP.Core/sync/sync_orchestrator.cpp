@@ -10,6 +10,7 @@
 #include "kmp/memory.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
+#include <cmath>
 #include <Windows.h>
 
 namespace kmp {
@@ -47,6 +48,41 @@ static bool SEH_ReadPosition(void* gameObj, Vec3& outPos, Quat& outRot) {
         outRot = accessor.GetRotation();
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+// Fix the faction pointer on a directly-spawned character.
+// SpawnCharacterDirect creates from a stale pre-call struct whose faction
+// reference (char+0x10) may point to a freed object → use-after-free crash.
+// Writing the local player's faction (always valid) prevents this.
+static bool SEH_FixFactionAndSetup(void* character, uintptr_t localFactionPtr,
+                                    Vec3 spawnPos) {
+    __try {
+        uintptr_t charPtr = reinterpret_cast<uintptr_t>(character);
+        if (charPtr < 0x10000 || charPtr >= 0x00007FFFFFFFFFFF) return false;
+
+        // Vtable sanity check
+        uintptr_t vtable = 0;
+        Memory::Read(charPtr, vtable);
+        uintptr_t modBase = Memory::GetModuleBase();
+        if (vtable < modBase || vtable >= modBase + 0x4000000) return false;
+
+        // FIX THE CRASH: Overwrite stale faction pointer with the local player's
+        // faction (persistent — local player is always loaded). If we don't have
+        // the local faction yet, write 0 (factionless but safe).
+        int factionOffset = game::GetOffsets().character.faction;
+        Memory::Write(charPtr + factionOffset, localFactionPtr);
+
+        // Set position
+        game::CharacterAccessor accessor(character);
+        if (spawnPos.x != 0.f || spawnPos.y != 0.f || spawnPos.z != 0.f) {
+            accessor.WritePosition(spawnPos);
+        }
+
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        OutputDebugStringA("KMP: SEH_FixFactionAndSetup CRASHED\n");
         return false;
     }
 }
@@ -114,30 +150,62 @@ static bool SEH_FixUpFaction(void* spawnedChar) {
 
 static bool SEH_FallbackPostSpawnSetup(void* character, EntityID netId,
                                         PlayerID owner, Vec3 pos) {
+    bool allOk = true;
+
     __try {
         game::CharacterAccessor accessor(character);
         if (pos.x != 0.f || pos.y != 0.f || pos.z != 0.f) {
             accessor.WritePosition(pos);
         }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        OutputDebugStringA("KMP: SyncOrch FallbackPostSpawn — WritePosition AV\n");
+        allOk = false;
+    }
+
+    __try {
         Core::Get().GetPlayerController().OnRemoteCharacterSpawned(
             netId, character, owner);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        OutputDebugStringA("KMP: SyncOrch FallbackPostSpawn — OnRemoteCharacterSpawned AV\n");
+        allOk = false;
+    }
+
+    __try {
         ai_hooks::MarkRemoteControlled(character);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        allOk = false;
+    }
+
+    __try {
         squad_hooks::AddCharacterToLocalSquad(character);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        allOk = false;
+    }
+
+    __try {
         game::WritePlayerControlled(
             reinterpret_cast<uintptr_t>(character), true);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        allOk = false;
+    }
+
+    __try {
         game::ScheduleDeferredAnimClassProbe(
             reinterpret_cast<uintptr_t>(character));
-        return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
+        allOk = false;
+    }
+
+    if (!allOk) {
         static int s_count = 0;
         if (++s_count <= 10) {
             char buf[256];
-            sprintf_s(buf, "KMP: SyncOrch SEH_FallbackPostSpawnSetup CRASHED entity %u char=0x%p\n",
+            sprintf_s(buf, "KMP: SyncOrch SEH_FallbackPostSpawnSetup partial failure entity %u char=0x%p\n",
                       netId, character);
             OutputDebugStringA(buf);
         }
-        return false;
     }
+    return allOk;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -214,6 +282,8 @@ void SyncOrchestrator::Reset() {
     m_shownWaitingMsg = false;
     m_shownTimeoutMsg = false;
     m_heapScanned = false;
+    m_heapScanAttempts = 0;
+    m_lastHeapScan = std::chrono::steady_clock::time_point{};
 
     spdlog::info("SyncOrchestrator: Reset");
 }
@@ -316,8 +386,23 @@ void SyncOrchestrator::StageApplyRemotePositions() {
     for (auto& result : readFrame.remoteResults) {
         if (!result.valid) continue;
 
+        // Guard: reject NaN/Inf positions or rotations — they corrupt game memory and crash the engine
+        if (!std::isfinite(result.position.x) || !std::isfinite(result.position.y) || !std::isfinite(result.position.z)) continue;
+        if (!std::isfinite(result.rotation.w) || !std::isfinite(result.rotation.x) ||
+            !std::isfinite(result.rotation.y) || !std::isfinite(result.rotation.z)) continue;
+
         void* gameObj = m_registry.GetGameObject(result.netId);
         if (!gameObj) continue;
+
+        // Validate pointer: reject SSO string data (e.g., "one" = 0x656E6F)
+        // and other non-heap addresses that would crash on dereference.
+        uintptr_t objAddr = reinterpret_cast<uintptr_t>(gameObj);
+        if (objAddr < 0x1000000 || objAddr > 0x00007FFFFFFFFFFF) {
+            m_registry.SetGameObject(result.netId, nullptr);
+            spdlog::error("SyncOrch: Rejected invalid gameObject 0x{:X} for entity {} "
+                         "(SSO string or bad pointer)", objAddr, result.netId);
+            continue;
+        }
 
         if (SEH_WritePositionRotation(gameObj, result.position, result.rotation)) {
             m_registry.UpdatePosition(result.netId, result.position);
@@ -348,8 +433,8 @@ void SyncOrchestrator::StagePollAndSendPositions() {
     if (localEntities.empty()) return;
 
     for (EntityID netId : localEntities) {
-        auto* info = m_registry.GetInfo(netId);
-        if (!info) continue;
+        auto infoCopy = m_registry.GetInfoCopy(netId);
+        if (!infoCopy) continue;
 
         void* gameObj = m_registry.GetGameObject(netId);
         if (!gameObj) continue;
@@ -361,10 +446,10 @@ void SyncOrchestrator::StagePollAndSendPositions() {
             continue;
         }
 
-        if (pos.DistanceTo(info->lastPosition) < KMP_POS_CHANGE_THRESHOLD) continue;
+        if (pos.DistanceTo(infoCopy->lastPosition) < KMP_POS_CHANGE_THRESHOLD) continue;
 
         float elapsedSec = elapsed.count() / 1000.f;
-        float dist = pos.DistanceTo(info->lastPosition);
+        float dist = pos.DistanceTo(infoCopy->lastPosition);
         float moveSpeed = (elapsedSec > 0.001f) ? dist / elapsedSec : 0.f;
 
         uint32_t compQuat = rotation.Compress();
@@ -394,25 +479,38 @@ void SyncOrchestrator::StagePollAndSendPositions() {
         m_registry.UpdateRotation(netId, rotation);
     }
 
-    // Also send cached packets from background read buffer
-    if (m_pipelineStarted) {
-        auto& readFrame = m_frameData[m_readBuffer];
-        if (readFrame.ready && !readFrame.packetBytes.empty()) {
-            m_client.SendUnreliable(readFrame.packetBytes.data(), readFrame.packetBytes.size());
-        }
-    }
+    // NOTE: Background thread also builds a cached packet in packetBytes via
+    // BackgroundReadEntities(), but we already sent fresh per-entity updates
+    // above on the main thread.  Sending packetBytes here would duplicate
+    // every position update, doubling outbound bandwidth.  Skipped.
 }
 
 void SyncOrchestrator::StageProcessSpawns() {
     auto& nativeHud = Core::Get().GetNativeHud();
 
-    // One-shot heap scan
-    if (!m_heapScanned && m_spawnManager.IsReady()) {
+    // Heap scan with retry — runs up to 5 times if mod templates aren't found.
+    // The first scan may miss templates if GameDataManager wasn't captured yet.
+    bool needsScan = !m_heapScanned ||
+        (m_heapScanned && m_spawnManager.GetModTemplateCount() == 0 && m_heapScanAttempts < 5);
+    // Cooldown: don't re-scan more than once every 5 seconds
+    auto timeSinceLastScan = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - m_lastHeapScan);
+    if (needsScan && m_spawnManager.IsReady() && timeSinceLastScan.count() >= 5) {
         if (m_spawnManager.GetManagerPointer() != 0 || m_spawnManager.GetTemplateCount() < 10) {
-            spdlog::info("SyncOrch: Triggering GameData heap scan...");
+            m_heapScanAttempts++;
+            m_lastHeapScan = std::chrono::steady_clock::now();
+            spdlog::info("SyncOrch: Triggering GameData heap scan #{} (manager=0x{:X}, templates={})...",
+                         m_heapScanAttempts, m_spawnManager.GetManagerPointer(),
+                         m_spawnManager.GetTemplateCount());
             m_spawnManager.ScanGameDataHeap();
-            m_heapScanned = true;
-            spdlog::info("SyncOrch: Heap scan complete, {} templates", m_spawnManager.GetTemplateCount());
+            m_spawnManager.FindModTemplates();
+            // Only mark as fully done if we found mod templates or exhausted retries
+            if (m_spawnManager.GetModTemplateCount() > 0 || m_heapScanAttempts >= 5) {
+                m_heapScanned = true;
+            }
+            spdlog::info("SyncOrch: Heap scan #{} complete, {} templates ({} mod templates)",
+                         m_heapScanAttempts, m_spawnManager.GetTemplateCount(),
+                         m_spawnManager.GetModTemplateCount());
         }
     }
 
@@ -439,14 +537,14 @@ void SyncOrchestrator::StageProcessSpawns() {
         auto pendingDuration = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - m_firstPendingTime);
 
-        if (pendingDuration.count() >= 10 && !m_shownWaitingMsg) {
+        if (pendingDuration.count() >= 3 && !m_shownWaitingMsg) {
             m_shownWaitingMsg = true;
-            nativeHud.AddSystemMessage("Still waiting for NPC creation... Walk near a town or camp.");
+            nativeHud.AddSystemMessage("Spawning remote player...");
         }
-        if (pendingDuration.count() >= 30 && !m_shownTimeoutMsg) {
+        if (pendingDuration.count() >= 15 && !m_shownTimeoutMsg) {
             m_shownTimeoutMsg = true;
-            spdlog::warn("SyncOrch: Spawn queue waiting 30s+ — hook may not be firing");
-            nativeHud.AddSystemMessage("Spawn timeout! Try walking near NPCs or entering a town.");
+            spdlog::warn("SyncOrch: Spawn queue waiting 15s+ — hook may not be firing");
+            nativeHud.AddSystemMessage("Spawn delayed — walk near a town or camp to trigger NPC creation.");
         }
     }
 
@@ -461,24 +559,82 @@ void SyncOrchestrator::StageProcessSpawns() {
                      m_spawnManager.IsReady(), m_spawnManager.HasPreCallData());
     }
 
-    // SpawnCharacterDirect DISABLED — it copies a stale pre-call struct from
-    // loading time whose faction pointer (char+0x10) becomes a use-after-free
-    // when the source NPC's zone unloads.  The game crashes at game+0x927E94
-    // reading faction+0x250 on every character update tick.
-    //
-    // Remote characters are spawned ONLY via in-place replay in entity_hooks:
-    // when the host walks near NPCs, Hook_CharacterCreate fires and piggybacks
-    // on the natural NPC creation to replay the spawn with valid game state.
-    // The "walk near a town" messages guide the player.
+    // Direct spawn fallback: if in-place replay hasn't fired after 5s,
+    // use SpawnCharacterDirect. The original crash (use-after-free on faction+0x250)
+    // is fixed by overwriting char+0x10 with the local player's faction pointer
+    // (always valid) immediately after creation.
     if (pending > 0 && m_hasPendingTimer) {
         auto pendingDuration = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - m_firstPendingTime);
-        if (pendingDuration.count() >= 10 && pendingDuration.count() % 10 == 0) {
+
+        // Log waiting status
+        if (pendingDuration.count() >= 5 && pendingDuration.count() % 5 == 0) {
             static int64_t s_lastLogSec = 0;
             if (pendingDuration.count() != s_lastLogSec) {
                 s_lastLogSec = pendingDuration.count();
-                spdlog::info("SyncOrch: {} spawns pending for {}s — waiting for in-place replay "
-                             "(walk near NPCs to trigger)", pending, pendingDuration.count());
+                spdlog::info("SyncOrch: {} spawns pending for {}s", pending, pendingDuration.count());
+            }
+        }
+
+        // After 15s, try direct spawn (max 5 attempts, 3s apart).
+        // Wait 15s to give NPC hijack (Hook_CharacterCreate) time to fire — walking
+        // near a town will spawn NPCs that the hook can take over. Direct spawn uses
+        // struct clone which needs fresh pre-call data from a recent NPC spawn.
+        if (pendingDuration.count() >= 15 && m_directSpawnAttempts < 5 &&
+            m_spawnManager.HasPreCallData()) {
+            auto sinceLastAttempt = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - m_lastDirectAttempt);
+            if (m_directSpawnAttempts == 0 || sinceLastAttempt.count() >= 3) {
+                m_lastDirectAttempt = std::chrono::steady_clock::now();
+                m_directSpawnAttempts++;
+
+                SpawnRequest spawnReq;
+                if (m_spawnManager.PopNextSpawn(spawnReq)) {
+                    // Map owner to mod template slot (same logic as ProcessSpawnQueueFromHook)
+                    int templateCount = m_spawnManager.GetModTemplateCount();
+                    int modSlot = 0;
+                    if (templateCount > 1 && spawnReq.owner > 0) {
+                        modSlot = (spawnReq.owner - 1) % templateCount;
+                    }
+                    if (modSlot >= templateCount) modSlot = 0;
+
+                    spdlog::info("SyncOrch: DIRECT SPAWN attempt #{} for entity {} owner={} slot={}",
+                                 m_directSpawnAttempts, spawnReq.netId, spawnReq.owner, modSlot);
+                    nativeHud.AddSystemMessage("Attempting direct spawn...");
+
+                    void* character = m_spawnManager.SpawnCharacterDirect(&spawnReq.position, modSlot);
+                    if (character) {
+                        // Fix the faction use-after-free: write local player's faction
+                        uintptr_t localFaction = Core::Get().GetPlayerController().GetLocalFactionPtr();
+                        if (!SEH_FixFactionAndSetup(character, localFaction, spawnReq.position)) {
+                            spdlog::error("SyncOrch: Faction fix failed for entity {}", spawnReq.netId);
+                        }
+
+                        // Register in entity registry
+                        m_registry.SetGameObject(spawnReq.netId, character);
+                        m_registry.UpdatePosition(spawnReq.netId, spawnReq.position);
+
+                        // Full post-spawn setup (name, AI, squad)
+                        Core::Get().GetPlayerController().OnRemoteCharacterSpawned(
+                            spawnReq.netId, character, spawnReq.owner);
+                        ai_hooks::MarkRemoteControlled(character);
+                        squad_hooks::AddCharacterToLocalSquad(character);
+                        game::WritePlayerControlled(reinterpret_cast<uintptr_t>(character), true);
+                        game::ScheduleDeferredAnimClassProbe(reinterpret_cast<uintptr_t>(character));
+
+                        spdlog::info("SyncOrch: DIRECT SPAWN SUCCESS — entity {} at ({:.0f},{:.0f},{:.0f})",
+                                     spawnReq.netId, spawnReq.position.x, spawnReq.position.y,
+                                     spawnReq.position.z);
+                        nativeHud.AddSystemMessage("Remote player spawned!");
+                    } else {
+                        // Factory returned null — re-queue for retry
+                        spdlog::warn("SyncOrch: DIRECT SPAWN FAILED — factory returned null");
+                        spawnReq.retryCount++;
+                        if (spawnReq.retryCount < MAX_SPAWN_RETRIES)
+                            m_spawnManager.RequeueSpawn(spawnReq);
+                        nativeHud.AddSystemMessage("Direct spawn failed, will retry...");
+                    }
+                }
             }
         }
     }
@@ -540,9 +696,9 @@ void SyncOrchestrator::BackgroundReadEntities() {
         void* gameObj = m_registry.GetGameObject(netId);
         if (!gameObj) continue;
 
-        auto* info = m_registry.GetInfo(netId);
-        if (!info || info->isRemote) continue;
-        Vec3 lastPos = info->lastPosition;
+        auto infoCopy = m_registry.GetInfoCopy(netId);
+        if (!infoCopy || infoCopy->isRemote) continue;
+        Vec3 lastPos = infoCopy->lastPosition;
 
         BGReadResult rd = SEH_ReadCharacterBG(gameObj);
         if (!rd.valid) continue;
@@ -609,9 +765,7 @@ void SyncOrchestrator::BackgroundInterpolate() {
     auto& writeFrame = m_frameData[m_writeBuffer];
 
     auto remoteEntities = m_registry.GetRemoteEntities();
-    float now = static_cast<float>(
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
+    float now = SessionTime();
 
     for (EntityID remoteId : remoteEntities) {
         CachedRemoteResult result;
@@ -636,16 +790,16 @@ void SyncOrchestrator::BackgroundInterpolate() {
 // ════════════════════════════════════════════════════════════════════════════
 
 SyncPriority SyncOrchestrator::ComputePriority(EntityID entityId) const {
-    auto* info = m_registry.GetInfo(entityId);
-    if (!info) return SyncPriority::None;
+    auto infoCopy = m_registry.GetInfoCopy(entityId);
+    if (!infoCopy) return SyncPriority::None;
 
     ZoneCoord localZone = m_zoneEngine.GetLocalZone();
 
     // Same zone as local player
-    if (info->zone == localZone) return SyncPriority::Critical;
+    if (infoCopy->zone == localZone) return SyncPriority::Critical;
 
     // Adjacent zone (3x3 grid)
-    if (localZone.IsAdjacent(info->zone)) return SyncPriority::Normal;
+    if (localZone.IsAdjacent(infoCopy->zone)) return SyncPriority::Normal;
 
     // Everything else
     return SyncPriority::None;

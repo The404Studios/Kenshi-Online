@@ -85,10 +85,11 @@ static constexpr int OFF_STUB_RSP       = 0x08;
 static constexpr int OFF_SAVED_GAME_RET = 0x10;
 static constexpr int OFF_DEPTH          = 0x18;  // int32 reentrancy depth counter
 static constexpr int OFF_RAW_TRAMP      = 0x20;  // uint64 raw MinHook trampoline address
+static constexpr int OFF_BYPASS         = 0x28;  // int32 bypass flag (1=passthrough, 0=hook active)
 static constexpr int OFF_NAKED_STUB     = 0x40;
 static constexpr int OFF_TRAMP_WRAP     = 0xC0;
 static constexpr int ALLOC_SIZE         = 0x200;
-static constexpr int STACK_GAP          = 0x10008;  // 64KB+8 gap (CharacterSpawn uses deep call stacks)
+static constexpr int STACK_GAP          = 0x1008;   // 4KB+8 gap — stays within one guard page (64KB jumped past guard → crash)
 
 // ─── Emit Helpers ──────────────────────────────────────────────────────────
 
@@ -295,6 +296,12 @@ static MovRaxRspHook EmitStubs(
 
     int off = OFF_NAKED_STUB;
 
+    // ── Software bypass check (avoids MH_DisableHook/MH_EnableHook) ──
+    // If bypass flag is set, skip everything and JMP to raw trampoline (pure passthrough).
+    // This is used to disable the hook during loading without touching MinHook state.
+    EmitCmpMemDwordImm8(buf, off, base, OFF_BYPASS, 0);       // 7 bytes: bypass == 0?
+    int jneBypassOff = EmitJneShort(buf, off);                 // 2 bytes: jne .bypass
+
     // ── Reentrancy check (game logic is single-threaded) ──
     EmitIncMemDword(buf, off, base, OFF_DEPTH);                // 6 bytes: depth++
     EmitCmpMemDwordImm8(buf, off, base, OFF_DEPTH, 1);        // 7 bytes: depth == 1?
@@ -314,10 +321,10 @@ static MovRaxRspHook EmitStubs(
     //    original function's pushes go to captured_rsp-8, -16, etc.  Without
     //    this gap those pushes would overwrite the C++ hook's stack frame.
     //
-    //    Gap is 0x10008 for correct 16-byte alignment:
+    //    Gap is 0x1008 for correct 16-byte alignment:
     //      game_caller_RSP ≡ 0 (mod 16)          [x64 convention]
     //      After game's CALL: RSP ≡ 8 (mod 16)   [return addr pushed]
-    //      sub 0x10008:       RSP ≡ 0 (mod 16)   [ready for our CALL]
+    //      sub 0x1008:        RSP ≡ 0 (mod 16)   [ready for our CALL]
     //      Our CALL pushes:   RSP ≡ 8 (mod 16)   [correct at hook entry]
     EmitSubRspImm32(buf, off, STACK_GAP);                      // 7 bytes
 
@@ -348,7 +355,12 @@ static MovRaxRspHook EmitStubs(
     EmitDecMemDword(buf, off, base, OFF_DEPTH);                // 6 bytes: depth--
     EmitJmpMemAbs(buf, off, base, OFF_RAW_TRAMP);             // 6 bytes: jmp [raw_tramp]
 
-    int nakedSize = off - OFF_NAKED_STUB;  // ~90 bytes (with reentrancy guard)
+    // ── Bypass path (bypass flag != 0) ──
+    int bypassOff = off;
+    buf[jneBypassOff] = (uint8_t)(bypassOff - (jneBypassOff + 1));
+    EmitJmpMemAbs(buf, off, base, OFF_RAW_TRAMP);             // 6 bytes: jmp [raw_tramp]
+
+    int nakedSize = off - OFF_NAKED_STUB;  // ~100 bytes (with reentrancy + bypass)
     spdlog::info("MovRaxRspFix: '{}' naked detour at 0x{:X}, {} bytes",
                  name, base + OFF_NAKED_STUB, nakedSize);
 
@@ -414,6 +426,7 @@ static MovRaxRspHook EmitStubs(
     result.trampolineWrapper = buf + OFF_TRAMP_WRAP;
     result.rawTrampoline = trampoline;
     result.capturedRspSlot = buf + OFF_CAPTURED_RSP;
+    result.bypassFlag = reinterpret_cast<volatile int32_t*>(buf + OFF_BYPASS);
     result.allocBase = page;
     result.allocSize = ALLOC_SIZE;
 

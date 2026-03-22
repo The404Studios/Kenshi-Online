@@ -40,7 +40,7 @@ private:
     ENetHost*   m_host       = nullptr;
     ENetPeer*   m_serverPeer = nullptr;
     PacketCallback m_callback;
-    std::mutex  m_sendMutex;
+    std::mutex  m_enetMutex; // Protects ALL ENet host/peer operations (not thread-safe)
 
     std::atomic<bool> m_connected{false};
     std::atomic<bool> m_connecting{false};

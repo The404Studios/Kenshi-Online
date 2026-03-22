@@ -104,9 +104,11 @@ bool Install() {
         if (hookMgr.InstallAt("TimeUpdate",
                               reinterpret_cast<uintptr_t>(funcs.TimeUpdate),
                               &Hook_TimeUpdate, &s_origTimeUpdate)) {
-            // Tell Core that we're driving OnGameTick so render_hooks doesn't double-call it
-            Core::Get().SetTimeHookActive(true);
-            spdlog::info("time_hooks: TimeUpdate hook active — driving OnGameTick");
+            // Do NOT set TimeHookActive — the function at RVA 0x214B50 is never called
+            // by the game on Steam builds. render_hooks Present drives OnGameTick instead.
+            // If TimeUpdate starts firing, the 4ms dedup guard in OnGameTick prevents
+            // double-processing.
+            spdlog::info("time_hooks: TimeUpdate hook installed (not claiming active — Present drives OnGameTick)");
         }
     }
 

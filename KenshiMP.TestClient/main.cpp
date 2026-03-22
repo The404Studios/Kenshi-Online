@@ -71,6 +71,7 @@ static void SendHandshake() {
     MsgHandshake hs{};
     hs.protocolVersion = KMP_PROTOCOL_VERSION;
     strncpy(hs.playerName, g_playerName.c_str(), KMP_MAX_NAME_LENGTH);
+    hs.playerName[KMP_MAX_NAME_LENGTH] = '\0';
     hs.gameVersionMajor = 1;
     hs.gameVersionMinor = 0;
     hs.gameVersionPatch = 68;

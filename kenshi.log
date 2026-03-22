@@ -1,0 +1,26 @@
+06:03:35: Creating resource group General
+06:03:35: Creating resource group Internal
+06:03:35: Creating resource group Autodetect
+06:03:35: SceneManagerFactory for type 'DefaultSceneManager' registered.
+06:03:35: Registering ResourceManager for type Material
+06:03:35: Registering ResourceManager for type Mesh
+06:03:35: Registering ResourceManager for type OldSkeleton
+06:03:35: MovableObjectFactory for type 'ParticleSystem' registered.
+06:03:35: ArchiveFactory for archive type FileSystem registered.
+06:03:35: ArchiveFactory for archive type Zip registered.
+06:03:35: ArchiveFactory for archive type EmbeddedZip registered.
+06:03:35: DDS codec registering
+06:03:35: FreeImage version: 3.13.1
+06:03:35: This program uses FreeImage, a free, open source image library supporting all common bitmap formats. See http://freeimage.sourceforge.net for details
+06:03:35: Supported formats: bmp,ico,jpg,jif,jpeg,jpe,jng,koa,iff,lbm,mng,pbm,pbm,pcd,pcx,pgm,pgm,png,ppm,ppm,ras,tga,targa,tif,tiff,wap,wbmp,wbm,psd,cut,xbm,xpm,gif,hdr,g3,sgi,exr,j2k,j2c,jp2,pfm,pct,pict,pic,bay,bmq,cr2,crw,cs1,dc2,dcr,dng,erf,fff,hdr,k25,kdc,mdc,mos,mrw,nef,orf,pef,pxn,raf,raw,rdc,sr2,srf,arw,3fr,cine,ia,kc2,mef,nrw,qtk,rw2,sti,drf,dsc,ptx,cap,iiq,rwz
+06:03:35: Registering ResourceManager for type HighLevelGpuProgram
+06:03:35: MovableObjectFactory for type 'Entity' registered.
+06:03:35: MovableObjectFactory for type 'Light' registered.
+06:03:35: MovableObjectFactory for type 'BillboardSet' registered.
+06:03:35: MovableObjectFactory for type 'ManualObject' registered.
+06:03:35: MovableObjectFactory for type 'BillboardChain' registered.
+06:03:35: MovableObjectFactory for type 'RibbonTrail' registered.
+06:03:35: OGRE EXCEPTION(6:FileNotFoundException): 'Plugins_x64.cfg' file not found! in ConfigFile::load at ..\..\OgreMain\src\OgreConfigFile.cpp (line 88)
+06:03:35: Plugins_x64.cfg not found, automatic plugin loading disabled.
+06:03:35: *-*-* OGRE Initialising
+06:03:35: *-*-* Version 2.0.0unstable (Tindalos)

@@ -41,9 +41,9 @@ public:
 
     // Check if a specific entity should be synced to us
     bool ShouldSync(EntityID entityId, const EntityRegistry& registry) const {
-        auto* info = registry.GetInfo(entityId);
-        if (!info) return false;
-        return m_localZone.IsAdjacent(info->zone);
+        auto infoCopy = registry.GetInfoCopy(entityId);
+        if (!infoCopy) return false;
+        return m_localZone.IsAdjacent(infoCopy->zone);
     }
 
     // Get the set of zones we're interested in (3x3 around player)

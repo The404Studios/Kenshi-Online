@@ -71,6 +71,10 @@ public:
     size_t GetLoadedResourceCount() const;
     int    GetBurstCount() const { return m_burstCount.load(std::memory_order_relaxed); }
     bool   IsGameLoaded() const { return m_gameLoaded.load(std::memory_order_relaxed); }
+    bool   IsInBurst() const { return m_inBurst.load(std::memory_order_relaxed); }
+
+    // Returns human-readable reason why IsSafeToSpawn() returns false, or "OK" if safe.
+    std::string GetSpawnBlockReason() const;
 
     // ── Spawn gate callback ──
     using SpawnGateCallback = std::function<void(bool safe)>;
@@ -79,6 +83,7 @@ public:
     // ── Configuration ──
     static constexpr int SPAWN_COOLDOWN_MS = 2000;  // Wait after last resource load
     static constexpr int ZONE_SETTLE_MS    = 1500;  // Wait after zone load completes
+    static constexpr int BURST_TIMEOUT_MS  = 30000; // Auto-clear stuck burst after 30s
 
 private:
     void TransitionTo(LoadingPhase newPhase);
@@ -95,6 +100,7 @@ private:
     std::atomic<int>  m_burstCount{0};
     std::atomic<bool> m_gameLoaded{false};
     std::atomic<bool> m_inBurst{false};
+    std::chrono::steady_clock::time_point m_burstStartTime{}; // For timeout auto-clear
 
     // Timing
     std::chrono::steady_clock::time_point m_lastLoadCompleteTime;

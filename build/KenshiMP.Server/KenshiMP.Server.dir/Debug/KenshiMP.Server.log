@@ -1,0 +1,12 @@
+﻿  Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.Server/CMakeLists.txt
+  main.cpp
+  server.cpp
+  game_state.cpp
+  player_manager.cpp
+  entity_manager.cpp
+  zone_manager.cpp
+  combat_resolver.cpp
+  world_persistence.cpp
+  Generating Code...
+  KenshiMP.Server.vcxproj -> C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\Debug\KenshiMP.Server.exe
+  Copying KenshiMP.Server.exe to Kenshi directory

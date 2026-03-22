@@ -2,8 +2,19 @@
 #include <cstdint>
 #include <cmath>
 #include <string>
+#include <chrono>
 
 namespace kmp {
+
+// Session-relative timestamp in seconds (float).
+// Uses a static baseline so the value stays small and float-precise.
+// raw time_since_epoch() as float loses sub-second precision after ~9h of uptime.
+inline float SessionTime() {
+    static auto s_baseline = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - s_baseline);
+    return static_cast<float>(elapsed.count()) / 1000000.f;
+}
 
 using EntityID = uint32_t;
 using PlayerID = uint32_t;
@@ -84,13 +95,22 @@ struct Quat {
             dot = -dot;
             b2 = {-b.w, -b.x, -b.y, -b.z};
         }
-        if (dot > 0.9995f) {
-            return {
+        // Clamp to prevent NaN from acos(>1.0) due to floating-point drift
+        if (dot > 1.f) dot = 1.f;
+        if (dot >= 0.9995f) {
+            // Nlerp fallback — normalize to stay on unit sphere
+            Quat r = {
                 a.w + t * (b2.w - a.w),
                 a.x + t * (b2.x - a.x),
                 a.y + t * (b2.y - a.y),
                 a.z + t * (b2.z - a.z)
             };
+            float len = std::sqrt(r.w * r.w + r.x * r.x + r.y * r.y + r.z * r.z);
+            if (len > 1e-8f) {
+                float inv = 1.f / len;
+                r.w *= inv; r.x *= inv; r.y *= inv; r.z *= inv;
+            }
+            return r;
         }
         float theta = std::acos(dot);
         float sinTheta = std::sin(theta);
@@ -120,6 +140,8 @@ struct ZoneCoord {
 
     // Convert world position to zone coordinate
     static ZoneCoord FromWorldPos(const Vec3& pos, float zoneSize = 750.f) {
+        // Guard against NaN/Inf — UB to cast to int32_t
+        if (!std::isfinite(pos.x) || !std::isfinite(pos.z)) return {0, 0};
         return {
             static_cast<int32_t>(std::floor(pos.x / zoneSize)),
             static_cast<int32_t>(std::floor(pos.z / zoneSize))

@@ -1,0 +1,6 @@
+﻿  Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.Injector/CMakeLists.txt
+  main.cpp
+  injector.cpp
+  process.cpp
+  Generating Code...
+  KenshiMP.Injector.vcxproj -> C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\bin\Debug\KenshiMP.Injector.exe

@@ -1,0 +1,7 @@
+﻿  Building Custom Rule C:/Program Files (x86)/Steam/steamapps/common/Kenshi/KenshiMP/KenshiMP.Common/CMakeLists.txt
+  protocol.cpp
+  serialization.cpp
+  compression.cpp
+  config.cpp
+  Generating Code...
+  KenshiMP.Common.vcxproj -> C:\Program Files (x86)\Steam\steamapps\common\Kenshi\KenshiMP\build\lib\Debug\KenshiMP.Common.lib

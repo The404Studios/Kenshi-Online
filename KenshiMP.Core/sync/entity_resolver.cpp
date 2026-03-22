@@ -38,8 +38,8 @@ std::vector<EntityID> EntityResolver::Query(const EntityFilter& filter) const {
     if (filter.useZone) {
         auto zoneEntities = m_registry.GetEntitiesInZone(filter.zone);
         for (EntityID id : zoneEntities) {
-            auto* info = m_registry.GetInfo(id);
-            if (info && MatchesFilter(*info, filter)) {
+            auto infoCopy = m_registry.GetInfoCopy(id);
+            if (infoCopy && MatchesFilter(*infoCopy, filter)) {
                 result.push_back(id);
             }
         }
@@ -50,8 +50,8 @@ std::vector<EntityID> EntityResolver::Query(const EntityFilter& filter) const {
     if (filter.owner != INVALID_PLAYER) {
         auto playerEntities = m_registry.GetPlayerEntities(filter.owner);
         for (EntityID id : playerEntities) {
-            auto* info = m_registry.GetInfo(id);
-            if (info && MatchesFilter(*info, filter)) {
+            auto infoCopy = m_registry.GetInfoCopy(id);
+            if (infoCopy && MatchesFilter(*infoCopy, filter)) {
                 result.push_back(id);
             }
         }
@@ -62,8 +62,8 @@ std::vector<EntityID> EntityResolver::Query(const EntityFilter& filter) const {
     if (filter.remoteOnly) {
         auto remoteEntities = m_registry.GetRemoteEntities();
         for (EntityID id : remoteEntities) {
-            auto* info = m_registry.GetInfo(id);
-            if (info && MatchesFilter(*info, filter)) {
+            auto infoCopy = m_registry.GetInfoCopy(id);
+            if (infoCopy && MatchesFilter(*infoCopy, filter)) {
                 result.push_back(id);
             }
         }
@@ -78,8 +78,8 @@ std::vector<EntityID> EntityResolver::Query(const EntityFilter& filter) const {
     // Get local entities (owner = any local) + remote entities
     auto remotes = m_registry.GetRemoteEntities();
     for (EntityID id : remotes) {
-        auto* info = m_registry.GetInfo(id);
-        if (info && MatchesFilter(*info, filter)) {
+        auto infoCopy = m_registry.GetInfoCopy(id);
+        if (infoCopy && MatchesFilter(*infoCopy, filter)) {
             result.push_back(id);
         }
     }
@@ -113,11 +113,11 @@ std::vector<EntityID> EntityResolver::InRadius(const Vec3& center, float radius)
     auto candidates = InZoneNeighborhood(centerZone);
 
     for (EntityID id : candidates) {
-        auto* info = m_registry.GetInfo(id);
-        if (!info) continue;
-        float dx = info->lastPosition.x - center.x;
-        float dy = info->lastPosition.y - center.y;
-        float dz = info->lastPosition.z - center.z;
+        auto infoCopy = m_registry.GetInfoCopy(id);
+        if (!infoCopy) continue;
+        float dx = infoCopy->lastPosition.x - center.x;
+        float dy = infoCopy->lastPosition.y - center.y;
+        float dz = infoCopy->lastPosition.z - center.z;
         if (dx * dx + dy * dy + dz * dz <= radiusSq) {
             result.push_back(id);
         }
@@ -198,16 +198,7 @@ void EntityResolver::ClearInterest(PlayerID playerId) {
 // ---- Dirty Flag Management ----
 
 void EntityResolver::MarkDirty(EntityID id, uint16_t flags) {
-    // Dirty flags are stored on EntityInfo in the registry.
-    // We need write access — but EntityRegistry doesn't expose a direct setter for dirtyFlags.
-    // For now, we track dirty state in the registry's EntityInfo directly.
-    // This requires the registry to expose a mutable accessor or we modify EntityInfo.
-    // Since EntityInfo::dirtyFlags is public and GetInfo returns const*, we use a const_cast
-    // as a pragmatic choice until the registry exposes a setter.
-    auto* info = const_cast<EntityInfo*>(m_registry.GetInfo(id));
-    if (info) {
-        info->dirtyFlags |= flags;
-    }
+    m_registry.SetDirtyFlags(id, flags);
 }
 
 std::vector<EntityID> EntityResolver::ConsumeDirty(uint16_t mask) {
@@ -216,53 +207,53 @@ std::vector<EntityID> EntityResolver::ConsumeDirty(uint16_t mask) {
     // Scan remote entities for dirty flags matching mask
     auto remotes = m_registry.GetRemoteEntities();
     for (EntityID id : remotes) {
-        auto* info = const_cast<EntityInfo*>(m_registry.GetInfo(id));
-        if (info && (info->dirtyFlags & mask) != 0) {
+        auto infoCopy = m_registry.GetInfoCopy(id);
+        if (infoCopy && (infoCopy->dirtyFlags & mask) != 0) {
             result.push_back(id);
-            info->dirtyFlags &= ~mask; // Clear consumed flags
+            m_registry.ClearDirtyFlags(id, mask);
         }
     }
     return result;
 }
 
 bool EntityResolver::IsDirty(EntityID id, uint16_t mask) const {
-    auto* info = m_registry.GetInfo(id);
-    if (!info) return false;
-    return (info->dirtyFlags & mask) != 0;
+    auto infoCopy = m_registry.GetInfoCopy(id);
+    if (!infoCopy) return false;
+    return (infoCopy->dirtyFlags & mask) != 0;
 }
 
 // ---- Lifecycle Validation ----
 
 bool EntityResolver::CanSync(EntityID id) const {
-    auto* info = m_registry.GetInfo(id);
-    if (!info) return false;
-    return info->state == EntityState::Active || info->state == EntityState::Spawning;
+    auto infoCopy = m_registry.GetInfoCopy(id);
+    if (!infoCopy) return false;
+    return infoCopy->state == EntityState::Active || infoCopy->state == EntityState::Spawning;
 }
 
 bool EntityResolver::CanDespawn(EntityID id) const {
-    auto* info = m_registry.GetInfo(id);
-    if (!info) return false;
-    return info->state == EntityState::Active;
+    auto infoCopy = m_registry.GetInfoCopy(id);
+    if (!infoCopy) return false;
+    return infoCopy->state == EntityState::Active;
 }
 
 bool EntityResolver::IsAlive(EntityID id) const {
-    auto* info = m_registry.GetInfo(id);
-    if (!info) return false;
-    return info->state == EntityState::Active && info->gameObject != nullptr;
+    auto infoCopy = m_registry.GetInfoCopy(id);
+    if (!infoCopy) return false;
+    return infoCopy->state == EntityState::Active && infoCopy->gameObject != nullptr;
 }
 
 // ---- Ownership ----
 
 bool EntityResolver::IsLocallyOwned(EntityID id, PlayerID localPlayer) const {
-    auto* info = m_registry.GetInfo(id);
-    if (!info) return false;
-    return info->ownerPlayerId == localPlayer;
+    auto infoCopy = m_registry.GetInfoCopy(id);
+    if (!infoCopy) return false;
+    return infoCopy->ownerPlayerId == localPlayer;
 }
 
 bool EntityResolver::IsServerOwned(EntityID id) const {
-    auto* info = m_registry.GetInfo(id);
-    if (!info) return false;
-    return info->ownerPlayerId == 0;
+    auto infoCopy = m_registry.GetInfoCopy(id);
+    if (!infoCopy) return false;
+    return infoCopy->ownerPlayerId == 0;
 }
 
 void EntityResolver::TransferToServer(PlayerID fromPlayer) {

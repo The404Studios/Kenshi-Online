@@ -127,6 +127,9 @@ void NetworkClient::Update() {
     if (!m_host) return;
 
     ENetEvent event;
+    // Lock covers enet_host_service which shares internal state with enet_peer_send.
+    // The 0 timeout makes this non-blocking, so lock contention is minimal.
+    std::lock_guard lock(m_enetMutex);
     while (enet_host_service(m_host, &event, 0) > 0) {
         switch (event.type) {
         case ENET_EVENT_TYPE_CONNECT:
@@ -165,7 +168,7 @@ void NetworkClient::Update() {
 void NetworkClient::Send(const uint8_t* data, size_t len, int channel, uint32_t flags) {
     if (!m_connected || !m_serverPeer) return;
 
-    std::lock_guard lock(m_sendMutex);
+    std::lock_guard lock(m_enetMutex);
     ENetPacket* packet = enet_packet_create(data, len, flags);
     if (packet) {
         enet_peer_send(m_serverPeer, channel, packet);
@@ -181,7 +184,10 @@ void NetworkClient::SendReliableUnordered(const uint8_t* data, size_t len) {
 }
 
 void NetworkClient::SendUnreliable(const uint8_t* data, size_t len) {
-    Send(data, len, KMP_CHANNEL_UNRELIABLE_SEQ, ENET_PACKET_FLAG_UNSEQUENCED);
+    // flags=0 means unreliable + sequenced. ENet drops late/out-of-order packets
+    // automatically, preventing stale position data from overwriting current state.
+    // ENET_PACKET_FLAG_UNSEQUENCED would deliver ALL packets regardless of order.
+    Send(data, len, KMP_CHANNEL_UNRELIABLE_SEQ, 0);
 }
 
 uint32_t NetworkClient::GetPing() const {

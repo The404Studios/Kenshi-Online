@@ -4,6 +4,16 @@
 namespace kmp {
 
 EntityID EntityRegistry::Register(void* gameObject, EntityType type, PlayerID owner) {
+    // Reject SSO string data, stack addresses, and other non-heap pointers.
+    // Threshold 0x10000 (64KB) matches all spawn/hijack paths in the codebase.
+    if (gameObject) {
+        uintptr_t addr = reinterpret_cast<uintptr_t>(gameObject);
+        if (addr < 0x10000 || addr > 0x00007FFFFFFFFFFF || (addr & 0x3) != 0) {
+            spdlog::error("EntityRegistry: Register REJECTED invalid pointer 0x{:X}", addr);
+            return INVALID_ENTITY;
+        }
+    }
+
     std::unique_lock lock(m_mutex);
 
     // Check if already registered
@@ -30,6 +40,16 @@ EntityID EntityRegistry::RegisterRemote(EntityID netId, EntityType type,
                                         PlayerID owner, const Vec3& pos) {
     std::unique_lock lock(m_mutex);
 
+    // Check if already registered (duplicate spawn message)
+    auto existing = m_entities.find(netId);
+    if (existing != m_entities.end()) {
+        spdlog::warn("EntityRegistry: RegisterRemote called for already-registered entity {} "
+                      "(state={}, hasObj={})", netId,
+                      static_cast<int>(existing->second.state),
+                      existing->second.gameObject != nullptr);
+        return netId;
+    }
+
     EntityInfo info;
     info.netId = netId;
     info.gameObject = nullptr; // Will be set when local entity is created
@@ -45,6 +65,9 @@ EntityID EntityRegistry::RegisterRemote(EntityID netId, EntityType type,
 
     // Ensure our local ID counter stays ahead of server IDs
     if (netId >= m_nextId) m_nextId = netId + 1;
+
+    spdlog::info("EntityRegistry: RegisterRemote entity {} (owner={}, pos=({:.0f},{:.0f},{:.0f}), state=Spawning)",
+                 netId, owner, pos.x, pos.y, pos.z);
 
     return netId;
 }
@@ -76,6 +99,19 @@ std::optional<EntityInfo> EntityRegistry::GetInfoCopy(EntityID netId) const {
 
 void EntityRegistry::SetGameObject(EntityID netId, void* gameObject) {
     std::unique_lock lock(m_mutex);
+
+    // Reject SSO string data, stack addresses, and other non-heap pointers.
+    // Threshold 0x10000 (64KB) matches all spawn/hijack paths in the codebase.
+    // SSO strings have values like 0x656E6F ("one") which are well below 0x10000.
+    if (gameObject) {
+        uintptr_t addr = reinterpret_cast<uintptr_t>(gameObject);
+        if (addr < 0x10000 || addr > 0x00007FFFFFFFFFFF || (addr & 0x3) != 0) {
+            spdlog::error("EntityRegistry: SetGameObject({}) REJECTED invalid pointer 0x{:X} "
+                          "(SSO string or stack address)", netId, addr);
+            gameObject = nullptr;
+        }
+    }
+
     auto it = m_entities.find(netId);
     if (it != m_entities.end()) {
         // Remove old pointer mapping if any
@@ -88,8 +124,16 @@ void EntityRegistry::SetGameObject(EntityID netId, void* gameObject) {
             // Transition: Spawning → Active once game object is linked
             if (it->second.state == EntityState::Spawning) {
                 it->second.state = EntityState::Active;
+                spdlog::info("EntityRegistry: Entity {} transitioned Spawning -> Active "
+                             "(gameObject=0x{:X}, owner={})",
+                             netId, reinterpret_cast<uintptr_t>(gameObject),
+                             it->second.ownerPlayerId);
             }
         }
+    } else {
+        spdlog::warn("EntityRegistry: SetGameObject called for unknown entity {} "
+                      "(gameObject=0x{:X})", netId,
+                      reinterpret_cast<uintptr_t>(gameObject));
     }
 }
 
@@ -123,6 +167,22 @@ void EntityRegistry::UpdateEquipment(EntityID netId, int slot, uint32_t itemTemp
     auto it = m_entities.find(netId);
     if (it != m_entities.end() && slot >= 0 && slot < 14) {
         it->second.lastEquipment[slot] = itemTemplateId;
+    }
+}
+
+void EntityRegistry::SetDirtyFlags(EntityID netId, uint16_t flags) {
+    std::unique_lock lock(m_mutex);
+    auto it = m_entities.find(netId);
+    if (it != m_entities.end()) {
+        it->second.dirtyFlags |= flags;
+    }
+}
+
+void EntityRegistry::ClearDirtyFlags(EntityID netId, uint16_t mask) {
+    std::unique_lock lock(m_mutex);
+    auto it = m_entities.find(netId);
+    if (it != m_entities.end()) {
+        it->second.dirtyFlags &= ~mask;
     }
 }
 

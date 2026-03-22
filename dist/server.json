@@ -1,0 +1,12 @@
+{
+  "gameSpeed": 1.0,
+  "masterPort": 27801,
+  "masterServer": "162.248.94.149",
+  "maxPlayers": 16,
+  "password": "",
+  "port": 27800,
+  "pvpEnabled": true,
+  "savePath": "world.kmpsave",
+  "serverName": "KenshiMP Server",
+  "tickRate": 20
+}

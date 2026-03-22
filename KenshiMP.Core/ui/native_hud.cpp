@@ -246,23 +246,21 @@ void NativeHud::Update() {
     // Try to init as soon as MyGUI bridge is ready (works on main menu too)
     if (!m_initialized) {
         static int s_initAttempts = 0;
-        static constexpr int MAX_INIT_ATTEMPTS = 10;
         static auto s_lastAttempt = std::chrono::steady_clock::time_point{};
 
-        if (s_initAttempts >= MAX_INIT_ATTEMPTS) return; // Give up after max attempts
-
-        // Throttle retries to once per second
+        // Throttle retries: every 1s for first 10 attempts, every 10s after that
         auto now = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - s_lastAttempt);
-        if (s_initAttempts > 0 && elapsed.count() < 1000) return;
+        int retryIntervalMs = (s_initAttempts < 10) ? 1000 : 10000;
+        if (s_initAttempts > 0 && elapsed.count() < retryIntervalMs) return;
 
         auto& bridge = MyGuiBridge::Get();
         if (bridge.IsReady()) {
             s_lastAttempt = now;
             s_initAttempts++;
             if (!Init()) {
-                if (s_initAttempts >= MAX_INIT_ATTEMPTS) {
-                    spdlog::warn("NativeHud: Giving up after {} init attempts — layout not found", MAX_INIT_ATTEMPTS);
+                if (s_initAttempts == 10) {
+                    spdlog::warn("NativeHud: 10 init attempts failed — retrying every 10s");
                 }
                 return;
             }

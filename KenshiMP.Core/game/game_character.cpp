@@ -52,7 +52,6 @@ static int  s_discoveredAnimClassOffset = -1;
 
 static void ProbeAnimClassOffset(uintptr_t charPtr) {
     if (s_animClassProbed) return;
-    s_animClassProbed = true;
 
     auto& offsets = GetOffsets().character;
 
@@ -60,7 +59,11 @@ static void ProbeAnimClassOffset(uintptr_t charPtr) {
     Vec3 cachedPos;
     if (offsets.position < 0) return;
     Memory::ReadVec3(charPtr + offsets.position, cachedPos.x, cachedPos.y, cachedPos.z);
+    // Don't set s_animClassProbed if position is (0,0,0) — let another character try
     if (cachedPos.x == 0.f && cachedPos.y == 0.f && cachedPos.z == 0.f) return;
+
+    // Only mark probed AFTER we have a valid position to test against
+    s_animClassProbed = true;
 
     // Scan offsets 0x60 through 0x200 in 8-byte steps (pointer alignment)
     // looking for a pointer that leads through the known chain to a matching position.
@@ -191,7 +194,7 @@ float CharacterAccessor::GetHealth(BodyPart part) const {
     // Method 1: Direct offset (if scanner found it)
     if (offsets.health >= 0) {
         float health = 0.f;
-        Memory::Read(m_ptr + offsets.health + static_cast<int>(part) * sizeof(float), health);
+        Memory::Read(m_ptr + offsets.health + static_cast<int>(part) * offsets.healthStride, health);
         return health;
     }
 
@@ -349,14 +352,30 @@ bool CharacterAccessor::WriteName(const std::string& name) {
 bool CharacterAccessor::WriteFaction(uintptr_t factionPtr) {
     int offset = GetOffsets().character.faction;
     if (offset < 0) return false;
+    // Validate faction pointer: must be heap-allocated, aligned, outside module
+    if (factionPtr < 0x10000 || factionPtr >= 0x00007FFFFFFFFFFF || (factionPtr & 0x7) != 0) {
+        spdlog::warn("WriteFaction: Rejected invalid faction ptr 0x{:X}", factionPtr);
+        return false;
+    }
+    uintptr_t modBase = Memory::GetModuleBase();
+    if (factionPtr >= modBase && factionPtr < modBase + 0x4000000) {
+        spdlog::warn("WriteFaction: Rejected in-module faction ptr 0x{:X}", factionPtr);
+        return false;
+    }
     Memory::Write(m_ptr + offset, factionPtr);
     return true;
 }
 
 uintptr_t CharacterAccessor::GetGameDataPtr() const {
-    // GameData* backpointer at character + 0x40 (verified)
+    int offset = GetOffsets().character.gameDataPtr;
+    if (offset < 0) return 0;
+
     uintptr_t gdPtr = 0;
-    Memory::Read(m_ptr + 0x40, gdPtr);
+    Memory::Read(m_ptr + offset, gdPtr);
+    if (gdPtr < 0x10000 || gdPtr >= 0x00007FFFFFFFFFFF || (gdPtr & 0x7) != 0) return 0;
+    // GameData is heap-allocated — reject if inside module image
+    uintptr_t modBase = Memory::GetModuleBase();
+    if (gdPtr >= modBase && gdPtr < modBase + 0x4000000) return 0;
     return gdPtr;
 }
 
@@ -366,6 +385,7 @@ uintptr_t CharacterAccessor::GetInventoryPtr() const {
 
     uintptr_t ptr = 0;
     Memory::Read(m_ptr + offset, ptr);
+    if (ptr < 0x10000 || ptr >= 0x00007FFFFFFFFFFF || (ptr & 0x7) != 0) return 0;
     return ptr;
 }
 
@@ -378,8 +398,10 @@ void SetGameSetPositionFn(void* fn) {
     s_setPositionFn = reinterpret_cast<SetPositionFn>(fn);
 }
 
-// Track which WritePosition method was first used, for diagnostics
-static bool s_writePosLogged = false;
+// Track WritePosition method transitions: log when method changes, not just first call.
+// This ensures we see if characters silently fall back to worse methods.
+static int s_lastWritePosMethod = 0;  // 0=none, 1=setPositionFn, 2=physicsChain, 3=cached
+static int s_writePosMethodCount = 0; // Total calls since last method change
 
 bool CharacterAccessor::WritePosition(const Vec3& pos) {
     auto& offsets = GetOffsets().character;
@@ -388,11 +410,13 @@ bool CharacterAccessor::WritePosition(const Vec3& pos) {
     // This properly moves the character through the physics engine.
     // Signature: void __fastcall setPosition(this, const Vec3* pos)
     if (s_setPositionFn) {
-        if (!s_writePosLogged) {
-            s_writePosLogged = true;
-            spdlog::info("WritePosition: Using Method 1 (setPosition fn) at 0x{:X} for char 0x{:X}",
-                         reinterpret_cast<uintptr_t>(s_setPositionFn), m_ptr);
+        if (s_lastWritePosMethod != 1) {
+            spdlog::info("WritePosition: Using Method 1 (setPosition fn) at 0x{:X} for char 0x{:X} (prev method={})",
+                         reinterpret_cast<uintptr_t>(s_setPositionFn), m_ptr, s_lastWritePosMethod);
+            s_lastWritePosMethod = 1;
+            s_writePosMethodCount = 0;
         }
+        s_writePosMethodCount++;
         s_setPositionFn(reinterpret_cast<void*>(m_ptr), &pos);
         return true;
     }
@@ -405,18 +429,22 @@ bool CharacterAccessor::WritePosition(const Vec3& pos) {
     }
     if (offsets.animClassOffset >= 0) {
         uintptr_t animClass = 0;
-        if (Memory::Read(m_ptr + offsets.animClassOffset, animClass) && animClass != 0) {
+        if (Memory::Read(m_ptr + offsets.animClassOffset, animClass) && animClass != 0 &&
+            animClass > 0x10000 && animClass < 0x00007FFFFFFFFFFF && (animClass & 0x7) == 0) {
             uintptr_t charMovement = 0;
-            if (Memory::Read(animClass + offsets.charMovementOffset, charMovement) && charMovement != 0) {
+            if (Memory::Read(animClass + offsets.charMovementOffset, charMovement) && charMovement != 0 &&
+                charMovement > 0x10000 && charMovement < 0x00007FFFFFFFFFFF && (charMovement & 0x7) == 0) {
                 uintptr_t posAddr = charMovement + offsets.writablePosOffset + offsets.writablePosVecOffset;
                 Memory::Write(posAddr, pos.x);
                 Memory::Write(posAddr + 4, pos.y);
                 Memory::Write(posAddr + 8, pos.z);
-                if (!s_writePosLogged) {
-                    s_writePosLogged = true;
-                    spdlog::info("WritePosition: Using Method 2 (physics chain) animClass=0x{:X} for char 0x{:X}",
-                                 offsets.animClassOffset, m_ptr);
+                if (s_lastWritePosMethod != 2) {
+                    spdlog::info("WritePosition: Using Method 2 (physics chain) animClass=0x{:X} for char 0x{:X} (prev method={})",
+                                 offsets.animClassOffset, m_ptr, s_lastWritePosMethod);
+                    s_lastWritePosMethod = 2;
+                    s_writePosMethodCount = 0;
                 }
+                s_writePosMethodCount++;
                 return true;
             }
         }
@@ -429,15 +457,18 @@ bool CharacterAccessor::WritePosition(const Vec3& pos) {
         Memory::Write(m_ptr + offsets.position, pos.x);
         Memory::Write(m_ptr + offsets.position + 4, pos.y);
         Memory::Write(m_ptr + offsets.position + 8, pos.z);
-        if (!s_writePosLogged) {
-            s_writePosLogged = true;
+        if (s_lastWritePosMethod != 3) {
             spdlog::warn("WritePosition: Using Method 3 (cached position fallback) for char 0x{:X} "
-                         "— position may drift due to physics engine overwrite", m_ptr);
+                         "— position may drift due to physics engine overwrite (prev method={})",
+                         m_ptr, s_lastWritePosMethod);
+            s_lastWritePosMethod = 3;
+            s_writePosMethodCount = 0;
         }
-    } else if (!s_writePosLogged) {
-        s_writePosLogged = true;
+        s_writePosMethodCount++;
+    } else if (s_lastWritePosMethod != -1) {
         spdlog::error("WritePosition: ALL methods failed for char 0x{:X} — "
                       "no setPosition fn, no physics chain, no cached position offset", m_ptr);
+        s_lastWritePosMethod = -1;
     }
 
     return offsets.position >= 0;
@@ -508,8 +539,10 @@ uintptr_t CharacterAccessor::GetSquadPtr() const {
     for (int off : candidateOffsets) {
         uintptr_t candidate = 0;
         if (!Memory::Read(m_ptr + off, candidate)) continue;
-        if (candidate < 0x10000 || candidate > 0x00007FFFFFFFFFFF) continue;
+        if (candidate < 0x10000 || candidate > 0x00007FFFFFFFFFFF || (candidate & 0x7) != 0) continue;
         if (candidate == factionPtr) continue; // Skip the faction pointer itself
+        // Overflow guard: candidate + 0x30 must not wrap
+        if (candidate > 0x00007FFFFFFFFFE0ULL) continue;
 
         // Validate: a KSquad should have a readable name at +0x10
         // MSVC std::string layout: if size <= 15 (SSO), chars at +0x00; else ptr at +0x00
@@ -538,6 +571,7 @@ uintptr_t CharacterAccessor::GetAIPackagePtr() const {
 
     uintptr_t ptr = 0;
     Memory::Read(m_ptr + offset, ptr);
+    if (ptr < 0x10000 || ptr >= 0x00007FFFFFFFFFFF || (ptr & 0x7) != 0) return 0;
     return ptr;
 }
 
@@ -585,6 +619,8 @@ void CharacterIterator::Reset() {
 
     auto isValidHeapPtr = [modBase, modSize](uintptr_t val) -> bool {
         if (val < 0x10000 || val >= 0x00007FFFFFFFFFFF) return false;
+        // Must be 8-byte aligned (x64 heap allocations are at least 16-byte aligned)
+        if ((val & 0x7) != 0) return false;
         // Must be outside module image — game objects are heap-allocated
         if (val >= modBase && val < modBase + modSize) return false;
         return true;
@@ -600,12 +636,21 @@ void CharacterIterator::Reset() {
         }
     }
 
+    // If PlayerBase gave a pointer, validate it by walking the array.
+    // If the first entry is 0 or invalid, PlayerBase isn't a character array —
+    // clear m_listBase so we fall through to the GameWorld path.
+    if (m_listBase != 0) {
+        uintptr_t firstEntry = 0;
+        if (!Memory::Read(m_listBase, firstEntry) || !isValidHeapPtr(firstEntry)) {
+            spdlog::debug("CharacterIterator: PlayerBase dereference 0x{:X} has no valid entries — trying GameWorld",
+                         m_listBase);
+            m_listBase = 0;
+        }
+    }
+
     // ── Strategy 2: GameWorld + characterList fallback ──
-    // If PlayerBase failed (broken on Steam), try GameWorld + 0x0888 characterList.
-    // Research code (GOG verified): GameWorld is a static object at moduleBase + offset.
+    // If PlayerBase failed or yielded no characters, try GameWorld + 0x0888 characterList.
     // The characterList at GameWorld+0x0888 is a lektor (dynamic array).
-    // Lektor layout: +0x00 = count (or data), +0x08 = size, +0x10 = pointer array
-    // We try multiple interpretations since the exact lektor format varies.
     if (m_listBase == 0) {
         uintptr_t gameWorldAddr = GetResolvedGameWorld();
         if (gameWorldAddr != 0) {
@@ -721,6 +766,19 @@ CharacterAccessor CharacterIterator::Next() {
     Memory::Read(m_listBase + m_index * sizeof(uintptr_t), charPtr);
     m_index++;
 
+    // Validate: must be non-zero, 8-byte aligned, in user-space
+    if (charPtr == 0 || (charPtr & 0x7) != 0 || charPtr >= 0x00007FFFFFFFFFFF)
+        return CharacterAccessor(nullptr);
+
+    // Vtable check: first 8 bytes must point into the module (game class vtable in .rdata)
+    uintptr_t vtable = 0;
+    if (!Memory::Read(charPtr, vtable))
+        return CharacterAccessor(nullptr);
+    uintptr_t modBase = Memory::GetModuleBase();
+    // Accept vtable within module image (typically in .rdata section)
+    if (vtable < modBase || vtable >= modBase + 0x4000000)
+        return CharacterAccessor(nullptr);
+
     return CharacterAccessor(reinterpret_cast<void*>(charPtr));
 }
 
@@ -741,6 +799,7 @@ bool CharacterAccessor::SetPlayerControlled(bool controlled) {
 // is discovered or the queue is exhausted.
 static std::vector<uintptr_t> s_deferredProbeChars;
 static std::mutex s_deferredProbeMutex;
+static int s_deferredTotalAttempts = 0;
 
 namespace kmp::game {
 
@@ -797,15 +856,31 @@ bool ProcessDeferredAnimClassProbes() {
     }
 
     // Prune queue after 50 failed attempts total
-    static int s_totalAttempts = 0;
-    s_totalAttempts++;
-    if (s_totalAttempts > 50) {
+    s_deferredTotalAttempts++;
+    if (s_deferredTotalAttempts > 50) {
         spdlog::warn("game_character: Deferred AnimClass probe exhausted (50 ticks, {} chars) — giving up",
                      s_deferredProbeChars.size());
         s_deferredProbeChars.clear();
     }
 
     return false;
+}
+
+// ── Reset all probe state for reconnect or second game load ──
+// Without this, statics like s_animClassProbed, s_deferredTotalAttempts, s_writePosLogged
+// persist across game loads, causing probes to never fire on second load.
+void ResetProbeState() {
+    s_animClassProbed = false;
+    s_discoveredAnimClassOffset = -1;
+    s_equipmentProbed = false;
+    s_lastWritePosMethod = 0;
+    s_writePosMethodCount = 0;
+    s_deferredTotalAttempts = 0;
+    {
+        std::lock_guard lock(s_deferredProbeMutex);
+        s_deferredProbeChars.clear();
+    }
+    spdlog::info("game_character: ResetProbeState — all probe statics cleared");
 }
 
 // ── Player Controlled Offset Discovery ──

@@ -162,8 +162,7 @@ PipelineSnapshot PipelineOrchestrator::CollectSnapshot() const {
         if (d.name == "CharacterCreate" && d.enabled) snap.hookFlags |= 0x01;
         if (d.name == "CharacterDestroy" && d.enabled) snap.hookFlags |= 0x02;
     }
-    if (entity_hooks::IsInBurst())         snap.hookFlags |= 0x04;
-    if (entity_hooks::IsLoadingComplete()) snap.hookFlags |= 0x08;
+    // Burst detection removed — hook is disabled during loading entirely
 
     // SpawnManager state
     if (m_spawnMgr) {

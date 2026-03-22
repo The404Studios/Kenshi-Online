@@ -6,108 +6,120 @@
 #include "kmp/memory.h"
 #include "kmp/safe_hook.h"
 #include <spdlog/spdlog.h>
+#include <atomic>
 
 namespace kmp::world_hooks {
 
 using ZoneLoadFn = void(__fastcall*)(void* zoneMgr, int zoneX, int zoneY);
 using ZoneUnloadFn = void(__fastcall*)(void* zoneMgr, int zoneX, int zoneY);
-using BuildingPlaceFn = void(__fastcall*)(void* world, void* building, float x, float y, float z);
 
 static ZoneLoadFn      s_origZoneLoad   = nullptr;
 static ZoneUnloadFn    s_origZoneUnload = nullptr;
-static BuildingPlaceFn s_origBuildPlace = nullptr;
 
 // ── Hook Health ──
 static HookHealth s_zoneLoadHealth{"ZoneLoad"};
 static HookHealth s_zoneUnloadHealth{"ZoneUnload"};
-static HookHealth s_buildPlaceHealth{"BuildingPlace"};
 
 // ── Diagnostic Counters ──
 static std::atomic<int> s_zoneLoadCount{0};
 static std::atomic<int> s_zoneUnloadCount{0};
-static std::atomic<int> s_buildPlaceCount{0};
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DEFERRED ZONE EVENT QUEUE
+//  Zone hooks may fire inside MovRaxRsp detours. spdlog + PacketWriter +
+//  SendReliable inside the detour causes heap corruption / deadlock.
+//  Defer all heavy work to ProcessDeferredZoneEvents() called from OnGameTick.
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum class ZoneEventType : uint8_t { Load, Unload };
+
+struct DeferredZoneEvent {
+    ZoneEventType type;
+    int32_t zoneX;
+    int32_t zoneY;
+};
+
+static constexpr int ZONE_RING_SIZE = 32;
+static DeferredZoneEvent s_zoneRing[ZONE_RING_SIZE];
+static std::atomic<int> s_zoneWriteIdx{0};
+static std::atomic<int> s_zoneReadIdx{0};
+
+static bool PushZoneEvent(const DeferredZoneEvent& evt) {
+    int writeIdx = s_zoneWriteIdx.load(std::memory_order_relaxed);
+    int nextIdx = (writeIdx + 1) % ZONE_RING_SIZE;
+    if (nextIdx == s_zoneReadIdx.load(std::memory_order_acquire)) return false;
+    s_zoneRing[writeIdx] = evt;
+    s_zoneWriteIdx.store(nextIdx, std::memory_order_release);
+    return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  HOOK BODIES — minimal work only. No spdlog, no PacketWriter, no SendReliable.
+// ═══════════════════════════════════════════════════════════════════════════
 
 static void __fastcall Hook_ZoneLoad(void* zoneMgr, int zoneX, int zoneY) {
-    int callNum = s_zoneLoadCount.fetch_add(1) + 1;
-    spdlog::info("world_hooks: ZoneLoad #{} zone=({},{}) mgr=0x{:X}",
-                 callNum, zoneX, zoneY, reinterpret_cast<uintptr_t>(zoneMgr));
-    // SEH-protected trampoline call
-    if (!SafeCall_Void_PtrII(reinterpret_cast<void*>(s_origZoneLoad),
-                              zoneMgr, zoneX, zoneY, &s_zoneLoadHealth)) {
-        if (s_zoneLoadHealth.trampolineFailed.load()) {
-            spdlog::error("world_hooks: ZoneLoad trampoline CRASHED! Hook disabled.");
-        }
-        return;
-    }
+    s_zoneLoadCount.fetch_add(1, std::memory_order_relaxed);
 
-    auto& core = Core::Get();
-    if (core.IsConnected()) {
-        spdlog::debug("world_hooks: Zone loaded ({}, {})", zoneX, zoneY);
-        PacketWriter writer;
-        writer.WriteHeader(MessageType::C2S_ZoneRequest);
-        writer.WriteI32(zoneX);
-        writer.WriteI32(zoneY);
-        core.GetClient().SendReliable(writer.Data(), writer.Size());
+    // SEH-protected trampoline call — game zone loading must always proceed
+    SafeCall_Void_PtrII(reinterpret_cast<void*>(s_origZoneLoad),
+                         zoneMgr, zoneX, zoneY, &s_zoneLoadHealth);
+
+    // Queue zone load event for deferred processing (no heap allocation)
+    if (Core::Get().IsConnected()) {
+        DeferredZoneEvent evt{ZoneEventType::Load, zoneX, zoneY};
+        PushZoneEvent(evt);
     }
 }
 
 static void __fastcall Hook_ZoneUnload(void* zoneMgr, int zoneX, int zoneY) {
-    int callNum = s_zoneUnloadCount.fetch_add(1) + 1;
-    spdlog::info("world_hooks: ZoneUnload #{} zone=({},{}) mgr=0x{:X}",
-                 callNum, zoneX, zoneY, reinterpret_cast<uintptr_t>(zoneMgr));
+    s_zoneUnloadCount.fetch_add(1, std::memory_order_relaxed);
 
-    auto& core = Core::Get();
-    if (core.IsConnected()) {
-        spdlog::debug("world_hooks: Zone unloading ({}, {})", zoneX, zoneY);
-        core.GetEntityRegistry().RemoveEntitiesInZone(ZoneCoord(zoneX, zoneY));
-    }
+    // SEH-protected trampoline call — must run BEFORE removing entities
+    SafeCall_Void_PtrII(reinterpret_cast<void*>(s_origZoneUnload),
+                         zoneMgr, zoneX, zoneY, &s_zoneUnloadHealth);
 
-    // SEH-protected trampoline call
-    if (!SafeCall_Void_PtrII(reinterpret_cast<void*>(s_origZoneUnload),
-                              zoneMgr, zoneX, zoneY, &s_zoneUnloadHealth)) {
-        if (s_zoneUnloadHealth.trampolineFailed.load()) {
-            spdlog::error("world_hooks: ZoneUnload trampoline CRASHED! Hook disabled.");
-        }
+    // Queue zone unload event for deferred processing
+    if (Core::Get().IsConnected()) {
+        DeferredZoneEvent evt{ZoneEventType::Unload, zoneX, zoneY};
+        PushZoneEvent(evt);
     }
 }
 
-static void __fastcall Hook_BuildingPlace(void* world, void* building,
-                                           float x, float y, float z) {
-    int callNum = s_buildPlaceCount.fetch_add(1) + 1;
-    spdlog::info("world_hooks: BuildingPlace #{} world=0x{:X} building=0x{:X} pos=({:.1f},{:.1f},{:.1f})",
-                 callNum, reinterpret_cast<uintptr_t>(world),
-                 reinterpret_cast<uintptr_t>(building), x, y, z);
+// ═══════════════════════════════════════════════════════════════════════════
+//  DEFERRED PROCESSING — called from Core::OnGameTick (safe context)
+// ═══════════════════════════════════════════════════════════════════════════
 
+void ProcessDeferredZoneEvents() {
     auto& core = Core::Get();
-
-    if (core.IsConnected()) {
-        uint32_t templateId = 0;
-        uint32_t compQuat = 0;
-
-        if (building) {
-            Memory::Read(reinterpret_cast<uintptr_t>(building) + 0x08, templateId);
-            Quat rot;
-            if (Memory::Read(reinterpret_cast<uintptr_t>(building) + 0x20, rot)) {
-                compQuat = rot.Compress();
-            }
+    if (!core.IsConnected()) {
+        // Drain without processing
+        DeferredZoneEvent discard;
+        int readIdx = s_zoneReadIdx.load(std::memory_order_relaxed);
+        while (readIdx != s_zoneWriteIdx.load(std::memory_order_acquire)) {
+            readIdx = (readIdx + 1) % ZONE_RING_SIZE;
         }
-
-        PacketWriter writer;
-        writer.WriteHeader(MessageType::C2S_BuildRequest);
-        writer.WriteU32(templateId);
-        writer.WriteF32(x);
-        writer.WriteF32(y);
-        writer.WriteF32(z);
-        writer.WriteU32(compQuat);
-
-        core.GetClient().SendReliable(writer.Data(), writer.Size());
+        s_zoneReadIdx.store(readIdx, std::memory_order_release);
+        return;
     }
 
-    // SEH-protected trampoline call
-    if (!SafeCall_Void_PtrPtrFFF(reinterpret_cast<void*>(s_origBuildPlace),
-                                  world, building, x, y, z, &s_buildPlaceHealth)) {
-        if (s_buildPlaceHealth.trampolineFailed.load()) {
-            spdlog::error("world_hooks: BuildingPlace trampoline CRASHED! Hook disabled.");
+    int processed = 0;
+    while (processed < 8) {
+        int readIdx = s_zoneReadIdx.load(std::memory_order_relaxed);
+        if (readIdx == s_zoneWriteIdx.load(std::memory_order_acquire)) break;
+        DeferredZoneEvent evt = s_zoneRing[readIdx];
+        s_zoneReadIdx.store((readIdx + 1) % ZONE_RING_SIZE, std::memory_order_release);
+        processed++;
+
+        if (evt.type == ZoneEventType::Load) {
+            spdlog::info("world_hooks: [deferred] ZoneLoad ({}, {})", evt.zoneX, evt.zoneY);
+            PacketWriter writer;
+            writer.WriteHeader(MessageType::C2S_ZoneRequest);
+            writer.WriteI32(evt.zoneX);
+            writer.WriteI32(evt.zoneY);
+            core.GetClient().SendReliable(writer.Data(), writer.Size());
+        } else {
+            spdlog::info("world_hooks: [deferred] ZoneUnload ({}, {})", evt.zoneX, evt.zoneY);
+            core.GetEntityRegistry().RemoveEntitiesInZone(ZoneCoord(evt.zoneX, evt.zoneY));
         }
     }
 }
@@ -126,20 +138,14 @@ bool Install() {
                           reinterpret_cast<uintptr_t>(funcs.ZoneUnload),
                           &Hook_ZoneUnload, &s_origZoneUnload);
     }
-    // BuildingPlace hook DISABLED — function signature not verified.
-    // During save load, createBuilding fires for ALL buildings (~300+) with
-    // unknown parameter layout, causing garbage coordinates and crashes.
-    // Building sync is not needed for MVP.
-    spdlog::info("world_hooks: BuildingPlace hook SKIPPED (signature unverified)");
-
-    spdlog::info("world_hooks: Installed");
+    // BuildingPlace hook DISABLED — signature unverified, zone-load crashes
+    spdlog::info("world_hooks: Installed (zone hooks only, building SKIPPED)");
     return true;
 }
 
 void Uninstall() {
     HookManager::Get().Remove("ZoneLoad");
     HookManager::Get().Remove("ZoneUnload");
-    HookManager::Get().Remove("BuildingPlace");
 }
 
 } // namespace kmp::world_hooks

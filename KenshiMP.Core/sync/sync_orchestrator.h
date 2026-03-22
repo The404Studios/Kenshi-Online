@@ -118,6 +118,8 @@ private:
     bool              m_shownTimeoutMsg = false;
     std::chrono::steady_clock::time_point m_lastDirectAttempt;
     bool              m_heapScanned = false;
+    int               m_heapScanAttempts = 0;
+    std::chrono::steady_clock::time_point m_lastHeapScan;
     std::chrono::steady_clock::time_point m_lastSpawnLog;
 
     // ---- Poll throttle ----

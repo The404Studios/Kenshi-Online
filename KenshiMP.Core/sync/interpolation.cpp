@@ -7,6 +7,18 @@ namespace kmp {
 void Interpolation::AddSnapshot(EntityID entityId, float timestamp,
                                 const Vec3& pos, const Quat& rot,
                                 uint8_t moveSpeed, uint8_t animState) {
+    // Reject NaN/Inf positions — a single bad value corrupts the ring buffer
+    // for multiple frames of interpolation and extrapolation.
+    if (std::isnan(pos.x) || std::isnan(pos.y) || std::isnan(pos.z) ||
+        std::isinf(pos.x) || std::isinf(pos.y) || std::isinf(pos.z)) {
+        return;
+    }
+    // Reject NaN/Inf rotation quaternion components as well
+    if (std::isnan(rot.w) || std::isnan(rot.x) || std::isnan(rot.y) || std::isnan(rot.z) ||
+        std::isinf(rot.w) || std::isinf(rot.x) || std::isinf(rot.y) || std::isinf(rot.z)) {
+        return;
+    }
+
     std::lock_guard lock(m_mutex);
     auto& state = m_entities[entityId];
 
@@ -134,7 +146,7 @@ bool Interpolation::GetInterpolated(EntityID entityId, float renderTime,
     // Apply snap correction with real-time decay (mutable state)
     if (it->second.snap.active) {
         Vec3 correction = it->second.snap.Apply(m_deltaTime);
-        outPos = outPos + correction;
+        outPos = outPos - correction;
     }
 
     return true;
@@ -154,7 +166,7 @@ bool Interpolation::GetInterpolated(EntityID entityId, float renderTime,
     // Apply snap correction with real-time decay (mutable state)
     if (it->second.snap.active) {
         Vec3 correction = it->second.snap.Apply(m_deltaTime);
-        outPos = outPos + correction;
+        outPos = outPos - correction;
     }
 
     return true;
@@ -175,16 +187,9 @@ void Interpolation::Update(float deltaTime) {
     std::lock_guard lock(m_mutex);
     m_currentTime += deltaTime;
     m_deltaTime = deltaTime;
-
-    // Tick snap correction timers for all entities
-    for (auto& [id, state] : m_entities) {
-        if (state.snap.active) {
-            state.snap.blendTimer -= deltaTime;
-            if (state.snap.blendTimer <= 0.f) {
-                state.snap.active = false;
-            }
-        }
-    }
+    // Note: snap correction timers are ticked inside SnapCorrection::Apply()
+    // which is called from GetInterpolated(). No need to tick here — doing
+    // both would double-decrement the timer.
 }
 
 } // namespace kmp

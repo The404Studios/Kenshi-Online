@@ -3,13 +3,17 @@
 #include "../game/game_inventory.h"
 #include "../game/spawn_manager.h"
 #include "../game/player_controller.h"
+#include "../game/lobby_manager.h"
+#include "../game/shared_save_sync.h"
 #include "../hooks/entity_hooks.h"
 #include "../hooks/time_hooks.h"
 #include "../hooks/squad_hooks.h"
 #include "../hooks/faction_hooks.h"
+#include "../hooks/ai_hooks.h"
 #include "kmp/protocol.h"
 #include "kmp/messages.h"
 #include "kmp/memory.h"
+#include "kmp/string_convert.h"
 #include <spdlog/spdlog.h>
 #include <unordered_set>
 
@@ -80,6 +84,12 @@ public:
             return;
         case MessageType::S2C_TradeResult:
             HandleTradeResult(reader);
+            return;
+        case MessageType::S2C_KeepaliveAck:
+            // Server acknowledged our keepalive — nothing to do
+            return;
+        case MessageType::S2C_FactionAssignment:
+            HandleFactionAssignment(reader);
             return;
         case MessageType::S2C_PipelineSnapshot: {
             PlayerID sender;
@@ -199,6 +209,11 @@ public:
             HandleDoorState(reader);
             break;
 
+        // ── Combat stance (reuses CombatBlock message type) ──
+        case MessageType::S2C_CombatBlock:
+            HandleCombatStance(reader);
+            break;
+
         default:
             spdlog::debug("PacketHandler: Unknown message type 0x{:02X}", static_cast<uint8_t>(header.type));
             break;
@@ -213,6 +228,7 @@ private:
         auto& core = Core::Get();
         core.SetLocalPlayerId(msg.playerId);
         core.SetConnected(true);
+        core.TransitionTo(ClientPhase::Connected);
 
         // Determine if we're the host (player ID 1 = first connected = host)
         if (msg.currentPlayers <= 1) {
@@ -258,8 +274,17 @@ private:
         MsgHandshakeReject msg;
         if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
+        // Ensure null-termination — server may send a full 128-byte buffer
+        // without a trailing '\0', causing string ops to read past the struct.
+        msg.reasonText[sizeof(msg.reasonText) - 1] = '\0';
+
         spdlog::warn("PacketHandler: Connection rejected (code={}): {}", msg.reasonCode, msg.reasonText);
         auto& core = Core::Get();
+
+        // Handshake rejected — drop back to GameReady so user can retry
+        if (core.IsGameLoaded()) {
+            core.TransitionTo(ClientPhase::GameReady);
+        }
 
         core.GetOverlay().AddSystemMessage(
             std::string("Connection rejected: ") + msg.reasonText);
@@ -269,6 +294,10 @@ private:
     static void HandlePlayerJoined(PacketReader& reader) {
         MsgPlayerJoined msg;
         if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+        // Ensure null-termination — server may fill the entire 32-byte buffer
+        // without a trailing '\0', causing string ops to read past the struct.
+        msg.playerName[sizeof(msg.playerName) - 1] = '\0';
 
         auto& core = Core::Get();
 
@@ -313,6 +342,15 @@ private:
             so->GetResolver().ClearInterest(msg.playerId);
         }
 
+        // Clear pending spawn requests for the departing player BEFORE cleaning
+        // up spawned entities. Without this, orphaned spawn requests would be
+        // processed later for a player who no longer exists.
+        int clearedSpawns = core.GetSpawnManager().ClearSpawnsForOwner(msg.playerId);
+        if (clearedSpawns > 0) {
+            spdlog::info("PacketHandler: Cleared {} pending spawn(s) for departed player {}",
+                         clearedSpawns, msg.playerId);
+        }
+
         // Clean up all entities owned by the disconnected player.
         // Since CharacterDestroy hook is disabled (pattern found wrong function),
         // we can't call the game's destructor. Instead, teleport stale characters
@@ -330,6 +368,8 @@ private:
                 game::CharacterAccessor accessor(gameObj);
                 Vec3 underground(0.f, -10000.f, 0.f);
                 accessor.WritePosition(underground);
+                // Clear AI remote-control tracking to prevent stale pointer issues
+                ai_hooks::UnmarkRemoteControlled(gameObj);
                 spdlog::debug("PacketHandler: Cleared control + teleported entity {} underground", eid);
             }
             core.GetInterpolation().RemoveEntity(eid);
@@ -351,13 +391,13 @@ private:
         float px, py, pz;
         uint32_t compQuat;
 
-        reader.ReadU32(entityId);
-        reader.ReadU8(type);
-        reader.ReadU32(ownerId);
-        reader.ReadU32(templateId);
-        reader.ReadVec3(px, py, pz);
-        reader.ReadU32(compQuat);
-        reader.ReadU32(factionId);
+        if (!reader.ReadU32(entityId)) return;
+        if (!reader.ReadU8(type)) return;
+        if (!reader.ReadU32(ownerId)) return;
+        if (!reader.ReadU32(templateId)) return;
+        if (!reader.ReadVec3(px, py, pz)) return;
+        if (!reader.ReadU32(compQuat)) return;
+        if (!reader.ReadU32(factionId)) return;
 
         // Read optional template name (length-prefixed string appended after fixed fields)
         std::string templateName;
@@ -367,6 +407,22 @@ private:
             if (nameLen > 0 && nameLen <= 255 && reader.Remaining() >= nameLen) {
                 templateName.resize(nameLen);
                 reader.ReadRaw(templateName.data(), nameLen);
+            }
+        }
+
+        // Read optional extended state (health + alive flag)
+        bool hasExtended = false;
+        float healthData[7] = {100.f, 100.f, 100.f, 100.f, 100.f, 100.f, 100.f};
+        bool isAlive = true;
+        if (reader.Remaining() >= 1) {
+            uint8_t extFlag = 0;
+            reader.ReadU8(extFlag);
+            if (extFlag == 1 && reader.Remaining() >= 7 * 4 + 1) {
+                hasExtended = true;
+                for (int i = 0; i < 7; i++) reader.ReadF32(healthData[i]);
+                uint8_t aliveFlag = 1;
+                reader.ReadU8(aliveFlag);
+                isAlive = (aliveFlag != 0);
             }
         }
 
@@ -421,9 +477,7 @@ private:
         registry.RegisterRemote(entityId, static_cast<EntityType>(type), ownerId, spawnPos);
 
         // Add initial interpolation snapshot
-        float now = static_cast<float>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
+        float now = SessionTime();
         core.GetInterpolation().AddSnapshot(entityId, now, spawnPos, rot);
 
         // Queue a real character spawn via SpawnManager.
@@ -438,11 +492,17 @@ private:
             req.netId        = entityId;
             req.owner        = ownerId;
             req.type         = static_cast<EntityType>(type);
-            req.templateName = templateName;
+            // Convert UTF-8 template name back to local ANSI for SpawnManager cache matching
+            req.templateName = Utf8ToAnsi(templateName.c_str(), (int)templateName.size());
             req.position     = spawnPos;
             req.rotation     = rot;
             req.templateId   = templateId;
             req.factionId    = factionId;
+            req.hasExtendedState = hasExtended;
+            if (hasExtended) {
+                for (int i = 0; i < 7; i++) req.health[i] = healthData[i];
+                req.alive = isAlive;
+            }
             spawnMgr.QueueSpawn(req);
 
             // Notify on HUD
@@ -457,24 +517,35 @@ private:
         }
     }
 
+    // SEH-protected despawn cleanup — runs on network thread where the game may
+    // have already freed the character object. Without SEH, an AV here cascades
+    // through enet_host_service and kills the network thread permanently.
+    static void SEH_DespawnCleanup(void* gameObj) {
+        __try {
+            // Teleport underground so the character is not visible
+            game::CharacterAccessor accessor(gameObj);
+            Vec3 underground(0.f, -10000.f, 0.f);
+            accessor.WritePosition(underground);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            // Character already freed — nothing to clean up
+        }
+        __try {
+            ai_hooks::UnmarkRemoteControlled(gameObj);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {}
+    }
+
     static void HandleEntityDespawn(PacketReader& reader) {
         uint32_t entityId;
-        uint8_t reason;
-        reader.ReadU32(entityId);
-        reader.ReadU8(reason);
+        uint8_t reason = 0;
+        if (!reader.ReadU32(entityId)) return;
+        reader.ReadU8(reason); // optional
 
         spdlog::info("PacketHandler: Entity despawn id={} reason={}", entityId, reason);
 
         auto& core = Core::Get();
         void* gameObj = core.GetEntityRegistry().GetGameObject(entityId);
         if (gameObj) {
-            // Clear isPlayerControlled so the character is removed from the host's
-            // squad panel and can no longer be selected/controlled.
-            game::WritePlayerControlled(reinterpret_cast<uintptr_t>(gameObj), false);
-            // Teleport underground so the character is not visible in the world
-            game::CharacterAccessor accessor(gameObj);
-            Vec3 underground(0.f, -10000.f, 0.f);
-            accessor.WritePosition(underground);
+            SEH_DespawnCleanup(gameObj);
         }
         core.GetEntityRegistry().SetGameObject(entityId, nullptr);
         core.GetInterpolation().RemoveEntity(entityId);
@@ -485,23 +556,32 @@ private:
     static void HandlePositionUpdate(PacketReader& reader) {
         uint32_t sourcePlayer;
         uint8_t count;
-        reader.ReadU32(sourcePlayer);
-        reader.ReadU8(count);
+        if (!reader.ReadU32(sourcePlayer)) return;
+        if (!reader.ReadU8(count)) return;
 
         auto& interp = Core::Get().GetInterpolation();
-        float now = static_cast<float>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
+        float now = SessionTime();
 
+        bool fedSharedSync = false;
         for (uint8_t i = 0; i < count; i++) {
             CharacterPosition pos;
-            reader.ReadRaw(&pos, sizeof(pos));
+            if (!reader.ReadRaw(&pos, sizeof(pos))) break;
 
             Vec3 position(pos.posX, pos.posY, pos.posZ);
             Quat rotation = Quat::Decompress(pos.compressedQuat);
 
             interp.AddSnapshot(pos.entityId, now, position, rotation,
                                pos.moveSpeed, pos.animStateId);
+
+            // Feed shared-save sync: only the FIRST entity from a DIFFERENT player.
+            // sourcePlayer=0 means server-broadcast. We only want positions from
+            // actual remote players, and only the first entity (their main character).
+            if (!fedSharedSync && sourcePlayer != 0 &&
+                sourcePlayer != Core::Get().GetLocalPlayerId() &&
+                (position.x != 0.f || position.y != 0.f || position.z != 0.f)) {
+                shared_save_sync::OnRemotePositionReceived(position);
+                fedSharedSync = true;
+            }
         }
 
         // Update player engine with position + activity
@@ -513,7 +593,7 @@ private:
     // ── Move Command ──
     static void HandleMoveCommand(PacketReader& reader) {
         MsgMoveCommand msg;
-        reader.ReadRaw(&msg, sizeof(msg));
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
         spdlog::debug("PacketHandler: Move command for entity {} to ({:.1f}, {:.1f}, {:.1f})",
                       msg.entityId, msg.targetX, msg.targetY, msg.targetZ);
@@ -525,9 +605,7 @@ private:
         // MoveTo function address is mid-function (not safe to call).
         // Use interpolation system to handle smooth movement instead.
         {
-            float now = static_cast<float>(
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
+            float now = SessionTime();
             Vec3 target(msg.targetX, msg.targetY, msg.targetZ);
             core.GetInterpolation().AddSnapshot(msg.entityId, now + 1.0f, target, Quat());
         }
@@ -536,7 +614,10 @@ private:
     // ── Combat Hit ──
     static void HandleCombatHit(PacketReader& reader) {
         MsgCombatHit msg;
-        reader.ReadRaw(&msg, sizeof(msg));
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+        // Validate body part to prevent out-of-bounds memory writes
+        if (msg.bodyPart >= static_cast<uint8_t>(BodyPart::Count)) return;
 
         spdlog::debug("PacketHandler: Combat hit {} -> {} part={} dmg=({:.1f},{:.1f},{:.1f}) hp={:.1f}",
                       msg.attackerId, msg.targetId, msg.bodyPart,
@@ -552,16 +633,20 @@ private:
         bool appliedViaFunction = false;
 
         // Try to apply damage via the game's native damage function.
-        // Only safe to call when BOTH target and attacker are valid game objects —
-        // ApplyDamage dereferences attacker and will crash on nullptr.
+        // ApplyDamage dereferences attacker, so only call with a valid attacker.
         if (funcs.ApplyDamage) {
             void* attackerObj = (msg.attackerId != INVALID_ENTITY)
                 ? registry.GetGameObject(msg.attackerId) : nullptr;
             if (attackerObj) {
                 auto damageFn = reinterpret_cast<ApplyDamageFn>(funcs.ApplyDamage);
-                damageFn(targetObj, attackerObj, msg.bodyPart,
-                         msg.cutDamage, msg.bluntDamage, msg.pierceDamage);
-                appliedViaFunction = true;
+                __try {
+                    damageFn(targetObj, attackerObj, msg.bodyPart,
+                             msg.cutDamage, msg.bluntDamage, msg.pierceDamage);
+                    appliedViaFunction = true;
+                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                    spdlog::warn("PacketHandler: Native ApplyDamage crashed for {} -> {} — using fallback",
+                                 msg.attackerId, msg.targetId);
+                }
             }
         }
 
@@ -587,7 +672,7 @@ private:
     // ── Combat Death ──
     static void HandleCombatDeath(PacketReader& reader) {
         MsgCombatDeath msg;
-        reader.ReadRaw(&msg, sizeof(msg));
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
         spdlog::info("PacketHandler: Entity {} killed by {}", msg.entityId, msg.killerId);
 
@@ -596,16 +681,51 @@ private:
         auto& funcs = core.GetGameFunctions();
 
         void* entityObj = registry.GetGameObject(msg.entityId);
-        if (entityObj && funcs.CharacterDeath) {
+        if (!entityObj) return;
+
+        bool appliedNative = false;
+        if (funcs.CharacterDeath) {
             void* killerObj = (msg.killerId != INVALID_ENTITY)
                 ? registry.GetGameObject(msg.killerId) : nullptr;
+            // Try native death fn. Pass killerObj even if nullptr — the
+            // game's CharacterDeath at 0x7A6200 accepts nullptr killer
+            // (environment/bleed-out deaths use nullptr internally).
             auto deathFn = reinterpret_cast<CharacterDeathFn>(funcs.CharacterDeath);
-            deathFn(entityObj, killerObj);
-        } else if (entityObj) {
-            // Fallback: write death state directly
+            __try {
+                deathFn(entityObj, killerObj);
+                appliedNative = true;
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                spdlog::warn("PacketHandler: Native CharacterDeath crashed for entity {} — using fallback",
+                             msg.entityId);
+            }
+        }
+
+        if (!appliedNative) {
+            // Fallback: set all 7 body part health values to -100 via health chain.
+            // This triggers the game's own death detection (health < 0 on vital part).
+            // The isAlive offset is -1 (undiscovered), so we use the verified
+            // health chain: char+0x2B8 -> +0x5F8 -> +0x40 + part*8
             auto& offsets = game::GetOffsets().character;
+            uintptr_t charPtr = reinterpret_cast<uintptr_t>(entityObj);
+
+            if (offsets.healthChain1 >= 0 && offsets.healthChain2 >= 0 && offsets.healthBase >= 0) {
+                uintptr_t ptr1 = 0;
+                if (Memory::Read(charPtr + offsets.healthChain1, ptr1) && ptr1 != 0) {
+                    uintptr_t ptr2 = 0;
+                    if (Memory::Read(ptr1 + offsets.healthChain2, ptr2) && ptr2 != 0) {
+                        // Write -100 to all 7 body parts (head, chest, stomach, left arm, right arm, left leg, right leg)
+                        for (int i = 0; i < 7; i++) {
+                            int partOffset = offsets.healthBase + i * offsets.healthStride;
+                            float deathHealth = -100.f;
+                            Memory::Write(ptr2 + partOffset, deathHealth);
+                        }
+                        spdlog::info("PacketHandler: Death fallback — set all body parts to -100 for entity {}", msg.entityId);
+                    }
+                }
+            }
+
+            // Also try isAlive flag if we ever discover it
             if (offsets.isAlive >= 0) {
-                uintptr_t charPtr = reinterpret_cast<uintptr_t>(entityObj);
                 bool dead = false;
                 Memory::Write(charPtr + offsets.isAlive, dead);
             }
@@ -615,7 +735,10 @@ private:
     // ── Combat KO ──
     static void HandleCombatKO(PacketReader& reader) {
         MsgCombatKO msg;
-        reader.ReadRaw(&msg, sizeof(msg));
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+        // Validate body part to prevent out-of-bounds memory writes
+        if (msg.bodyPart >= static_cast<uint8_t>(BodyPart::Count)) return;
 
         spdlog::info("PacketHandler: Entity {} KO'd by {} (part={}, hp={:.1f})",
                      msg.entityId, msg.attackerId, msg.bodyPart, msg.resultHealth);
@@ -625,12 +748,20 @@ private:
         auto& funcs = core.GetGameFunctions();
 
         void* entityObj = registry.GetGameObject(msg.entityId);
+        bool appliedNativeKO = false;
         if (entityObj && funcs.CharacterKO) {
             void* attackerObj = (msg.attackerId != INVALID_ENTITY)
                 ? registry.GetGameObject(msg.attackerId) : nullptr;
             auto koFn = reinterpret_cast<game::func_types::CharacterKOFn>(funcs.CharacterKO);
-            koFn(entityObj, attackerObj, static_cast<int>(msg.bodyPart));
-        } else if (entityObj) {
+            __try {
+                koFn(entityObj, attackerObj, static_cast<int>(msg.bodyPart));
+                appliedNativeKO = true;
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                spdlog::warn("PacketHandler: Native CharacterKO crashed for entity {} — using fallback",
+                             msg.entityId);
+            }
+        }
+        if (entityObj && !appliedNativeKO) {
             // Fallback: write the health value directly to trigger KO state
             auto& offsets = game::GetOffsets().character;
             uintptr_t charPtr = reinterpret_cast<uintptr_t>(entityObj);
@@ -640,13 +771,28 @@ private:
                 if (Memory::Read(charPtr + offsets.healthChain1, ptr1) && ptr1 != 0) {
                     uintptr_t ptr2 = 0;
                     if (Memory::Read(ptr1 + offsets.healthChain2, ptr2) && ptr2 != 0) {
-                        int partOffset = offsets.healthBase +
-                            static_cast<int>(msg.bodyPart) * offsets.healthStride;
+                        // msg.bodyPart is actually the KO *reason* (0=blood loss,
+                        // 1=head trauma, 2=other), NOT a body part index.
+                        // The health value sent is always chest health, so write
+                        // to body part index 0 (chest).
+                        int partOffset = offsets.healthBase + 0 * offsets.healthStride;
                         Memory::Write(ptr2 + partOffset, msg.resultHealth);
                     }
                 }
             }
         }
+    }
+
+    // ── Combat Stance ──
+    static void HandleCombatStance(PacketReader& reader) {
+        // Server reuses S2C_CombatBlock message type to carry MsgCombatStance data
+        MsgCombatStance msg;
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+        spdlog::debug("PacketHandler: Entity {} stance -> {}", msg.entityId, msg.stance);
+
+        // Stance changes don't require writing to game memory — they affect AI
+        // behavior which is server-authoritative. Log for awareness.
     }
 
     // ── Stat Update ──
@@ -708,7 +854,7 @@ private:
     // ── Time Sync ──
     static void HandleTimeSync(PacketReader& reader) {
         MsgTimeSync msg;
-        reader.ReadRaw(&msg, sizeof(msg));
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
         spdlog::debug("PacketHandler: TimeSync tick={} tod={:.2f} speed={}",
                       msg.serverTick, msg.timeOfDay, msg.gameSpeed);
@@ -737,9 +883,7 @@ private:
 
         spdlog::info("PacketHandler: World snapshot with {} entities", entityCount);
 
-        float now = static_cast<float>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now().time_since_epoch()).count()) / 1000.f;
+        float now = SessionTime();
 
         auto& spawnMgr = core.GetSpawnManager();
 
@@ -751,13 +895,13 @@ private:
             float px, py, pz;
             uint32_t compQuat;
 
-            reader.ReadU32(entityId);
-            reader.ReadU8(type);
-            reader.ReadU32(ownerId);
-            reader.ReadU32(templateId);
-            reader.ReadVec3(px, py, pz);
-            reader.ReadU32(compQuat);
-            reader.ReadU32(factionId);
+            if (!reader.ReadU32(entityId)) break;
+            if (!reader.ReadU8(type)) break;
+            if (!reader.ReadU32(ownerId)) break;
+            if (!reader.ReadU32(templateId)) break;
+            if (!reader.ReadVec3(px, py, pz)) break;
+            if (!reader.ReadU32(compQuat)) break;
+            if (!reader.ReadU32(factionId)) break;
 
             // Read optional template name
             std::string templateName;
@@ -803,7 +947,8 @@ private:
                 req.netId        = entityId;
                 req.owner        = ownerId;
                 req.type         = static_cast<EntityType>(type);
-                req.templateName = templateName;
+                // Convert UTF-8 template name back to local ANSI for SpawnManager cache matching
+                req.templateName = Utf8ToAnsi(templateName.c_str(), (int)templateName.size());
                 req.position     = pos;
                 req.rotation     = rot;
                 req.templateId   = templateId;
@@ -823,7 +968,7 @@ private:
     // ── Build Placed ──
     static void HandleBuildPlaced(PacketReader& reader) {
         MsgBuildPlaced msg;
-        reader.ReadRaw(&msg, sizeof(msg));
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
         spdlog::info("PacketHandler: Building placed by player {} at ({:.1f}, {:.1f}, {:.1f})",
                      msg.builderId, msg.posX, msg.posY, msg.posZ);
@@ -844,7 +989,7 @@ private:
     // ── Health Update ──
     static void HandleHealthUpdate(PacketReader& reader) {
         MsgHealthUpdate msg;
-        reader.ReadRaw(&msg, sizeof(msg));
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
         auto& core = Core::Get();
         void* entityObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
@@ -871,7 +1016,7 @@ private:
     // ── Equipment Update ──
     static void HandleEquipmentUpdate(PacketReader& reader) {
         MsgEquipmentUpdate msg;
-        reader.ReadRaw(&msg, sizeof(msg));
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
         spdlog::debug("PacketHandler: Equipment update entity={} slot={} item={}",
                       msg.entityId, msg.slot, msg.itemTemplateId);
@@ -893,9 +1038,9 @@ private:
     // ── Chat ──
     static void HandleChatMessage(PacketReader& reader) {
         uint32_t senderId;
-        reader.ReadU32(senderId);
+        if (!reader.ReadU32(senderId)) return;
         std::string message;
-        reader.ReadString(message);
+        if (!reader.ReadString(message)) return;
 
         Core::Get().GetOverlay().AddChatMessage(senderId, message);
 
@@ -908,9 +1053,9 @@ private:
 
     static void HandleSystemMessage(PacketReader& reader) {
         uint32_t unused;
-        reader.ReadU32(unused);
+        if (!reader.ReadU32(unused)) return;
         std::string message;
-        reader.ReadString(message);
+        if (!reader.ReadString(message)) return;
 
         Core::Get().GetOverlay().AddSystemMessage(message);
         Core::Get().GetNativeHud().AddSystemMessage(message);
@@ -961,10 +1106,10 @@ private:
 
     static void HandleSquadCreated(PacketReader& reader) {
         uint32_t creatorEntityId, squadNetId;
-        reader.ReadU32(creatorEntityId);
-        reader.ReadU32(squadNetId);
+        if (!reader.ReadU32(creatorEntityId)) return;
+        if (!reader.ReadU32(squadNetId)) return;
         std::string squadName;
-        reader.ReadString(squadName);
+        if (!reader.ReadString(squadName)) return;
 
         spdlog::info("PacketHandler: Squad '{}' created (netId={}, creator={})",
                      squadName, squadNetId, creatorEntityId);
@@ -987,8 +1132,8 @@ private:
 
         // Update entity tracking: if a member was added to a squad, ensure
         // our registry knows this entity belongs to the squad's owner
-        const auto* info = registry.GetInfo(msg.memberEntityId);
-        if (info && info->isRemote) {
+        auto infoCopy = registry.GetInfoCopy(msg.memberEntityId);
+        if (infoCopy && infoCopy->isRemote) {
             if (msg.action == 0) {
                 // Member added — entity is now active in this squad
                 spdlog::debug("PacketHandler: Remote entity {} added to squad {}",
@@ -1021,15 +1166,15 @@ private:
         }
 
         // Find faction pointers by scanning remote player entities and the local player.
-        // Each character has a faction pointer at character+0x10. Factions have an ID at +0x08.
-        // We scan known entities to find factions matching the IDs.
+        // Each character has a faction pointer at CharacterOffsets::faction.
+        // Factions have an ID at FactionOffsets::id. We scan to find matching factions.
         uintptr_t factionPtrA = 0, factionPtrB = 0;
 
         // Check local player's faction first
         uintptr_t localFaction = core.GetPlayerController().GetLocalFactionPtr();
         if (localFaction != 0) {
             uint32_t localFactionId = 0;
-            Memory::Read(localFaction + 0x08, localFactionId);
+            Memory::Read(localFaction + game::GetOffsets().faction.id, localFactionId);
             if (localFactionId == msg.factionIdA) factionPtrA = localFaction;
             if (localFactionId == msg.factionIdB) factionPtrB = localFaction;
         }
@@ -1045,7 +1190,7 @@ private:
                 if (fPtr == 0) continue;
 
                 uint32_t fId = 0;
-                Memory::Read(fPtr + 0x08, fId);
+                Memory::Read(fPtr + game::GetOffsets().faction.id, fId);
                 if (fId == msg.factionIdA && factionPtrA == 0) factionPtrA = fPtr;
                 if (fId == msg.factionIdB && factionPtrB == 0) factionPtrB = fPtr;
             }
@@ -1075,9 +1220,9 @@ private:
 
     static void HandleBuildDestroyed(PacketReader& reader) {
         uint32_t buildingId;
-        uint8_t reason;
-        reader.ReadU32(buildingId);
-        reader.ReadU8(reason);
+        uint8_t reason = 0;
+        if (!reader.ReadU32(buildingId)) return;
+        reader.ReadU8(reason); // optional
 
         spdlog::info("PacketHandler: Building {} destroyed (reason={})", buildingId, reason);
 
@@ -1097,8 +1242,8 @@ private:
         // Update the entity registry with the build progress
         // This keeps our local state in sync so /entities can report accurately
         auto& core = Core::Get();
-        const auto* info = core.GetEntityRegistry().GetInfo(msg.entityId);
-        if (info && info->isRemote) {
+        auto infoCopy = core.GetEntityRegistry().GetInfoCopy(msg.entityId);
+        if (infoCopy && infoCopy->isRemote) {
             // Building progress is tracked — visual update would require
             // writing to the building's GameData (offset TBD from RE).
             // For now, log at info level when milestones are hit.
@@ -1151,6 +1296,10 @@ private:
         MsgAdminResponse msg;
         if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
+        // Ensure null-termination — server may fill the entire 128-byte buffer
+        // without a trailing '\0', causing string ops to read past the struct.
+        msg.responseText[sizeof(msg.responseText) - 1] = '\0';
+
         auto& core = Core::Get();
         std::string text = msg.responseText;
         if (msg.success) {
@@ -1159,6 +1308,34 @@ private:
         } else {
             spdlog::warn("PacketHandler: Admin denied: {}", text);
             core.GetNativeHud().AddSystemMessage("[Admin Error] " + text);
+        }
+    }
+
+    // ── Lobby: Faction Assignment ──
+    static void HandleFactionAssignment(PacketReader& reader) {
+        uint16_t strLen = 0;
+        if (!reader.ReadU16(strLen) || strLen == 0 || strLen > 32) return;
+
+        char factionBuf[36] = {};
+        if (!reader.ReadRaw(factionBuf, strLen)) return;
+        factionBuf[strLen] = '\0';
+        std::string factionStr(factionBuf, strLen);
+
+        int32_t slot = 0;
+        reader.ReadI32(slot);
+
+        auto& core = Core::Get();
+        core.GetLobbyManager().OnFactionAssigned(factionStr, slot);
+
+        spdlog::info("PacketHandler: Faction assigned: '{}' slot {}", factionStr, slot);
+        core.GetNativeHud().AddSystemMessage("Faction assigned: " + factionStr + " (slot " + std::to_string(slot) + ")");
+
+        // Apply faction patch immediately if we're on main menu (before save load)
+        if (core.GetClientPhase() == ClientPhase::MainMenu ||
+            core.GetClientPhase() == ClientPhase::GameReady) {
+            if (core.GetLobbyManager().ApplyFactionPatch()) {
+                core.GetNativeHud().AddSystemMessage("Faction string patched in memory");
+            }
         }
     }
 };

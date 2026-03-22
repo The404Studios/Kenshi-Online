@@ -346,7 +346,7 @@ void NativeMenu::OnClick(int screenX, int screenY) {
                 ButtonRect rowRect = {0.0f, SERVER_ROW_Y_START + i * SERVER_ROW_HEIGHT, 1.0f, SERVER_ROW_HEIGHT};
                 if (testSubPanelButton(rowRect, JOIN_PANEL_X, JOIN_PANEL_Y, JOIN_PANEL_W, JOIN_PANEL_H)) {
                     m_selectedServerRow = i;
-                    // If this row has a valid server, fill in IP/Port and switch to Join panel
+                    // If this row has a valid server, fill in IP/Port
                     auto& config = Core::Get().GetConfig();
                     if (i < static_cast<int>(config.favoriteServers.size())) {
                         std::string addr = config.favoriteServers[i];
@@ -361,8 +361,28 @@ void NativeMenu::OnClick(int screenX, int screenY) {
                         auto& bridge = MyGuiBridge::Get();
                         bridge.SetCaption(m_serverIPEdit, m_storedIP);
                         bridge.SetCaption(m_serverPortEdit, m_storedPort);
-                        ShowPanel(Panel::Join);
-                        spdlog::info("NativeMenu: Server row {} selected -> {}:{}", i, m_storedIP, m_storedPort);
+
+                        uint16_t port = static_cast<uint16_t>(std::atoi(m_storedPort.c_str()));
+                        auto& overlay = Core::Get().GetOverlay();
+
+                        if (Core::Get().IsGameLoaded()) {
+                            // Game loaded — connect immediately
+                            ShowPanel(Panel::Join);
+                            spdlog::info("NativeMenu: Server row {} selected -> {}:{} (game loaded, showing Join)",
+                                         i, m_storedIP, m_storedPort);
+                        } else {
+                            // Game not loaded — queue auto-connect for after save loads
+                            overlay.SetAutoConnect(m_storedIP, port);
+                            // Save as lastServer so it persists
+                            config.lastServer = m_storedIP;
+                            config.lastPort = port;
+                            Hide();
+                            Core::Get().GetNativeHud().AddSystemMessage(
+                                "Server selected: " + m_storedIP + ":" + m_storedPort +
+                                " — load your save to connect.");
+                            spdlog::info("NativeMenu: Server row {} selected -> {}:{} (queued auto-connect, load save to join)",
+                                         i, m_storedIP, m_storedPort);
+                        }
                     }
                     break;
                 }
@@ -476,6 +496,16 @@ void NativeMenu::OnHostClicked() {
 void NativeMenu::OnConnectClicked() {
     spdlog::info("NativeMenu: CONNECT clicked");
 
+    auto& core = Core::Get();
+
+    // Gate on game load — don't allow connection from main menu
+    if (!core.IsGameLoaded()) {
+        SetStatus("Load a save first, then connect.");
+        core.GetNativeHud().AddSystemMessage("Please load a save game first, then connect.");
+        spdlog::info("NativeMenu: Connect blocked — game not loaded yet");
+        return;
+    }
+
     std::string ip = GetServerIP();
     std::string portStr = GetServerPort();
     std::string name = GetPlayerName();
@@ -488,7 +518,6 @@ void NativeMenu::OnConnectClicked() {
 
     spdlog::info("NativeMenu: Connecting to {}:{} as '{}'", ip, port, name);
 
-    auto& core = Core::Get();
     auto& overlay = core.GetOverlay();
 
     // Update overlay's connection state so it can handle the async result
@@ -498,49 +527,26 @@ void NativeMenu::OnConnectClicked() {
     core.GetNativeHud().LogStep("NET", "Connecting to " + ip + ":" + portStr + "...");
     core.GetNativeHud().AddSystemMessage("Connecting to " + ip + ":" + portStr + " as '" + name + "'...");
 
-    if (core.IsGameLoaded()) {
-        // Game already loaded — connect immediately.
-        // Do NOT call ResumeForNetwork() here — it will be called from
-        // HandleHandshakeAck() after the handshake completes.
-        auto& client = core.GetClient();
+    // Game is loaded (early return above guarantees this).
+    // Do NOT call ResumeForNetwork() here — it will be called from
+    // HandleHandshakeAck() after the handshake completes.
+    auto& client = core.GetClient();
 
-        // Reset stale connection state
-        if (client.IsConnected() || client.IsConnecting()) {
-            client.Disconnect();
-            core.SetConnected(false);
-        }
+    // Reset stale connection state
+    if (client.IsConnected() || client.IsConnecting()) {
+        client.Disconnect();
+        core.SetConnected(false);
+    }
 
-        if (client.ConnectAsync(ip.c_str(), port)) {
-            overlay.SetConnecting(true);
-            spdlog::info("NativeMenu: ConnectAsync started (game loaded)");
-            core.GetNativeHud().LogStep("NET", "Connection started (game loaded)");
-            // HIDE so the game is visible
-            Hide();
-        } else {
-            SetStatus("Failed to connect. Check server address.");
-            core.GetNativeHud().LogStep("ERR", "ConnectAsync failed!");
-        }
-    } else {
-        // Game not loaded yet — set auto-connect for when it loads
-        overlay.SetAutoConnect(ip, port);
-
-        // Save to config so it persists
-        auto& config = core.GetConfig();
-        config.lastServer = ip;
-        config.lastPort = port;
-        config.playerName = name;
-        config.Save(ClientConfig::GetDefaultPath());
-
-        spdlog::info("NativeMenu: Auto-connect set for {}:{}, hiding panel", ip, port);
-
-        // Show status on both HUDs
-        std::string statusMsg = "Will connect to " + ip + ":" + portStr +
-                                " after game loads. Click Continue or New Game.";
-        core.GetNativeHud().LogStep("NET", "Auto-connect set: " + ip + ":" + portStr);
-        core.GetNativeHud().AddSystemMessage(statusMsg);
-
-        // HIDE the panel so user can click Kenshi's New Game button
+    if (client.ConnectAsync(ip.c_str(), port)) {
+        overlay.SetConnecting(true);
+        core.TransitionTo(ClientPhase::Connecting);
+        spdlog::info("NativeMenu: ConnectAsync started (game loaded)");
+        core.GetNativeHud().LogStep("NET", "Connection started");
         Hide();
+    } else {
+        SetStatus("Failed to connect. Check server address.");
+        core.GetNativeHud().LogStep("ERR", "ConnectAsync failed!");
     }
 }
 
@@ -551,7 +557,7 @@ void NativeMenu::OnSettingsSaved() {
     auto& config = Core::Get().GetConfig();
     config.playerName = name;
     config.autoConnect = m_autoConnectChecked;
-    config.Save(ClientConfig::GetDefaultPath());
+    config.Save(ClientConfig::GetInstancePath());
 
     Core::Get().GetOverlay().SetPlayerName(name);
 

@@ -69,6 +69,16 @@ if exist "%KENSHI_DIR%\KenshiMP.Server.exe" (
     echo  [OK] Removed KenshiMP.Server.exe
 )
 
+:: Remove multiplayer mod
+if exist "%KENSHI_DIR%\data\kenshi-online.mod" (
+    del /F "%KENSHI_DIR%\data\kenshi-online.mod"
+    echo  [OK] Removed data\kenshi-online.mod
+)
+if exist "%KENSHI_DIR%\mods\kenshi-online" (
+    rmdir /S /Q "%KENSHI_DIR%\mods\kenshi-online"
+    echo  [OK] Removed mods\kenshi-online\
+)
+
 :: Restore backups
 if exist "%BACKUP_DIR%\Plugins_x64.cfg.bak" (
     copy /Y "%BACKUP_DIR%\Plugins_x64.cfg.bak" "%KENSHI_DIR%\Plugins_x64.cfg" >nul

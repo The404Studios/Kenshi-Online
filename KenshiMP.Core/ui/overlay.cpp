@@ -1,6 +1,7 @@
 #include "overlay.h"
 #include "mygui_bridge.h"
 #include "../core.h"
+#include "../hooks/ai_hooks.h"
 #include "../hooks/entity_hooks.h"
 #include "../game/game_types.h"
 #include "kmp/protocol.h"
@@ -26,71 +27,39 @@ void Overlay::Update() {
         strncpy(m_settingsName, config.playerName.c_str(), sizeof(m_settingsName) - 1);
         strncpy(m_serverAddress, config.lastServer.c_str(), sizeof(m_serverAddress) - 1);
         snprintf(m_serverPort, sizeof(m_serverPort), "%d", config.lastPort);
-        m_settingsAutoConnect = config.autoConnect;
-        m_autoConnectPending = config.autoConnect;
+        m_settingsAutoConnect = false; // Auto-connect disabled — use /connect manually
+        m_autoConnectPending = false;
         OutputDebugStringA("KMP: Overlay::Update() — first frame config loaded\n");
     }
 
-    // ── Deferred game-loaded detection ──
-    // Only runs when IsLoading()==true (set by CharacterCreate burst detection).
-    // This prevents false game-load detection at the main menu.
+    // ── Phase-driven game-load detection ──
+    // PollForGameLoad only runs during the Loading phase (set by HookPresent
+    // when it detects a >2s gap between frames = game was blocking on load).
+    // This prevents false game-load detection on the main menu.
     auto& coreRef = Core::Get();
-    if (!coreRef.IsGameLoaded() && coreRef.IsLoading()) {
+    if (coreRef.GetClientPhase() == ClientPhase::Loading) {
         auto now = std::chrono::steady_clock::now();
 
-        if (!m_firstUpdateTimeSet) {
-            m_firstUpdateTime = now;
-            m_firstUpdateTimeSet = true;
-            Core::Get().GetNativeHud().LogStep("GAME", "Loading detected — polling PlayerBase in 5s...");
-        }
-
-        // Wait 5 seconds after loading detected before polling PlayerBase
-        if (!m_startupDelayPassed) {
-            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_firstUpdateTime).count();
-            if (elapsed >= 5) {
-                m_startupDelayPassed = true;
-                Core::Get().GetNativeHud().LogStep("GAME", "Polling PlayerBase now...");
-            }
-        }
-
-        // Check every 2 seconds (only after startup delay)
-        if (m_startupDelayPassed &&
-            (!m_playerBaseCheckedOnce ||
-             std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastPlayerBaseCheck).count() > 2000)) {
+        // Poll every 2 seconds while in Loading phase
+        if (!m_playerBaseCheckedOnce ||
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastPlayerBaseCheck).count() > 2000) {
             m_playerBaseCheckedOnce = true;
             m_lastPlayerBaseCheck = now;
             m_playerBasePollCount++;
 
-            uintptr_t playerBase = coreRef.GetGameFunctions().PlayerBase;
-            if (playerBase != 0) {
-                uintptr_t val = 0;
-                if (Memory::Read(playerBase, val) && val != 0 && val > 0x10000 && val < 0x00007FFFFFFFFFFF) {
-                    Core::Get().GetNativeHud().LogStep("GAME", "PlayerBase valid! Triggering OnGameLoaded...");
-                    coreRef.OnGameLoaded();
-                }
-            } else {
-                static bool s_loggedNoPlayerBase = false;
-                if (!s_loggedNoPlayerBase) {
-                    OutputDebugStringA("KMP: Overlay — PlayerBase is 0 (pattern not resolved)\n");
-                    s_loggedNoPlayerBase = true;
-                }
-
-                // Fallback: if we've been polling for 15+ seconds (7-8 polls at 2s interval)
-                // and PlayerBase is still 0, assume game is loaded anyway.
-                // The user can see NPCs, the world is active — just PlayerBase wasn't found.
-                if (m_playerBasePollCount >= 8) {
-                    spdlog::warn("Overlay: PlayerBase still 0 after {} polls — assuming game loaded (fallback)",
-                                 m_playerBasePollCount);
-                    Core::Get().GetNativeHud().LogStep("GAME", "Game assumed loaded (PlayerBase not found, using fallback)");
-                    coreRef.OnGameLoaded();
-                }
-            }
+            // PollForGameLoad: retries global discovery, checks CharacterIterator,
+            // and calls OnGameLoaded() if characters are found.
+            coreRef.PollForGameLoad();
         }
     }
 
     bool gameLoaded = coreRef.IsGameLoaded();
 
     // ── Auto-connect on game load (with delay for loading to finish) ──
+    // The CharacterCreate hook is disabled during loading (to prevent heap corruption
+    // from the 130+ creation burst), so GetTotalCreates() stays at 0.
+    // Instead, rely on IsGameLoaded() which is set after the Loading -> GameReady
+    // phase transition (loading gap detection + smooth frames + CharacterIterator).
     if (gameLoaded && m_autoConnectPending && !m_autoConnectDone && !m_connecting) {
         if (!m_gameLoadedTimerStarted) {
             m_gameLoadedTime = std::chrono::steady_clock::now();
@@ -110,6 +79,7 @@ void Overlay::Update() {
 
             if (core.GetClient().ConnectAsync(m_serverAddress, port)) {
                 m_connecting = true;
+                core.TransitionTo(ClientPhase::Connecting);
                 m_nativeMenu.Hide();
                 core.GetNativeHud().LogStep("NET", "Auto-connecting to " + std::string(m_serverAddress) + ":" + std::string(m_serverPort));
                 core.GetNativeHud().AddSystemMessage("Auto-connecting to " + std::string(m_serverAddress) + ":" + std::string(m_serverPort) + "...");
@@ -140,6 +110,7 @@ void Overlay::Update() {
 
             if (core.GetClient().ConnectAsync(m_serverAddress, port)) {
                 m_connecting = true;
+                core.TransitionTo(ClientPhase::Connecting);
             } else {
                 m_connectAttempt = m_maxConnectAttempts;
                 core.GetNativeHud().LogStep("ERR", "ConnectAsync failed on retry");
@@ -160,6 +131,7 @@ void Overlay::Update() {
             MsgHandshake hs{};
             hs.protocolVersion = KMP_PROTOCOL_VERSION;
             strncpy(hs.playerName, m_playerName, KMP_MAX_NAME_LENGTH);
+            hs.playerName[KMP_MAX_NAME_LENGTH] = '\0';
 
             PacketWriter writer;
             writer.WriteHeader(MessageType::C2S_Handshake);
@@ -188,12 +160,15 @@ void Overlay::Update() {
                 spdlog::info("Overlay: Connection failed, will retry ({}/{})",
                              m_connectAttempt + 1, m_maxConnectAttempts);
             } else {
-                // All retries exhausted
+                // All retries exhausted — drop back to GameReady
                 AddSystemMessage("Connection failed after all retry attempts.");
                 core.GetNativeHud().LogStep("ERR", "Connection FAILED after " + std::to_string(m_maxConnectAttempts) + " attempts");
                 core.GetNativeHud().AddSystemMessage("Connection failed after " + std::to_string(m_maxConnectAttempts) + " attempts.");
                 OutputDebugStringA("KMP: Overlay — all connection retries exhausted\n");
                 m_connectAttempt = 0;
+                if (gameLoaded) {
+                    core.TransitionTo(ClientPhase::GameReady);
+                }
                 if (!gameLoaded) {
                     if (m_nativeMenu.IsInitialized()) {
                         m_nativeMenu.Show();
@@ -225,6 +200,8 @@ void Overlay::Update() {
                     game::CharacterAccessor accessor(gameObj);
                     Vec3 underground(0.f, -10000.f, 0.f);
                     accessor.WritePosition(underground);
+                    // Clear AI remote-control tracking to prevent stale pointer issues
+                    ai_hooks::UnmarkRemoteControlled(gameObj);
                 }
             }
             size_t teleported = remoteEntities.size();

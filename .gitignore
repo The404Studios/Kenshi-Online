@@ -19,6 +19,7 @@ build/
 *.sdf
 *.opensdf
 *.cachefile
+*.ipch
 Debug/
 Release/
 x64/

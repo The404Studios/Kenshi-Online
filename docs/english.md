@@ -1,26 +1,5 @@
 # Kenshi-Online (KenshiMP) — Complete Documentation
 
-> **v1.0.2 — Stability Update** (March 2026)
-
-## Quick Reference: What You'll See In-Game
-
-When you first connect to a server, here's what to expect:
-
-| What happens | What you'll see | What to do |
-|---|---|---|
-| Connection established | HUD shows "Connected to [server]" | Wait for game to finish loading |
-| Game loading | Status bar shows loading progress, log panel shows hook installation | Wait — do not alt-tab |
-| World loaded | "Game loaded" message appears | Start playing normally |
-| Spawning other players | "Walk near NPCs to trigger character spawns" | Walk toward any town, patrol, or caravan |
-| Player appears | "[PlayerName] joined" + character appears near you | You can now see and interact with them |
-| Player disconnects | "[PlayerName] left" + character disappears | Automatic — no action needed |
-
-**Why do I need to walk near NPCs?** The mod uses Kenshi's own NPC creation system to safely spawn remote player characters. When the game creates a nearby NPC (guard, trader, bandit patrol), the mod piggybacks on that event to spawn the other player's character with fully valid game state. This prevents crashes that occurred with forced spawning.
-
-**How long does it take?** Usually 10-30 seconds after walking toward a populated area. You'll see a log message when the spawn triggers.
-
----
-
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -1198,8 +1177,6 @@ Post-build steps (automatic):
 | High ping / lag | Server should be geographically close to players. Check server tickrate and network conditions |
 | Server won't start | Check if port 27800 is already in use (`netstat -an | find "27800"`). Try a different port |
 | Game crash on launch | Check `KenshiOnline.log` for details. Common cause: pattern scan failure for a critical function. Try GOG v1.0.68 for best compatibility |
-| Crash ~10-20s after connecting (v1.0.1 and earlier) | Fixed in v1.0.2. Was caused by stale faction pointer (use-after-free) in SpawnCharacterDirect. Update to the latest release |
-| Other player not appearing | Walk toward a town or any area with NPCs. The mod needs a natural NPC creation event to spawn remote characters safely. Takes 10-30 seconds |
 | Server browser empty | Ensure the master server is running. Check that the game server's `masterServer` config points to the correct address |
 | Chat not working | Ensure you press Enter (not Return on numpad). Check that input hooks are installed (debug log shows "INPUT: hooks installed") |
 | Cannot kick/announce | These commands are host-only. The first player to connect is the host |

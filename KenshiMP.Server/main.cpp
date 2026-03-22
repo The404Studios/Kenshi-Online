@@ -8,6 +8,9 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 static std::atomic<bool> g_running{true};
 
@@ -17,6 +20,13 @@ void SignalHandler(int signal) {
 }
 
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    // Enable UTF-8 for console I/O so non-Latin characters (Chinese, Japanese, Korean)
+    // display correctly in server logs and console output.
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
     // Setup logging
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("KenshiOnline_Server.log", true);

@@ -71,6 +71,10 @@ public:
     // Update equipment tracking for a single slot
     void UpdateEquipment(EntityID netId, int slot, uint32_t itemTemplateId);
 
+    // Update dirty flags (thread-safe bitwise OR / AND-NOT)
+    void SetDirtyFlags(EntityID netId, uint16_t flags);
+    void ClearDirtyFlags(EntityID netId, uint16_t mask);
+
     // Remap a local entity ID to a new server-assigned ID.
     // Preserves the game object, owner, and all state.
     bool RemapEntityId(EntityID oldId, EntityID newId);
