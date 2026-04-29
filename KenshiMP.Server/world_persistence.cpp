@@ -6,6 +6,11 @@
 #include <cmath>
 #include <spdlog/spdlog.h>
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+
 namespace kmp {
 
 using json = nlohmann::json;
@@ -15,9 +20,10 @@ using json = nlohmann::json;
 
 bool SaveWorldToFile(const std::string& path,
                      const std::unordered_map<EntityID, ServerEntity>& entities,
+                     const std::unordered_map<std::string, SavedPlayer>& savedPlayers,
                      float timeOfDay, int weatherState) {
     json j;
-    j["version"] = 1;
+    j["version"] = 2;
     j["timeOfDay"] = timeOfDay;
     j["weather"] = weatherState;
 
@@ -47,31 +53,70 @@ bool SaveWorldToFile(const std::string& path,
     }
     j["entities"] = entityArray;
 
-    // Atomic write: write to temp file, then rename (safe on NTFS)
-    std::string tmpPath = path + ".tmp";
-    std::ofstream file(tmpPath);
-    if (!file.is_open()) {
-        spdlog::error("SaveWorld: Failed to open '{}'", tmpPath);
-        return false;
+    // Save player→entity mapping so reconnecting players can reclaim entities
+    json playersObj = json::object();
+    for (auto& [name, sp] : savedPlayers) {
+        json ids = json::array();
+        for (EntityID eid : sp.entityIds) ids.push_back(eid);
+        playersObj[name] = ids;
     }
-    file << j.dump(2);
-    file.close();
+    j["players"] = playersObj;
 
-    // Rename over the real file (atomic on most filesystems)
-    if (std::rename(tmpPath.c_str(), path.c_str()) != 0) {
-        // rename fails if destination exists on some platforms; remove first
-        std::remove(path.c_str());
-        if (std::rename(tmpPath.c_str(), path.c_str()) != 0) {
-            spdlog::error("SaveWorld: Failed to rename '{}' to '{}'", tmpPath, path);
+    // Write to temp file first, then atomically replace the destination.
+    // This ensures no data-loss window: if we crash at any point, either
+    // the old file or the new file exists in full on disk.
+    std::string tmpPath = path + ".tmp";
+    {
+        std::ofstream file(tmpPath, std::ios::binary | std::ios::trunc);
+        if (!file.is_open()) {
+            spdlog::error("SaveWorld: Failed to open '{}'", tmpPath);
             return false;
         }
+        file << j.dump(2);
+        file.flush();
+        if (!file.good()) {
+            spdlog::error("SaveWorld: Write/flush failed for '{}'", tmpPath);
+            file.close();
+            std::remove(tmpPath.c_str());
+            return false;
+        }
+        file.close();
     }
+
+    // MoveFileExA with MOVEFILE_REPLACE_EXISTING is atomic on NTFS:
+    // it replaces the destination in a single filesystem operation.
+    // MOVEFILE_WRITE_THROUGH ensures the move is flushed to disk before returning.
+    if (!MoveFileExA(tmpPath.c_str(), path.c_str(),
+                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        DWORD err = GetLastError();
+        spdlog::error("SaveWorld: MoveFileExA failed (error {}), falling back to manual rename", err);
+
+        // Fallback: rotate old -> backup, temp -> target.
+        // Not fully atomic, but still safer than remove-then-rename because
+        // the old file is preserved as a backup rather than deleted first.
+        std::string backupPath = path + ".bak";
+        std::remove(backupPath.c_str());
+
+        // Move current file to backup (OK if it doesn't exist yet)
+        std::rename(path.c_str(), backupPath.c_str());
+
+        if (std::rename(tmpPath.c_str(), path.c_str()) != 0) {
+            spdlog::error("SaveWorld: Fallback rename '{}' -> '{}' also failed", tmpPath, path);
+            // Try to restore backup so we don't lose the old state
+            std::rename(backupPath.c_str(), path.c_str());
+            return false;
+        }
+        // Clean up backup on success
+        std::remove(backupPath.c_str());
+    }
+
     spdlog::info("SaveWorld: Saved {} entities to '{}'", entities.size(), path);
     return true;
 }
 
 bool LoadWorldFromFile(const std::string& path,
                        std::unordered_map<EntityID, ServerEntity>& entities,
+                       std::unordered_map<std::string, SavedPlayer>& savedPlayers,
                        float& timeOfDay, int& weatherState,
                        EntityID& nextEntityId) {
     std::ifstream file(path);
@@ -85,6 +130,7 @@ bool LoadWorldFromFile(const std::string& path,
         weatherState = j.value("weather", 0);
 
         entities.clear();
+        savedPlayers.clear();
         EntityID maxId = 0;
 
         int loadedCount = 0;
@@ -98,7 +144,7 @@ bool LoadWorldFromFile(const std::string& path,
             ServerEntity entity;
             entity.id = e["id"];
             entity.type = static_cast<EntityType>(e["type"].get<int>());
-            entity.owner = e["owner"];
+            entity.owner = 0; // Mark all loaded entities as unowned until a player reconnects
             entity.templateId = e["templateId"];
             entity.factionId = e["factionId"];
 
@@ -141,6 +187,23 @@ bool LoadWorldFromFile(const std::string& path,
             entities[entity.id] = entity;
             if (entity.id > maxId) maxId = entity.id;
             loadedCount++;
+        }
+
+        // Load player→entity mapping (version 2+)
+        if (j.contains("players") && j["players"].is_object()) {
+            for (auto& [name, ids] : j["players"].items()) {
+                SavedPlayer sp;
+                sp.name = name;
+                for (auto& eid : ids) {
+                    EntityID id = eid.get<EntityID>();
+                    // Only keep references to entities that actually loaded
+                    if (entities.count(id)) sp.entityIds.push_back(id);
+                }
+                if (!sp.entityIds.empty()) {
+                    savedPlayers[name] = std::move(sp);
+                }
+            }
+            spdlog::info("LoadWorld: Loaded {} saved player records", savedPlayers.size());
         }
 
         nextEntityId = maxId + 1;

@@ -6,6 +6,7 @@
 #include "../game/lobby_manager.h"
 #include "../game/shared_save_sync.h"
 #include "../hooks/entity_hooks.h"
+#include "../hooks/combat_hooks.h"
 #include "../hooks/time_hooks.h"
 #include "../hooks/squad_hooks.h"
 #include "../hooks/faction_hooks.h"
@@ -15,6 +16,7 @@
 #include "kmp/memory.h"
 #include "kmp/string_convert.h"
 #include <spdlog/spdlog.h>
+#include <cmath>
 #include <unordered_set>
 
 namespace kmp {
@@ -91,6 +93,9 @@ public:
         case MessageType::S2C_FactionAssignment:
             HandleFactionAssignment(reader);
             return;
+        case MessageType::S2C_LobbyStart:
+            HandleLobbyStart(reader);
+            return;
         case MessageType::S2C_PipelineSnapshot: {
             PlayerID sender;
             if (!reader.ReadU32(sender)) return;
@@ -165,6 +170,9 @@ public:
         case MessageType::S2C_WorldSnapshot:
             HandleWorldSnapshot(reader);
             break;
+        case MessageType::S2C_EntityHeartbeat:
+            HandleEntityHeartbeat(reader);
+            break;
         case MessageType::S2C_BuildPlaced:
             HandleBuildPlaced(reader);
             break;
@@ -178,6 +186,12 @@ public:
             break;
         case MessageType::S2C_EquipmentUpdate:
             HandleEquipmentUpdate(reader);
+            break;
+        case MessageType::S2C_LimbHealth:
+            HandleLimbHealth(reader);
+            break;
+        case MessageType::S2C_StatusEffect:
+            HandleStatusEffect(reader);
             break;
 
         // ── Inventory ──
@@ -250,8 +264,17 @@ private:
         core.GetPipelineOrch().Initialize(msg.playerId, core.GetEntityRegistry(),
             core.GetSpawnManager(), core.GetLoadingOrch(), core.GetClient(), core.GetNativeHud());
 
-        // Re-enable entity hooks that were suspended during game loading
-        entity_hooks::ResumeForNetwork();
+        // Re-enable entity hooks — but ONLY if the game world is already loaded.
+        // If connecting from the main menu (game not loaded yet), enabling the
+        // CharacterCreate hook now would crash during the 130+ loading creates
+        // (MovRaxRsp wrapper corruption). Instead, defer to OnGameLoaded().
+        if (core.IsGameLoaded()) {
+            entity_hooks::ResumeForNetwork();
+            spdlog::info("PacketHandler: Entity hooks resumed (game already loaded)");
+        } else {
+            spdlog::info("PacketHandler: Entity hooks DEFERRED (game not loaded yet — will resume on game load)");
+            core.GetNativeHud().LogStep("NET", "Connected! Sync starts when you load a save.");
+        }
 
         spdlog::info("PacketHandler: Handshake accepted! Player ID: {}, Players: {}/{}",
                      msg.playerId, msg.currentPlayers, msg.maxPlayers);
@@ -372,6 +395,8 @@ private:
                 ai_hooks::UnmarkRemoteControlled(gameObj);
                 spdlog::debug("PacketHandler: Cleared control + teleported entity {} underground", eid);
             }
+            // BUG 2 FIX: Decrement spawn cap for each removed remote entity
+            entity_hooks::DecrementSpawnCount(msg.playerId);
             core.GetInterpolation().RemoveEntity(eid);
             registry.Unregister(eid);
         }
@@ -480,19 +505,40 @@ private:
         float now = SessionTime();
         core.GetInterpolation().AddSnapshot(entityId, now, spawnPos, rot);
 
-        // Queue a real character spawn via SpawnManager.
-        // ALWAYS queue — even if SpawnManager isn't ready yet.
-        // In-place replay doesn't use the template name; it replays the factory's
-        // pre-call struct. The queue just needs entries to drain when the next
-        // CharacterCreate fires. If we skip queuing, the entity becomes a permanent
-        // ghost that never gets a real game object.
+        // ── Try to find existing mod character first ──
+        // The kenshi-online.mod creates "Player 1" through "Player 16" on game load.
+        // If the character already exists in the world, link it directly — no need
+        // to call FactoryCreate (which is unreliable and crash-prone).
+        bool linkedExisting = false;
         {
+            // Map owner PlayerID to mod character name
+            void* existingChar = core.FindModCharacterBySlot(static_cast<int>(ownerId));
+            if (existingChar) {
+                // Found it! Link the existing game character to this network entity.
+                registry.SetGameObject(entityId, existingChar);
+                registry.UpdatePosition(entityId, spawnPos);
+
+                // Suppress AI so network controls this character
+                ai_hooks::MarkRemoteControlled(existingChar);
+
+                linkedExisting = true;
+                spdlog::info("PacketHandler: LINKED existing mod character 'Player {}' "
+                             "to entity {} (no spawn needed!)",
+                             ownerId, entityId);
+                core.GetNativeHud().AddSystemMessage(
+                    "Player " + std::to_string(ownerId) + " linked!");
+            }
+        }
+
+        // ── Fallback: queue a spawn via SpawnManager ──
+        // If no existing mod character found (maybe mod not loaded, or save doesn't
+        // have the characters), fall back to the FactoryCreate spawn pipeline.
+        if (!linkedExisting) {
             auto& spawnMgr = core.GetSpawnManager();
             SpawnRequest req;
             req.netId        = entityId;
             req.owner        = ownerId;
             req.type         = static_cast<EntityType>(type);
-            // Convert UTF-8 template name back to local ANSI for SpawnManager cache matching
             req.templateName = Utf8ToAnsi(templateName.c_str(), (int)templateName.size());
             req.position     = spawnPos;
             req.rotation     = rot;
@@ -505,7 +551,6 @@ private:
             }
             spawnMgr.QueueSpawn(req);
 
-            // Notify on HUD
             auto* rp = core.GetPlayerController().GetRemotePlayer(ownerId);
             std::string ownerName = rp ? rp->playerName : ("Player_" + std::to_string(ownerId));
             if (spawnMgr.IsReady()) {
@@ -543,6 +588,15 @@ private:
         spdlog::info("PacketHandler: Entity despawn id={} reason={}", entityId, reason);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
+
+        // BUG 2 FIX: Decrement per-player spawn cap BEFORE unregistering
+        // so the entity info (owner) is still available.
+        auto info = core.GetEntityRegistry().GetInfo(entityId);
+        if (info.has_value() && info->isRemote) {
+            entity_hooks::DecrementSpawnCount(info->ownerPlayerId);
+        }
+
         void* gameObj = core.GetEntityRegistry().GetGameObject(entityId);
         if (gameObj) {
             SEH_DespawnCleanup(gameObj);
@@ -566,6 +620,13 @@ private:
         for (uint8_t i = 0; i < count; i++) {
             CharacterPosition pos;
             if (!reader.ReadRaw(&pos, sizeof(pos))) break;
+
+            // Validate position: reject NaN/Inf to prevent corrupting interpolation state
+            if (std::isnan(pos.posX) || std::isnan(pos.posY) || std::isnan(pos.posZ) ||
+                std::isinf(pos.posX) || std::isinf(pos.posY) || std::isinf(pos.posZ)) {
+                spdlog::warn("PacketHandler: Skipping entity {} — position contains NaN/Inf", pos.entityId);
+                continue;
+            }
 
             Vec3 position(pos.posX, pos.posY, pos.posZ);
             Quat rotation = Quat::Decompress(pos.compressedQuat);
@@ -599,6 +660,7 @@ private:
                       msg.entityId, msg.targetX, msg.targetY, msg.targetZ);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
         auto& registry = core.GetEntityRegistry();
         auto& funcs = core.GetGameFunctions();
 
@@ -624,6 +686,7 @@ private:
                       msg.cutDamage, msg.bluntDamage, msg.pierceDamage, msg.resultHealth);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
         auto& registry = core.GetEntityRegistry();
         auto& funcs = core.GetGameFunctions();
 
@@ -667,6 +730,17 @@ private:
                 }
             }
         }
+
+        // Update entity registry with the new limb health value
+        {
+            auto info = registry.GetInfo(msg.targetId);
+            if (info.has_value()) {
+                float limbs[7];
+                for (int i = 0; i < 7; i++) limbs[i] = info->limbs.hp[i];
+                if (msg.bodyPart < 7) limbs[msg.bodyPart] = msg.resultHealth;
+                registry.UpdateLimbHealth(msg.targetId, limbs);
+            }
+        }
     }
 
     // ── Combat Death ──
@@ -677,6 +751,7 @@ private:
         spdlog::info("PacketHandler: Entity {} killed by {}", msg.entityId, msg.killerId);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
         auto& registry = core.GetEntityRegistry();
         auto& funcs = core.GetGameFunctions();
 
@@ -690,11 +765,19 @@ private:
             // Try native death fn. Pass killerObj even if nullptr — the
             // game's CharacterDeath at 0x7A6200 accepts nullptr killer
             // (environment/bleed-out deaths use nullptr internally).
+            // Set echo suppression flag so Hook_CharacterDeath doesn't
+            // re-queue this death as a new C2S event.
             auto deathFn = reinterpret_cast<CharacterDeathFn>(funcs.CharacterDeath);
+            bool deathCrashed = false;
+            combat_hooks::SetServerSourcedDeath(true);
             __try {
                 deathFn(entityObj, killerObj);
                 appliedNative = true;
             } __except (EXCEPTION_EXECUTE_HANDLER) {
+                deathCrashed = true;
+            }
+            combat_hooks::SetServerSourcedDeath(false);
+            if (deathCrashed) {
                 spdlog::warn("PacketHandler: Native CharacterDeath crashed for entity {} — using fallback",
                              msg.entityId);
             }
@@ -730,6 +813,13 @@ private:
                 Memory::Write(charPtr + offsets.isAlive, dead);
             }
         }
+
+        // Update entity registry — all limbs to -100 for death
+        {
+            float limbs[7];
+            for (int i = 0; i < 7; i++) limbs[i] = -100.f;
+            registry.UpdateLimbHealth(msg.entityId, limbs);
+        }
     }
 
     // ── Combat KO ──
@@ -744,6 +834,7 @@ private:
                      msg.entityId, msg.attackerId, msg.bodyPart, msg.resultHealth);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
         auto& registry = core.GetEntityRegistry();
         auto& funcs = core.GetGameFunctions();
 
@@ -752,11 +843,19 @@ private:
         if (entityObj && funcs.CharacterKO) {
             void* attackerObj = (msg.attackerId != INVALID_ENTITY)
                 ? registry.GetGameObject(msg.attackerId) : nullptr;
+            // Set echo suppression flag so Hook_CharacterKO doesn't
+            // re-queue this KO as a new C2S event.
             auto koFn = reinterpret_cast<game::func_types::CharacterKOFn>(funcs.CharacterKO);
+            bool koCrashed = false;
+            combat_hooks::SetServerSourcedKO(true);
             __try {
                 koFn(entityObj, attackerObj, static_cast<int>(msg.bodyPart));
                 appliedNativeKO = true;
             } __except (EXCEPTION_EXECUTE_HANDLER) {
+                koCrashed = true;
+            }
+            combat_hooks::SetServerSourcedKO(false);
+            if (koCrashed) {
                 spdlog::warn("PacketHandler: Native CharacterKO crashed for entity {} — using fallback",
                              msg.entityId);
             }
@@ -779,6 +878,17 @@ private:
                         Memory::Write(ptr2 + partOffset, msg.resultHealth);
                     }
                 }
+            }
+        }
+
+        // Update entity registry — write KO health to chest (body part 0)
+        {
+            auto info = registry.GetInfo(msg.entityId);
+            if (info.has_value()) {
+                float limbs[7];
+                for (int i = 0; i < 7; i++) limbs[i] = info->limbs.hp[i];
+                limbs[static_cast<int>(BodyPart::Chest)] = msg.resultHealth;
+                registry.UpdateLimbHealth(msg.entityId, limbs);
             }
         }
     }
@@ -804,6 +914,7 @@ private:
                       msg.entityId, msg.statIndex, msg.statValue);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
         void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
         if (!gameObj) return;
 
@@ -861,6 +972,47 @@ private:
 
         // Apply time sync via the time hooks system
         time_hooks::SetServerTime(msg.timeOfDay, static_cast<float>(msg.gameSpeed));
+    }
+
+    // ── Entity Heartbeat ──
+    static void HandleEntityHeartbeat(PacketReader& reader) {
+        uint32_t serverTick;
+        uint16_t entityCount;
+        if (!reader.ReadU32(serverTick) || !reader.ReadU16(entityCount)) return;
+
+        auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
+        auto& registry = core.GetEntityRegistry();
+
+        // Read the server's entity ID list
+        std::unordered_set<EntityID> serverEntities;
+        serverEntities.reserve(entityCount);
+        for (uint16_t i = 0; i < entityCount; i++) {
+            EntityID id;
+            if (!reader.ReadU32(id)) break;
+            serverEntities.insert(id);
+        }
+
+        // Check for ghost entities: entities we have locally that the server doesn't know about
+        auto localIds = registry.GetRemoteEntities();
+        int cleaned = 0;
+        for (EntityID localId : localIds) {
+            if (serverEntities.find(localId) == serverEntities.end()) {
+                spdlog::warn("PacketHandler: Heartbeat — entity {} not in server list, cleaning up", localId);
+                // BUG 2 FIX: Decrement spawn cap before unregistering
+                auto ghostInfo = registry.GetInfo(localId);
+                if (ghostInfo.has_value() && ghostInfo->isRemote) {
+                    entity_hooks::DecrementSpawnCount(ghostInfo->ownerPlayerId);
+                }
+                core.GetInterpolation().RemoveEntity(localId);
+                registry.Unregister(localId);
+                cleaned++;
+            }
+        }
+
+        if (cleaned > 0) {
+            spdlog::info("PacketHandler: Heartbeat cleaned {} ghost entities", cleaned);
+        }
     }
 
     // ── World Snapshot ──
@@ -992,7 +1144,9 @@ private:
         if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
         auto& core = Core::Get();
-        void* entityObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
+        if (!core.IsGameLoaded()) return;
+        auto& registry = core.GetEntityRegistry();
+        void* entityObj = registry.GetGameObject(msg.entityId);
         if (!entityObj) return;
 
         // Write health values directly to the character's health memory
@@ -1000,17 +1154,80 @@ private:
         uintptr_t charPtr = reinterpret_cast<uintptr_t>(entityObj);
 
         if (offsets.healthChain1 >= 0 && offsets.healthChain2 >= 0 && offsets.healthBase >= 0) {
-            uintptr_t ptr1 = 0;
-            if (Memory::Read(charPtr + offsets.healthChain1, ptr1) && ptr1 != 0) {
-                uintptr_t ptr2 = 0;
-                if (Memory::Read(ptr1 + offsets.healthChain2, ptr2) && ptr2 != 0) {
-                    for (int i = 0; i < static_cast<int>(BodyPart::Count); i++) {
-                        int partOffset = offsets.healthBase + i * offsets.healthStride;
-                        Memory::Write(ptr2 + partOffset, msg.health[i]);
+            __try {
+                uintptr_t ptr1 = 0;
+                if (Memory::Read(charPtr + offsets.healthChain1, ptr1) && ptr1 != 0) {
+                    uintptr_t ptr2 = 0;
+                    if (Memory::Read(ptr1 + offsets.healthChain2, ptr2) && ptr2 != 0) {
+                        for (int i = 0; i < static_cast<int>(BodyPart::Count); i++) {
+                            int partOffset = offsets.healthBase + i * offsets.healthStride;
+                            Memory::Write(ptr2 + partOffset, msg.health[i]);
+                        }
                     }
+                }
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                spdlog::warn("PacketHandler: SEH exception writing health update for entity {}", msg.entityId);
+            }
+        }
+
+        // Update entity registry with the health values
+        registry.UpdateLimbHealth(msg.entityId, msg.health);
+    }
+
+    // ── Limb Health ──
+    static void HandleLimbHealth(PacketReader& reader) {
+        MsgLimbHealth msg;
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+        auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
+
+        // Store limb health in entity registry
+        auto& registry = core.GetEntityRegistry();
+        registry.UpdateLimbHealth(msg.entityId, msg.health);
+
+        // Write limb health values to the game character's memory
+        void* entityObj = registry.GetGameObject(msg.entityId);
+        if (entityObj) {
+            auto& offsets = game::GetOffsets().character;
+            uintptr_t charPtr = reinterpret_cast<uintptr_t>(entityObj);
+
+            if (offsets.healthChain1 >= 0 && offsets.healthChain2 >= 0 && offsets.healthBase >= 0) {
+                __try {
+                    uintptr_t ptr1 = 0;
+                    if (Memory::Read(charPtr + offsets.healthChain1, ptr1) && ptr1 != 0) {
+                        uintptr_t ptr2 = 0;
+                        if (Memory::Read(ptr1 + offsets.healthChain2, ptr2) && ptr2 != 0) {
+                            for (int i = 0; i < 7; i++) {
+                                int partOffset = offsets.healthBase + i * offsets.healthStride;
+                                Memory::Write(ptr2 + partOffset, msg.health[i]);
+                            }
+                        }
+                    }
+                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                    spdlog::warn("PacketHandler: SEH exception writing limb health for entity {}", msg.entityId);
                 }
             }
         }
+
+        spdlog::debug("PacketHandler: Limb health for entity {} (chest={:.1f})",
+                      msg.entityId, msg.health[static_cast<int>(BodyPart::Chest)]);
+    }
+
+    // ── Status Effect ──
+    static void HandleStatusEffect(PacketReader& reader) {
+        MsgStatusEffect msg;
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+        auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
+
+        // Store status effect in entity registry (data-only, no game object writes)
+        auto& registry = core.GetEntityRegistry();
+        registry.UpdateStatusEffect(msg.entityId, msg.effectType, msg.active != 0);
+
+        spdlog::debug("PacketHandler: Status effect for entity {} type={} active={}",
+                      msg.entityId, msg.effectType, msg.active);
     }
 
     // ── Equipment Update ──
@@ -1022,6 +1239,7 @@ private:
                       msg.entityId, msg.slot, msg.itemTemplateId);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
         void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
         if (!gameObj) return;
 
@@ -1071,6 +1289,7 @@ private:
                       msg.entityId, msg.action, msg.itemTemplateId, msg.quantity);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
         void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
         if (!gameObj) return;
 
@@ -1132,7 +1351,7 @@ private:
 
         // Update entity tracking: if a member was added to a squad, ensure
         // our registry knows this entity belongs to the squad's owner
-        auto infoCopy = registry.GetInfoCopy(msg.memberEntityId);
+        auto infoCopy = registry.GetInfo(msg.memberEntityId);
         if (infoCopy && infoCopy->isRemote) {
             if (msg.action == 0) {
                 // Member added — entity is now active in this squad
@@ -1156,6 +1375,7 @@ private:
                      msg.factionIdA, msg.factionIdB, msg.relation);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
 
         // Try to call the game's FactionRelation function via the hook's original pointer.
         // We need to find the faction objects by their IDs first.
@@ -1168,13 +1388,19 @@ private:
         // Find faction pointers by scanning remote player entities and the local player.
         // Each character has a faction pointer at CharacterOffsets::faction.
         // Factions have an ID at FactionOffsets::id. We scan to find matching factions.
+        const int fIdOff = game::GetOffsets().faction.id;
+        if (fIdOff < 0) {
+            spdlog::warn("PacketHandler: faction.id offset not resolved (-1), cannot apply relation");
+            return;
+        }
+
         uintptr_t factionPtrA = 0, factionPtrB = 0;
 
         // Check local player's faction first
         uintptr_t localFaction = core.GetPlayerController().GetLocalFactionPtr();
         if (localFaction != 0) {
             uint32_t localFactionId = 0;
-            Memory::Read(localFaction + game::GetOffsets().faction.id, localFactionId);
+            Memory::Read(localFaction + fIdOff, localFactionId);
             if (localFactionId == msg.factionIdA) factionPtrA = localFaction;
             if (localFactionId == msg.factionIdB) factionPtrB = localFaction;
         }
@@ -1190,7 +1416,7 @@ private:
                 if (fPtr == 0) continue;
 
                 uint32_t fId = 0;
-                Memory::Read(fPtr + game::GetOffsets().faction.id, fId);
+                Memory::Read(fPtr + fIdOff, fId);
                 if (fId == msg.factionIdA && factionPtrA == 0) factionPtrA = fPtr;
                 if (fId == msg.factionIdB && factionPtrB == 0) factionPtrB = fPtr;
             }
@@ -1242,7 +1468,7 @@ private:
         // Update the entity registry with the build progress
         // This keeps our local state in sync so /entities can report accurately
         auto& core = Core::Get();
-        auto infoCopy = core.GetEntityRegistry().GetInfoCopy(msg.entityId);
+        auto infoCopy = core.GetEntityRegistry().GetInfo(msg.entityId);
         if (infoCopy && infoCopy->isRemote) {
             // Building progress is tracked — visual update would require
             // writing to the building's GameData (offset TBD from RE).
@@ -1270,6 +1496,7 @@ private:
         spdlog::info("PacketHandler: Door/gate {} state -> {}", msg.entityId, stateName);
 
         auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
         void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
         if (gameObj) {
             // Buildings in Kenshi have a functionality pointer that contains door state.
@@ -1309,6 +1536,19 @@ private:
             spdlog::warn("PacketHandler: Admin denied: {}", text);
             core.GetNativeHud().AddSystemMessage("[Admin Error] " + text);
         }
+    }
+
+    // ── Lobby: Start ──
+    static void HandleLobbyStart(PacketReader& reader) {
+        uint8_t playerCount = 0;
+        reader.ReadU8(playerCount);
+
+        auto& core = Core::Get();
+        int slot = core.GetLobbyManager().GetPlayerSlot();
+
+        spdlog::info("PacketHandler: LobbyStart! {} players, my slot = {}", playerCount, slot);
+        core.GetNativeHud().AddSystemMessage("All players ready! Click NEW GAME to start.");
+        core.GetNativeHud().AddSystemMessage("You are Player " + std::to_string(slot));
     }
 
     // ── Lobby: Faction Assignment ──

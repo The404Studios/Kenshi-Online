@@ -1,4 +1,5 @@
 #include "game_types.h"
+#include "game_offset_prober.h"
 #include "kmp/memory.h"
 #include <spdlog/spdlog.h>
 #include <chrono>
@@ -605,6 +606,18 @@ void CharacterIterator::Reset() {
     m_count = 0;
     m_listBase = 0;
 
+    // Safety guard: during loading, the game is actively resizing the lektor
+    // (dynamic array). Reading count/pointer non-atomically while the game thread
+    // modifies them corrupts the heap. Skip all game memory reads during loading.
+    if (IsGameLoading()) {
+        static bool s_loggedLoadingSkip = false;
+        if (!s_loggedLoadingSkip) {
+            spdlog::warn("CharacterIterator skipped — game is loading");
+            s_loggedLoadingSkip = true;
+        }
+        return;
+    }
+
     // Get module range for heap-vs-module discrimination
     uintptr_t modBase = Memory::GetModuleBase();
     size_t modSize = 0x4000000; // 64MB fallback
@@ -880,7 +893,11 @@ void ResetProbeState() {
         std::lock_guard lock(s_deferredProbeMutex);
         s_deferredProbeChars.clear();
     }
-    spdlog::info("game_character: ResetProbeState — all probe statics cleared");
+
+    // Reset the unified offset prober as well (handles sceneNode, isPlayerControlled, aiPackage, etc.)
+    ResetOffsetProber();
+
+    spdlog::info("game_character: ResetProbeState — all probe statics cleared (incl. offset prober)");
 }
 
 // ── Player Controlled Offset Discovery ──
@@ -946,6 +963,7 @@ bool WritePlayerControlled(uintptr_t charPtr, bool controlled) {
 // Core sets these via the game functions resolver. game_character.cpp reads them.
 static uintptr_t s_resolvedPlayerBase = 0;
 static uintptr_t s_resolvedGameWorld = 0;
+static bool s_gameIsLoading = false;
 
 namespace kmp::game {
 
@@ -964,6 +982,14 @@ uintptr_t GetResolvedGameWorld() {
 void SetResolvedGameWorld(uintptr_t addr) {
     s_resolvedGameWorld = addr;
     spdlog::info("game_character: GameWorld bridge set to 0x{:X}", addr);
+}
+
+bool IsGameLoading() {
+    return s_gameIsLoading;
+}
+
+void SetGameLoadingState(bool loading) {
+    s_gameIsLoading = loading;
 }
 
 } // namespace kmp::game

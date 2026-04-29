@@ -70,8 +70,8 @@ static void __fastcall Hook_SetPosition(void* character, float x, float y, float
     EntityID netId = registry.GetNetId(character);
     if (netId == INVALID_ENTITY) return;
 
-    auto* info = registry.GetInfo(netId);
-    if (!info || info->ownerPlayerId != core.GetLocalPlayerId()) return;
+    auto info = registry.GetInfo(netId);
+    if (!info.has_value() || info->ownerPlayerId != core.GetLocalPlayerId()) return;
 
     // Throttle position updates to tick rate
     auto now = std::chrono::steady_clock::now();
@@ -178,8 +178,8 @@ static void __fastcall Hook_MoveTo(void* character, float x, float y, float z, i
     EntityID netId = core.GetEntityRegistry().GetNetId(character);
     if (netId == INVALID_ENTITY) return;
 
-    auto* info = core.GetEntityRegistry().GetInfo(netId);
-    if (!info || info->ownerPlayerId != core.GetLocalPlayerId()) return;
+    auto info = core.GetEntityRegistry().GetInfo(netId);
+    if (!info.has_value() || info->ownerPlayerId != core.GetLocalPlayerId()) return;
 
     // Send move command
     PacketWriter writer;

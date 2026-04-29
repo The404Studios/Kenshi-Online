@@ -91,8 +91,10 @@ static void __fastcall Hook_ItemPickup(void* inventory, void* item, int quantity
     // Registry maps CHARACTER pointers, not inventory pointers.
     // Read the inventory owner at inventory+0x28 (InventoryOffsets::owner).
     auto& registry = core.GetEntityRegistry();
+    const int ownerOff = game::GetOffsets().inventory.owner;
+    if (ownerOff < 0) return; // Offset not resolved
     uintptr_t ownerPtr = 0;
-    Memory::Read(reinterpret_cast<uintptr_t>(inventory) + game::GetOffsets().inventory.owner, ownerPtr);
+    Memory::Read(reinterpret_cast<uintptr_t>(inventory) + ownerOff, ownerPtr);
     void* owner = reinterpret_cast<void*>(ownerPtr);
     EntityID netId = (owner != nullptr) ? registry.GetNetId(owner) : INVALID_ENTITY;
     if (netId == INVALID_ENTITY) {
@@ -133,8 +135,10 @@ static void __fastcall Hook_ItemDrop(void* inventory, void* item) {
 
     // Registry maps CHARACTER pointers, not inventory pointers.
     auto& registry = core.GetEntityRegistry();
+    const int ownerOff = game::GetOffsets().inventory.owner;
+    if (ownerOff < 0) return; // Offset not resolved
     uintptr_t ownerPtr = 0;
-    Memory::Read(reinterpret_cast<uintptr_t>(inventory) + game::GetOffsets().inventory.owner, ownerPtr);
+    Memory::Read(reinterpret_cast<uintptr_t>(inventory) + ownerOff, ownerPtr);
     void* owner = reinterpret_cast<void*>(ownerPtr);
     EntityID netId = (owner != nullptr) ? registry.GetNetId(owner) : INVALID_ENTITY;
     if (netId == INVALID_ENTITY) return;

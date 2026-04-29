@@ -20,6 +20,8 @@
 #include "sync/pipeline_orchestrator.h"
 #include "sys/task_orchestrator.h"
 #include "sys/frame_data.h"
+#include "sdk/kenshi_sdk.h"
+#include "sdk/visual_proxy.h"
 #include "hooks/entity_hooks.h"
 #include <spdlog/spdlog.h>
 #include <atomic>
@@ -101,10 +103,16 @@ public:
             // Phase transition handled by PacketHandler (TransitionTo(Connected))
             ResetKeepaliveTimer(); // Reset so first keepalive fires 5s after connect, not immediately
 
-            // Enable combat hooks for multiplayer sync (they start bypassed due to MovRaxRsp)
-            HookManager::Get().Enable("CharacterDeath");
-            HookManager::Get().Enable("CharacterKO");
-            spdlog::info("Core: Combat hooks (CharacterDeath, CharacterKO) ENABLED for multiplayer");
+            // Enable combat hooks ONLY if game is loaded. If connecting from
+            // main menu (game not loaded), defer to OnGameLoaded() — enabling
+            // hooks during the 130+ loading creates causes MovRaxRsp corruption.
+            if (m_gameLoaded) {
+                HookManager::Get().Enable("CharacterDeath");
+                HookManager::Get().Enable("CharacterKO");
+                spdlog::info("Core: Combat hooks ENABLED (game loaded)");
+            } else {
+                spdlog::info("Core: Combat hooks DEFERRED (game not loaded — will enable on load)");
+            }
 
             // shared_save_sync::Init() is called lazily from Update() after
             // faction assignment arrives (which comes AFTER handshake ack).
@@ -123,9 +131,10 @@ public:
             HookManager::Get().Disable("CharacterDeath");
             HookManager::Get().Disable("CharacterKO");
 
-            // Clean up remote entities and interpolation
+            // Clean up remote entities, interpolation, and visual proxies
             size_t removed = m_entityRegistry.ClearRemoteEntities();
             m_interpolation.Clear();
+            m_visualProxy.DestroyAll();
             m_playerController.Reset();
             if (removed > 0) {
                 spdlog::info("Core: Cleared {} remote entities on disconnect", removed);
@@ -185,6 +194,13 @@ public:
     // Called after handshake: scan existing local characters and send them to server
     void SendExistingEntitiesToServer();
 
+    // Scan for mod characters ("Player 1" through "Player 16") by name and claim them.
+    // Local player's slot → local entity. Other slots → available for remote players.
+    void FindAndClaimModCharacters();
+
+    // Find a specific mod character by slot number (returns game object or nullptr).
+    void* FindModCharacterBySlot(int slot);
+
     // Called by entity_hooks after faction bootstrap to trigger a re-scan of existing characters
     void RequestEntityRescan() { m_needsEntityRescan.store(true); }
 
@@ -213,6 +229,10 @@ public:
     // When true, render_hooks skips its fallback OnGameTick call.
     void SetTimeHookActive(bool active) { m_timeHookActive = active; }
     bool IsTimeHookActive() const { return m_timeHookActive; }
+
+    // SDK access (polling-based game state + visual proxy)
+    sdk::KenshiSDK&   GetSDK()          { return m_sdk; }
+    sdk::VisualProxy&  GetVisualProxy()  { return m_visualProxy; }
 
     // Task orchestrator access
     TaskOrchestrator& GetOrchestrator() { return m_orchestrator; }
@@ -307,6 +327,12 @@ private:
 
     // Pipeline debugger (network-replicated pipeline state)
     PipelineOrchestrator m_pipelineOrch;
+
+    // SDK: polling-based game state abstraction
+    sdk::KenshiSDK    m_sdk;
+
+    // Visual proxy: Ogre SceneNode rendering for remote players
+    sdk::VisualProxy   m_visualProxy;
 };
 
 } // namespace kmp

@@ -41,7 +41,7 @@ public:
 
     // Check if a specific entity should be synced to us
     bool ShouldSync(EntityID entityId, const EntityRegistry& registry) const {
-        auto infoCopy = registry.GetInfoCopy(entityId);
+        auto infoCopy = registry.GetInfo(entityId);
         if (!infoCopy) return false;
         return m_localZone.IsAdjacent(infoCopy->zone);
     }

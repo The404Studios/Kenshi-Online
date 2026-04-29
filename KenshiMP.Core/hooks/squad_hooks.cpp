@@ -6,6 +6,7 @@
 #include "../core.h"
 #include "../game/game_types.h"
 #include <spdlog/spdlog.h>
+#include <Windows.h>
 #include <unordered_map>
 #include <deque>
 
@@ -21,6 +22,13 @@ static SquadAddMemberFn s_origSquadAddMember = nullptr;
 static int s_createCount = 0;
 static int s_addMemberCount = 0;
 static bool s_loading = false;
+
+// Safety state for SquadAddMember raw function pointer usage.
+// If the address fails .pdata validation or crashes on first call,
+// we permanently disable it so squad injection degrades gracefully
+// instead of crashing the game.
+static bool s_squadAddMemberValidated = false;
+static bool s_squadAddMemberDisabled = false;
 
 // Squad pointer → server-assigned net ID mapping.
 // Populated when the server responds with S2C_SquadCreated.
@@ -136,7 +144,7 @@ static void __fastcall Hook_SquadAddMember(void* squad, void* character) {
 bool Install() {
     auto& funcs = Core::Get().GetGameFunctions();
     auto& hooks = HookManager::Get();
-    int installed = 0;
+    (void)hooks;  // hooks kept for future use
 
     // SquadCreate hook DISABLED — starts with `mov rax, rsp` (48 8B C4).
     // The raw trampoline appeared safe in theory but caused silent crashes
@@ -152,13 +160,47 @@ bool Install() {
     // lookups + packet writes, causing cumulative corruption → crash ~10s later.
     // The raw function pointer is kept for AddCharacterToLocalSquad (direct call).
     if (funcs.SquadAddMember) {
-        spdlog::info("squad_hooks: SquadAddMember at 0x{:X} — NOT hooked (zone-load crash risk). "
-                     "Raw ptr kept for squad injection.",
-                     reinterpret_cast<uintptr_t>(funcs.SquadAddMember));
+        uintptr_t addMemberAddr = reinterpret_cast<uintptr_t>(funcs.SquadAddMember);
+
+        // Safety: verify via .pdata that the address is a valid function entry point.
+        // SquadAddMember is at 0x928423 which is NOT 16-byte aligned and may be
+        // a mid-function entry point discovered via vtable.
+        DWORD64 imageBase = 0;
+        auto* rtFunc = RtlLookupFunctionEntry(
+            static_cast<DWORD64>(addMemberAddr), &imageBase, nullptr);
+
+        if (rtFunc) {
+            uintptr_t funcStart = static_cast<uintptr_t>(imageBase) + rtFunc->BeginAddress;
+            if (funcStart != addMemberAddr) {
+                spdlog::warn("squad_hooks: SquadAddMember at 0x{:X} is MID-FUNCTION "
+                             "(real function at 0x{:X}, offset +0x{:X}). "
+                             "Disabling raw ptr — squad member tracking unavailable.",
+                             addMemberAddr, funcStart, addMemberAddr - funcStart);
+                s_squadAddMemberDisabled = true;
+            } else {
+                spdlog::info("squad_hooks: SquadAddMember at 0x{:X} — .pdata VALIDATED as function entry. "
+                             "Raw ptr kept for squad injection.",
+                             addMemberAddr);
+                s_squadAddMemberValidated = true;
+            }
+        } else {
+            // No .pdata entry found — could be a leaf function or dynamically generated.
+            // Allow it but warn.
+            spdlog::warn("squad_hooks: SquadAddMember at 0x{:X} — no .pdata entry found. "
+                         "Proceeding with caution (may be leaf function).",
+                         addMemberAddr);
+            s_squadAddMemberValidated = true;
+        }
+
+        if (!s_squadAddMemberDisabled) {
+            spdlog::info("squad_hooks: SquadAddMember at 0x{:X} — NOT hooked (zone-load crash risk). "
+                         "Raw ptr kept for squad injection.",
+                         addMemberAddr);
+        }
     }
 
-    spdlog::info("squad_hooks: {}/2 hooks installed", installed);
-    return installed > 0;
+    spdlog::info("squad_hooks: SquadAddMember validated={}, disabled={}", s_squadAddMemberValidated, s_squadAddMemberDisabled);
+    return s_squadAddMemberValidated;
 }
 
 void Uninstall() {
@@ -318,6 +360,13 @@ bool AddCharacterToLocalSquad(void* character) {
         return false;
     }
 
+    // Check if SquadAddMember was disabled due to .pdata validation failure or AV on first call
+    if (s_squadAddMemberDisabled) {
+        spdlog::warn("squad_hooks: AddCharacterToLocalSquad — SquadAddMember disabled "
+                      "(failed validation or AV on first call). Squad member tracking unavailable.");
+        return false;
+    }
+
     // Resolve the SquadAddMember function — prefer the hook trampoline (bypasses
     // our hook to avoid recursive C2S_SquadAddMember sends), fall back to the
     // raw game function pointer from the scanner/vtable discovery.
@@ -359,8 +408,10 @@ bool AddCharacterToLocalSquad(void* character) {
                      (uintptr_t)character, activePlatoonPtr, (uintptr_t)addFn,
                      (addFn == s_origSquadAddMember) ? "hook trampoline" : "raw game function");
     } else {
-        spdlog::error("squad_hooks: SQUAD INJECTION FAILED — char 0x{:X}, activePlatoon 0x{:X}",
-                       (uintptr_t)character, activePlatoonPtr);
+        spdlog::error("squad_hooks: SQUAD INJECTION FAILED (AV) — char 0x{:X}, activePlatoon 0x{:X}, fn=0x{:X}. "
+                       "Disabling SquadAddMember — squad member tracking unavailable for this session.",
+                       (uintptr_t)character, activePlatoonPtr, (uintptr_t)addFn);
+        s_squadAddMemberDisabled = true;
     }
 
     return ok;

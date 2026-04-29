@@ -1,11 +1,20 @@
 #include "kmp/config.h"
+#include "kmp/constants.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <shlobj.h>
+#include <algorithm>
 
 namespace kmp {
 
 using json = nlohmann::json;
+
+// ── Validation helpers ──
+
+template<typename T>
+static T Clamp(T value, T lo, T hi) {
+    return (std::max)(lo, (std::min)(value, hi));
+}
 
 // ── ClientConfig ──
 
@@ -50,6 +59,14 @@ bool ClientConfig::Load(const std::string& path) {
         if (j.contains("masterServer")) masterServer = j["masterServer"].get<std::string>();
         if (j.contains("masterPort"))   masterPort   = j["masterPort"].get<uint16_t>();
         if (j.contains("useSyncOrchestrator")) useSyncOrchestrator = j["useSyncOrchestrator"].get<bool>();
+
+        // ── Validate loaded values ──
+        if (playerName.size() > KMP_MAX_NAME_LENGTH)
+            playerName.resize(KMP_MAX_NAME_LENGTH);
+        lastPort    = Clamp<uint16_t>(lastPort, 1024, 65535);
+        overlayScale = Clamp(overlayScale, 0.1f, 10.0f);
+        masterPort  = Clamp<uint16_t>(masterPort, 1024, 65535);
+
         return true;
     } catch (...) {
         return false;
@@ -93,6 +110,16 @@ bool ServerConfig::Load(const std::string& path) {
         if (j.contains("gameSpeed"))  gameSpeed  = j["gameSpeed"].get<float>();
         if (j.contains("masterServer")) masterServer = j["masterServer"].get<std::string>();
         if (j.contains("masterPort"))   masterPort   = j["masterPort"].get<uint16_t>();
+
+        // ── Validate loaded values ──
+        port        = Clamp<uint16_t>(port, 1024, 65535);
+        maxPlayers  = Clamp(maxPlayers, 1, KMP_MAX_PLAYERS);
+        tickRate    = Clamp(tickRate, 1, 60);
+        gameSpeed   = Clamp(gameSpeed, 0.1f, 10.0f);
+        masterPort  = Clamp<uint16_t>(masterPort, 1024, 65535);
+        if (serverName.size() > KMP_MAX_NAME_LENGTH)
+            serverName.resize(KMP_MAX_NAME_LENGTH);
+
         return true;
     } catch (...) {
         return false;

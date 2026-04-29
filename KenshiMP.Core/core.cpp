@@ -18,6 +18,7 @@
 #include "hooks/squad_spawn_hooks.h"
 #include "hooks/char_tracker_hooks.h"
 #include "game/game_types.h"
+#include "game/game_offset_prober.h"
 #include "game/asset_facilitator.h"
 #include "game/shared_save_sync.h"
 #include "game/game_inventory.h"
@@ -459,6 +460,11 @@ bool Core::Initialize() {
 
     // Initialize game offsets (CE fallbacks)
     game::InitOffsetsFromScanner();
+
+    // Try to restore runtime-discovered offsets from cache
+    if (game::LoadOffsetCache()) {
+        m_nativeHud.LogStep("INIT", "Offsets loaded from cache");
+    }
     m_nativeHud.LogStep("INIT", "Game offsets initialized");
 
     // Initialize pattern scanner
@@ -506,7 +512,7 @@ bool Core::Initialize() {
     m_spawnManager.SetOnSpawnedCallback(
         [this](EntityID netId, void* gameObject) {
             m_entityRegistry.SetGameObject(netId, gameObject);
-            auto infoCopy = m_entityRegistry.GetInfoCopy(netId);
+            auto infoCopy = m_entityRegistry.GetInfo(netId);
             PlayerID owner = infoCopy ? infoCopy->ownerPlayerId : 0;
             m_playerController.OnRemoteCharacterSpawned(netId, gameObject, owner);
             game::CharacterAccessor accessor(gameObject);
@@ -595,6 +601,32 @@ static bool SEH_InterpolationUpdate(Interpolation* interp, float dt) {
         interp->Update(dt);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+// SEH-protected offset prober runner.
+// Iterates characters to find a player and NPC, then runs the unified prober.
+// No C++ objects with destructors — uses only POD locals.
+static bool SEH_RunOffsetProber(uintptr_t earlyFaction) {
+    __try {
+        game::CharacterIterator probeIter;
+        uintptr_t probePlayer = 0, probeNpc = 0;
+        while (probeIter.HasNext() && (probePlayer == 0 || probeNpc == 0)) {
+            game::CharacterAccessor ch = probeIter.Next();
+            if (!ch.IsValid()) continue;
+            uintptr_t fp = ch.GetFactionPtr();
+            if (fp == earlyFaction && probePlayer == 0)
+                probePlayer = ch.GetPtr();
+            else if (fp != earlyFaction && probeNpc == 0)
+                probeNpc = ch.GetPtr();
+        }
+        if (probePlayer != 0) {
+            game::RunOffsetProber(probePlayer, probeNpc);
+        }
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        OutputDebugStringA("KMP: SEH_RunOffsetProber CRASHED\n");
         return false;
     }
 }
@@ -1182,6 +1214,15 @@ void Core::TransitionTo(ClientPhase newPhase) {
     if (old != newPhase) {
         spdlog::info("Core: Phase {} -> {}", ClientPhaseToString(old), ClientPhaseToString(newPhase));
         m_nativeHud.LogStep("PHASE", std::string(ClientPhaseToString(old)) + " -> " + ClientPhaseToString(newPhase));
+
+        // Update loading state bridge for CharacterIterator safety guard.
+        // CharacterIterator skips game memory reads during loading to prevent
+        // heap corruption from non-atomic lektor reads.
+        if (newPhase == ClientPhase::Loading) {
+            game::SetGameLoadingState(true);
+        } else if (old == ClientPhase::Loading) {
+            game::SetGameLoadingState(false);
+        }
     }
 }
 
@@ -1226,11 +1267,12 @@ void Core::OnLoadingGapDetected() {
             }
         }
 
-        // Disable CharacterCreate hook BEFORE loading starts.
-        // The 130+ character creates during load would fire through the
-        // MovRaxRsp wrapper and corrupt its global RSP slots (DEP crash).
-        // The hook is re-enabled in OnGameLoaded() after the burst completes.
-        entity_hooks::SuspendForDisconnect();
+        // Enable loading passthrough: CharacterCreate hook stays active but takes
+        // the ultra-lightweight path (timestamp + counter + call original).
+        // PollForGameLoad uses these create events to detect loading completion
+        // instead of CharacterIterator (which corrupts the heap during loading).
+        entity_hooks::ResetLoadingCreateCount();
+        entity_hooks::SetLoadingPassthrough(true);
 
         TransitionTo(ClientPhase::Loading);
     }
@@ -1253,8 +1295,7 @@ static int SEH_CharacterIteratorCount() {
 void Core::PollForGameLoad() {
     if (m_gameLoaded) return;
     // Poll during Loading (normal), but also Startup/MainMenu as fallback.
-    // Loading gap detection can miss fast loads (user clicks Continue immediately),
-    // but globals + CharacterIterator still detect game loaded from any phase.
+    // Loading gap detection can miss fast loads (user clicks Continue immediately).
     ClientPhase phase = m_clientPhase.load(std::memory_order_acquire);
     if (phase == ClientPhase::Connected || phase == ClientPhase::Connecting) return;
 
@@ -1288,41 +1329,71 @@ void Core::PollForGameLoad() {
         spdlog::info("Core::PollForGameLoad — reset statics for new load");
     }
 
-    if (!playerBaseValid && !gameWorldValid) {
-        if (++s_pollCount <= 5 || s_pollCount % 10 == 0) {
-            spdlog::debug("Core::PollForGameLoad — globals not ready yet (poll #{})", s_pollCount);
-        }
-        return;
-    }
-
-    // Set bridges so CharacterIterator can find characters
+    // Set bridges so CharacterIterator can find characters AFTER loading is done
     if (playerBaseValid) game::SetResolvedPlayerBase(m_gameFuncs.PlayerBase);
     if (gameWorldValid) game::SetResolvedGameWorld(m_gameFuncs.GameWorldSingleton);
 
-    // Try CharacterIterator — if it finds characters, the game is loaded
-    int charCount = SEH_CharacterIteratorCount();
-    if (charCount > 0) {
-        spdlog::info("Core::PollForGameLoad — {} characters detected! Triggering OnGameLoaded",
-                     charCount);
-        m_nativeHud.LogStep("GAME", "Characters detected (" + std::to_string(charCount) + ") — game loaded!");
+    // ── Create-event-based loading detection ──
+    // Instead of CharacterIterator (which corrupts the heap by reading the lektor
+    // while the game is actively resizing it), use entity_hooks create events.
+    // The CharacterCreate hook fires in loading passthrough mode during loading,
+    // updating a timestamp and counter without touching game memory structures.
+    //
+    // Detection logic:
+    //   1. loadingCreates > 0  →  characters ARE being created (loading started)
+    //   2. timeSinceLastCreate > 3000ms  →  creates STOPPED (loading burst finished)
+    //   3. BOTH conditions true  →  game world is fully loaded, safe to proceed
+    int loadingCreates = entity_hooks::GetLoadingCreateCount();
+    int64_t timeSinceCreate = entity_hooks::GetTimeSinceLastCreate();
+
+    s_pollCount++;
+
+    if (loadingCreates > 0 && timeSinceCreate > 3000) {
+        // Characters were created and they stopped — loading burst finished
+        spdlog::info("Core::PollForGameLoad — {} creates detected, last create {}ms ago. "
+                     "Loading burst finished! Triggering OnGameLoaded",
+                     loadingCreates, timeSinceCreate);
+        m_nativeHud.LogStep("GAME", "Loading complete (" + std::to_string(loadingCreates) +
+                            " creates, quiet for " + std::to_string(timeSinceCreate) + "ms)");
+
+        // Disable loading passthrough before OnGameLoaded enables full hook
+        entity_hooks::SetLoadingPassthrough(false);
+
         OnGameLoaded();
+    } else if (loadingCreates > 0) {
+        // Creates are happening — loading is in progress
+        if (s_pollCount <= 5 || s_pollCount % 10 == 0) {
+            spdlog::debug("Core::PollForGameLoad — {} creates so far, last {}ms ago (loading in progress, poll #{})",
+                         loadingCreates, timeSinceCreate, s_pollCount);
+        }
     } else {
+        // No creates yet — waiting for loading to start
         s_noCharCount++;
         if (s_noCharCount <= 5 || s_noCharCount % 10 == 0) {
-            spdlog::debug("Core::PollForGameLoad — globals valid but {} characters (poll #{})",
-                         charCount, s_noCharCount);
+            spdlog::debug("Core::PollForGameLoad — no creates yet, globals valid={}/{} (poll #{})",
+                         playerBaseValid, gameWorldValid, s_noCharCount);
         }
 
-        // Fallback: if globals are valid for 60+ seconds (30+ polls at 2s interval)
-        // but CharacterIterator still returns 0, assume game is loaded anyway.
-        // CharacterIterator may fail to find the character list structure on Steam.
-        // Raised from 5 to 30 to avoid false triggering on the character creation screen
-        // (which has valid-looking globals but no actual game world).
-        if (s_noCharCount >= 30) {
-            spdlog::warn("Core::PollForGameLoad — CharacterIterator returned 0 for {} polls with valid globals. "
-                         "Assuming game loaded (fallback).", s_noCharCount);
-            m_nativeHud.LogStep("GAME", "Game assumed loaded (CharacterIterator fallback after 60s)");
-            OnGameLoaded();
+        // Fallback: if globals are valid for 60+ seconds but no creates detected,
+        // the CharacterCreate hook may not be firing (hook install failed, or game
+        // loaded via a path that doesn't create characters). Try CharacterIterator
+        // as a last resort — by now loading should be complete so the lektor is stable.
+        if (s_noCharCount >= 30 && (playerBaseValid || gameWorldValid)) {
+            int charCount = SEH_CharacterIteratorCount();
+            if (charCount > 0) {
+                spdlog::warn("Core::PollForGameLoad — fallback: CharacterIterator found {} chars "
+                             "after {} polls with no create events", charCount, s_noCharCount);
+                m_nativeHud.LogStep("GAME", "Game loaded (CharacterIterator fallback, " +
+                                    std::to_string(charCount) + " chars)");
+                entity_hooks::SetLoadingPassthrough(false);
+                OnGameLoaded();
+            } else if (s_noCharCount >= 60) {
+                spdlog::warn("Core::PollForGameLoad — ultimate fallback: 120s with valid globals, "
+                             "no creates, no chars. Assuming loaded.");
+                m_nativeHud.LogStep("GAME", "Game assumed loaded (ultimate fallback after 120s)");
+                entity_hooks::SetLoadingPassthrough(false);
+                OnGameLoaded();
+            }
         }
     }
 }
@@ -1343,6 +1414,19 @@ void Core::OnGameLoaded() {
     faction_hooks::SetLoading(false);
     m_loadingOrch.OnGameLoaded();
     m_nativeHud.LogStep("GAME", "Loading guard cleared (hooks active)");
+
+    // ═══ Deferred network resume ═══
+    // If the player connected from the main menu (before game loaded),
+    // ResumeForNetwork() was deferred to avoid enabling CharacterCreate
+    // during the 130+ loading creates. Now that loading is done, enable it.
+    if (m_connected.load()) {
+        entity_hooks::ResumeForNetwork();
+        HookManager::Get().Enable("CharacterDeath");
+        HookManager::Get().Enable("CharacterKO");
+        spdlog::info("Core: Deferred ResumeForNetwork — entity hooks enabled post-load");
+        m_nativeHud.LogStep("NET", "Sync starting (connected before load)");
+        m_nativeHud.AddSystemMessage("Game loaded — syncing with server...");
+    }
 
     // ═══ Install remaining hooks that were deferred to post-load ═══
     // Combat, inventory, faction, time, and AI hooks are already installed
@@ -1481,11 +1565,25 @@ void Core::OnGameLoaded() {
         }
     }
 
-    // CharacterCreate hook was installed DISABLED to survive the 130+ loading burst.
-    // Now that loading is complete, enable it so runtime NPC spawns capture
-    // factory data + pre-call struct for the spawn system.
+    // Disable loading passthrough — CharacterCreate hook now runs full body.
+    // Loading is complete, so runtime NPC spawns (single/few at a time) go through
+    // the full hook for entity registration, faction capture, and NPC hijack.
+    entity_hooks::SetLoadingPassthrough(false);
+
+    // Log mod template characters captured during loading passthrough
+    {
+        void* modTemplates[16] = {};
+        int modCount = entity_hooks::GetCapturedModTemplates(modTemplates, 16);
+        if (modCount > 0) {
+            spdlog::info("Core::OnGameLoaded — {} mod template characters captured during loading", modCount);
+            m_nativeHud.LogStep("MOD", "Captured " + std::to_string(modCount) + " mod templates during load");
+        }
+    }
+
+    // Ensure CharacterCreate hook is enabled (it should already be from install,
+    // but re-enable in case it was disabled by the loading capture code path).
     if (HookManager::Get().Enable("CharacterCreate")) {
-        spdlog::info("Core::OnGameLoaded — CharacterCreate hook ENABLED (safe for runtime spawns)");
+        spdlog::info("Core::OnGameLoaded — CharacterCreate hook ENABLED (full mode for runtime spawns)");
         m_nativeHud.LogStep("HOOK", "CharacterCreate enabled (post-load)");
     } else {
         spdlog::warn("Core::OnGameLoaded — CharacterCreate Enable() returned false");
@@ -1592,6 +1690,17 @@ void Core::OnGameLoaded() {
         spdlog::info("=== END DUMP ===");
     }
 
+    // ═══ Initialize SDK (polling-based game state) ═══
+    if (m_sdk.Initialize()) {
+        m_nativeHud.LogStep("SDK", "KenshiSDK initialized (polling ready)");
+    } else {
+        m_nativeHud.LogStep("WARN", "KenshiSDK init failed — polling unavailable");
+    }
+
+    // ═══ Initialize VisualProxy (remote player state tracking) ═══
+    m_visualProxy.Initialize();
+    m_nativeHud.LogStep("SDK", "VisualProxy initialized (state tracking active)");
+
     m_nativeHud.LogStep("GAME", "Ready! Press F1 for multiplayer menu");
     OutputDebugStringA("KMP: === Core::OnGameLoaded() COMPLETE ===\n");
 }
@@ -1649,23 +1758,14 @@ void Core::SendExistingEntitiesToServer() {
     uintptr_t firstNpcCharPtr = 0;
 
     if (iteratorWorked) {
-        // If faction unknown, discover it from the first character with isPlayerControlled
+        // If faction unknown, use entity_hooks::RevalidateFaction which does a
+        // multi-source scan (name match + isPlayerFaction flag + frequency voting).
         if (playerFaction == 0) {
-            // First pass: find a character that looks like it belongs to the player
-            // (heuristic: first character in the list is often the player's)
-            game::CharacterIterator factionIter;
-            while (factionIter.HasNext()) {
-                game::CharacterAccessor ch = factionIter.Next();
-                if (!ch.IsValid()) continue;
-                uintptr_t fPtr = ch.GetFactionPtr();
-                if (fPtr > 0x10000 && fPtr < 0x00007FFFFFFFFFFF && (fPtr & 0x7) == 0) {
-                    // Reject if within module image (not a real heap-allocated faction)
-                    uintptr_t modBase = Memory::GetModuleBase();
-                    if (fPtr >= modBase && fPtr < modBase + 0x4000000) continue;
-                    playerFaction = fPtr;
-                    m_playerController.SetLocalFactionPtr(playerFaction);
-                    spdlog::info("Core: Faction discovered from CharacterIterator: 0x{:X}", playerFaction);
-                    break;
+            if (entity_hooks::RevalidateFaction()) {
+                playerFaction = m_playerController.GetLocalFactionPtr();
+                if (playerFaction == 0) playerFaction = entity_hooks::GetEarlyPlayerFaction();
+                if (playerFaction != 0) {
+                    spdlog::info("Core: Faction discovered via RevalidateFaction: 0x{:X}", playerFaction);
                 }
             }
         }
@@ -1701,7 +1801,9 @@ void Core::SendExistingEntitiesToServer() {
 
                 uintptr_t factionPtr = character.GetFactionPtr();
                 uint32_t factionId = 0;
-                if (factionPtr != 0) Memory::Read(factionPtr + game::GetOffsets().faction.id, factionId);
+                const int fIdOff = game::GetOffsets().faction.id;
+                if (factionPtr != 0 && fIdOff >= 0)
+                    Memory::Read(factionPtr + fIdOff, factionId);
 
                 std::string charName = character.GetName();
 
@@ -1752,6 +1854,166 @@ void Core::SendExistingEntitiesToServer() {
     if (count > 0) {
         m_overlay.AddSystemMessage("Syncing " + std::to_string(count) + " squad characters...");
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  MOD CHARACTER CLAIMING
+//  After game load, the kenshi-online.mod's "Player 1" through "Player 16"
+//  characters already exist in the world. Instead of calling FactoryCreate
+//  (unreliable), we find them by name and assign them to network players.
+//
+//  - Your assigned slot → local entity (you control it)
+//  - Other connected players' slots → remote entity (network controls, AI suppressed)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Read character name into a C buffer. Uses SpawnManager::ReadKenshiString
+// which handles SEH internally. No __try needed at this level.
+static size_t ReadCharNameSafe(uintptr_t charPtr, char* outBuf, size_t bufSize) {
+    outBuf[0] = '\0';
+    auto& offsets = game::GetOffsets().character;
+    uintptr_t nameAddr = charPtr + offsets.name;
+    std::string name = SpawnManager::ReadKenshiString(nameAddr);
+    if (name.empty()) return 0;
+    size_t copyLen = (name.size() < bufSize - 1) ? name.size() : bufSize - 1;
+    memcpy(outBuf, name.c_str(), copyLen);
+    outBuf[copyLen] = '\0';
+    return copyLen;
+}
+
+void Core::FindAndClaimModCharacters() {
+    int mySlot = m_lobbyManager.GetPlayerSlot();
+    if (mySlot <= 0) {
+        spdlog::warn("Core: FindAndClaimModCharacters — no player slot assigned");
+        return;
+    }
+
+    game::CharacterIterator iter;
+    if (iter.Count() == 0) {
+        spdlog::warn("Core: FindAndClaimModCharacters — CharacterIterator empty");
+        return;
+    }
+
+    spdlog::info("Core: Scanning {} characters for mod player templates (my slot={})...",
+                 iter.Count(), mySlot);
+
+    int localClaimed = 0;
+    int remoteClaimed = 0;
+    std::string myExpectedName = "Player " + std::to_string(mySlot);
+
+    while (iter.HasNext()) {
+        game::CharacterAccessor character = iter.Next();
+        if (!character.IsValid()) continue;
+
+        // Read character name
+        char nameBuf[64] = {};
+        ReadCharNameSafe(character.GetPtr(), nameBuf, sizeof(nameBuf));
+        std::string charName(nameBuf);
+
+        // Check if this is a mod player character ("Player 1" through "Player 16")
+        if (charName.size() < 8 || charName.substr(0, 7) != "Player ") continue;
+
+        // Parse the slot number
+        int charSlot = 0;
+        try { charSlot = std::stoi(charName.substr(7)); }
+        catch (...) { continue; }
+        if (charSlot < 1 || charSlot > 16) continue;
+
+        Vec3 pos = character.GetPosition();
+        Quat rot = character.GetRotation();
+        void* gameObj = reinterpret_cast<void*>(character.GetPtr());
+
+        // Skip if already registered
+        if (m_entityRegistry.GetNetId(gameObj) != INVALID_ENTITY) {
+            spdlog::debug("Core: '{}' already registered, skipping", charName);
+            continue;
+        }
+
+        if (charSlot == mySlot) {
+            // ── This is MY character ──
+            // Offset position so players don't spawn inside each other.
+            // Arrange in a circle with 3m radius based on slot number.
+            float angle = static_cast<float>(charSlot - 1) * (6.2831853f / 16.f); // 2*PI / 16
+            Vec3 offset{std::cos(angle) * 3.f, 0.f, std::sin(angle) * 3.f};
+            Vec3 spawnPos{pos.x + offset.x, pos.y, pos.z + offset.z};
+            character.WritePosition(spawnPos);
+            pos = spawnPos;
+
+            EntityID netId = m_entityRegistry.Register(gameObj, EntityType::PlayerCharacter,
+                                                        m_localPlayerId);
+            m_entityRegistry.UpdatePosition(netId, pos);
+            m_entityRegistry.UpdateRotation(netId, rot);
+
+            // Send to server
+            uintptr_t factionPtr = character.GetFactionPtr();
+            uint32_t factionId = 0;
+            {
+                const int fIdOff = game::GetOffsets().faction.id;
+                if (factionPtr != 0 && fIdOff >= 0)
+                    Memory::Read(factionPtr + fIdOff, factionId);
+            }
+
+            PacketWriter writer;
+            writer.WriteHeader(MessageType::C2S_EntitySpawnReq);
+            writer.WriteU32(netId);
+            writer.WriteU8(static_cast<uint8_t>(EntityType::PlayerCharacter));
+            writer.WriteU32(m_localPlayerId);
+            writer.WriteU32(0); // templateId
+            writer.WriteF32(pos.x); writer.WriteF32(pos.y); writer.WriteF32(pos.z);
+            writer.WriteU32(rot.Compress());
+            writer.WriteU32(factionId);
+            writer.WriteString(charName);
+
+            // Extended state
+            writer.WriteU8(1);
+            for (int bp = 0; bp < 7; bp++)
+                writer.WriteF32(character.GetHealth(static_cast<BodyPart>(bp)));
+            writer.WriteU8(character.IsAlive() ? 1 : 0);
+
+            m_client.SendReliable(writer.Data(), writer.Size());
+            localClaimed++;
+
+            spdlog::info("Core: CLAIMED '{}' as LOCAL entity {} (pos={:.0f},{:.0f},{:.0f})",
+                         charName, netId, pos.x, pos.y, pos.z);
+
+        } else {
+            // ── This belongs to another player (or unclaimed slot) ──
+            // Register as remote entity. When the server sends S2C_EntitySpawn for
+            // this player, HandleEntitySpawn will find and link this game object.
+            // For now, store the mapping: slot → game object pointer.
+            // The actual remote registration happens when the server tells us about it.
+            spdlog::info("Core: Found mod character '{}' (slot {}) — available for remote player",
+                         charName, charSlot);
+        }
+    }
+
+    spdlog::info("Core: Mod character scan complete — claimed {} local, {} available remote",
+                 localClaimed, remoteClaimed);
+
+    if (localClaimed > 0) {
+        m_nativeHud.AddSystemMessage("Found your character: Player " + std::to_string(mySlot));
+        m_initialEntityScanDone = true;
+    }
+}
+
+// Find a mod character by slot name (e.g. slot 2 → "Player 2").
+// Returns the game object pointer if found, or nullptr.
+void* Core::FindModCharacterBySlot(int slot) {
+    if (slot < 1 || slot > 16) return nullptr;
+
+    std::string targetName = "Player " + std::to_string(slot);
+
+    game::CharacterIterator iter;
+    while (iter.HasNext()) {
+        game::CharacterAccessor character = iter.Next();
+        if (!character.IsValid()) continue;
+
+        char nameBuf[64] = {};
+        ReadCharNameSafe(character.GetPtr(), nameBuf, sizeof(nameBuf));
+        if (std::string(nameBuf) == targetName) {
+            return reinterpret_cast<void*>(character.GetPtr());
+        }
+    }
+    return nullptr;
 }
 
 // ── Entity scan statics (file scope for cross-function reset) ──
@@ -1902,11 +2164,20 @@ void Core::OnGameTick(float deltaTime) {
 
         if (shouldAttempt) {
             if (s_entityScanRetries == 0) {
-                spdlog::info("Core::OnGameTick: Step 1 — SendExistingEntitiesToServer (first attempt)");
-                m_nativeHud.LogStep("GAME", "Scanning local squad characters...");
+                spdlog::info("Core::OnGameTick: Step 1 — scanning for characters");
+                m_nativeHud.LogStep("GAME", "Scanning for characters...");
             }
 
-            SendExistingEntitiesToServer();
+            // Try mod character claiming FIRST (finds "Player N" by name — most reliable).
+            // Falls back to faction-based scan if no mod characters found.
+            if (m_lobbyManager.HasFaction() && m_lobbyManager.GetPlayerSlot() > 0) {
+                FindAndClaimModCharacters();
+            }
+
+            // Faction-based scan as fallback (finds squad members by faction pointer)
+            if (m_entityRegistry.GetPlayerEntities(m_localPlayerId).empty()) {
+                SendExistingEntitiesToServer();
+            }
             auto localCount = m_entityRegistry.GetPlayerEntities(m_localPlayerId).size();
             s_entityScanRetries++;
 
@@ -1978,6 +2249,12 @@ void Core::OnGameTick(float deltaTime) {
         // Process deferred AnimClass probes (discovers physics position chain)
         game::ProcessDeferredAnimClassProbes();
 
+        // Run unified offset prober (discovers sceneNode, isPlayerControlled, aiPackage, etc.)
+        // Only runs until all probes complete; then becomes a no-op.
+        if (!game::IsProberComplete() && s_tickCallCount % 30 == 5) {
+            SEH_RunOffsetProber(entity_hooks::GetEarlyPlayerFaction());
+        }
+
         // Process deferred combat events (death/KO queued from hook context)
         combat_hooks::ProcessDeferredEvents();
 
@@ -1986,6 +2263,12 @@ void Core::OnGameTick(float deltaTime) {
 
         // Process deferred zone events (load/unload queued from hook context)
         world_hooks::ProcessDeferredZoneEvents();
+
+        // SDK: poll game state and compute diffs (foundation for polling-based sync)
+        m_sdk.Update();
+
+        // Visual proxy: interpolate remote player meshes toward target positions
+        m_visualProxy.Update(deltaTime);
 
         // Shared-save sync: discover characters by name, sync positions
         shared_save_sync::Update(deltaTime);
@@ -2049,6 +2332,11 @@ void Core::OnGameTick(float deltaTime) {
         // Process deferred AnimClass probes (discovers physics position chain)
         game::ProcessDeferredAnimClassProbes();
 
+        // Run unified offset prober (legacy path — same wrapper as sync path)
+        if (!game::IsProberComplete() && s_tickCallCount % 30 == 5) {
+            SEH_RunOffsetProber(entity_hooks::GetEarlyPlayerFaction());
+        }
+
         // Process deferred combat events (death/KO queued from hook context)
         combat_hooks::ProcessDeferredEvents();
 
@@ -2057,6 +2345,12 @@ void Core::OnGameTick(float deltaTime) {
 
         // Process deferred zone events (load/unload queued from hook context)
         world_hooks::ProcessDeferredZoneEvents();
+
+        // SDK: poll game state and compute diffs
+        m_sdk.Update();
+
+        // Visual proxy: interpolate remote player meshes
+        m_visualProxy.Update(deltaTime);
 
         // Shared-save sync: discover characters by name, sync positions
         shared_save_sync::Update(deltaTime);
@@ -2535,8 +2829,8 @@ void Core::PollLocalPositions() {
     static int s_pollsSent = 0;
 
     for (EntityID netId : localEntities) {
-        // Use GetInfoCopy for thread safety — avoids dangling pointer from GetInfo()
-        auto infoCopy = m_entityRegistry.GetInfoCopy(netId);
+        // GetInfo() returns by value (std::optional<EntityInfo>) — thread-safe, no dangling pointer risk
+        auto infoCopy = m_entityRegistry.GetInfo(netId);
         if (!infoCopy) continue;
 
         void* gameObj = m_entityRegistry.GetGameObject(netId);
@@ -2921,6 +3215,9 @@ void Core::HandleSpawnQueue() {
                     } else {
                         spdlog::error("Core: Entity {} exceeded max retries ({}), removing",
                                       spawnReq.netId, MAX_SPAWN_RETRIES);
+                        // BUG 2+3 FIX: Decrement spawn cap and clean up interpolation
+                        entity_hooks::DecrementSpawnCount(spawnReq.owner);
+                        m_interpolation.RemoveEntity(spawnReq.netId);
                         m_entityRegistry.Unregister(spawnReq.netId);
                         m_nativeHud.AddSystemMessage("Failed to spawn remote player after retries.");
                     }
@@ -2964,13 +3261,16 @@ void Core::HandleSpawnQueue() {
         s_lastStuckCheck = std::chrono::steady_clock::now();
         auto remoteIds = m_entityRegistry.GetRemoteEntities();
         for (EntityID rid : remoteIds) {
-            auto info = m_entityRegistry.GetInfoCopy(rid);
+            auto info = m_entityRegistry.GetInfo(rid);
             if (info && info->state == EntityState::Spawning && info->gameObject == nullptr) {
                 // If spawn queue is empty, this entity is truly orphaned
                 if (m_spawnManager.GetPendingSpawnCount() == 0) {
                     spdlog::warn("Core: Stuck entity {} (owner={}) in Spawning state with no "
                                  "game object and empty spawn queue — unregistering",
                                  rid, info->ownerPlayerId);
+                    // BUG 2+3 FIX: Decrement spawn cap and clean up interpolation
+                    entity_hooks::DecrementSpawnCount(info->ownerPlayerId);
+                    m_interpolation.RemoveEntity(rid);
                     m_entityRegistry.Unregister(rid);
                 }
             }
@@ -3060,11 +3360,8 @@ void Core::BackgroundReadEntities() {
         void* gameObj = m_entityRegistry.GetGameObject(netId);
         if (!gameObj) continue;
 
-        // Use GetInfoCopy to avoid dangling pointer from GetInfo().
-        // GetInfo() returns a raw pointer into the unordered_map — if another thread
-        // modifies the registry (e.g., CharacterCreate hook Register() during zone load),
-        // the map can rehash and invalidate the pointer → AV on worker thread → process exit.
-        auto infoCopyOpt = m_entityRegistry.GetInfoCopy(netId);
+        // GetInfo() returns by value (std::optional<EntityInfo>) — thread-safe, no dangling pointer risk
+        auto infoCopyOpt = m_entityRegistry.GetInfo(netId);
         if (!infoCopyOpt || infoCopyOpt->isRemote) continue;
         EntityInfo infoCopy = *infoCopyOpt;
 
@@ -3192,7 +3489,7 @@ void Core::ForceSpawnRemotePlayers() {
             m_nativeHud.AddSystemMessage(std::to_string(noObj) + " remote entities without game objects — re-queuing...");
             for (auto eid : remoteEntities) {
                 if (!m_entityRegistry.GetGameObject(eid)) {
-                    auto infoCopy = m_entityRegistry.GetInfoCopy(eid);
+                    auto infoCopy = m_entityRegistry.GetInfo(eid);
                     if (infoCopy) {
                         SpawnRequest req;
                         req.netId = eid;
@@ -3247,7 +3544,7 @@ bool Core::TeleportToNearestRemotePlayer() {
     PlayerID bestOwner = 0;
 
     for (EntityID remoteId : remoteEntities) {
-        auto infoCopy = m_entityRegistry.GetInfoCopy(remoteId);
+        auto infoCopy = m_entityRegistry.GetInfo(remoteId);
         if (!infoCopy) continue;
 
         Vec3 rPos = infoCopy->lastPosition;

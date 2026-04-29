@@ -55,7 +55,7 @@ std::vector<EntityID> SyncFacilitator::GetEntitiesNear(const Vec3& pos, float ra
     // Filter by owner
     std::vector<EntityID> filtered;
     for (EntityID id : entities) {
-        auto infoCopy = m_registry->GetInfoCopy(id);
+        auto infoCopy = m_registry->GetInfo(id);
         if (infoCopy && infoCopy->ownerPlayerId == ownerFilter) {
             filtered.push_back(id);
         }

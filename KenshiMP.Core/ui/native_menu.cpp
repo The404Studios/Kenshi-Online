@@ -498,14 +498,6 @@ void NativeMenu::OnConnectClicked() {
 
     auto& core = Core::Get();
 
-    // Gate on game load — don't allow connection from main menu
-    if (!core.IsGameLoaded()) {
-        SetStatus("Load a save first, then connect.");
-        core.GetNativeHud().AddSystemMessage("Please load a save game first, then connect.");
-        spdlog::info("NativeMenu: Connect blocked — game not loaded yet");
-        return;
-    }
-
     std::string ip = GetServerIP();
     std::string portStr = GetServerPort();
     std::string name = GetPlayerName();
@@ -524,12 +516,12 @@ void NativeMenu::OnConnectClicked() {
     overlay.SetConnectionInfo(ip, port, name);
 
     // Log to NativeHud (visible immediately)
+    std::string statusMsg = core.IsGameLoaded()
+        ? "Connecting to " + ip + ":" + portStr + " as '" + name + "'..."
+        : "Connecting to " + ip + ":" + portStr + " — sync will start when you load a save.";
     core.GetNativeHud().LogStep("NET", "Connecting to " + ip + ":" + portStr + "...");
-    core.GetNativeHud().AddSystemMessage("Connecting to " + ip + ":" + portStr + " as '" + name + "'...");
+    core.GetNativeHud().AddSystemMessage(statusMsg);
 
-    // Game is loaded (early return above guarantees this).
-    // Do NOT call ResumeForNetwork() here — it will be called from
-    // HandleHandshakeAck() after the handshake completes.
     auto& client = core.GetClient();
 
     // Reset stale connection state
@@ -541,7 +533,7 @@ void NativeMenu::OnConnectClicked() {
     if (client.ConnectAsync(ip.c_str(), port)) {
         overlay.SetConnecting(true);
         core.TransitionTo(ClientPhase::Connecting);
-        spdlog::info("NativeMenu: ConnectAsync started (game loaded)");
+        spdlog::info("NativeMenu: ConnectAsync started (gameLoaded={})", core.IsGameLoaded());
         core.GetNativeHud().LogStep("NET", "Connection started");
         Hide();
     } else {

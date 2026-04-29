@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <mutex>
 #include <Windows.h>
 
 namespace kmp {
@@ -121,6 +122,9 @@ private:
     // Decode UString to std::string (ASCII extraction)
     static std::string DecodeUString(const UStringLayout* ustr);
 
+    // Internal unload (caller must hold m_mutex)
+    void UnloadLayoutImpl(const std::string& layoutFile);
+
     // ── Resolved pointers ──
     HMODULE           m_hMyGUI = nullptr;
     FnGetInstance     m_fnLayoutMgrInstance = nullptr;
@@ -137,6 +141,7 @@ private:
     FnGuiCreateWidgetReal       m_fnGuiCreateWidgetReal = nullptr;
     FnWidgetCreateWidgetReal    m_fnWidgetCreateWidgetReal = nullptr;
 
+    mutable std::mutex m_mutex;
     std::map<std::string, std::vector<void*>> m_loadedLayouts;
     bool m_ready = false;
 };

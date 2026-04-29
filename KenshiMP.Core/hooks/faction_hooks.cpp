@@ -51,6 +51,10 @@ static void __fastcall Hook_FactionRelation(void* factionA, void* factionB, floa
 
     uint32_t factionIdA = 0, factionIdB = 0;
     const int factionIdOffset = game::GetOffsets().faction.id;
+    if (factionIdOffset < 0) {
+        spdlog::warn("faction_hooks: faction.id offset not resolved (-1), skipping relation packet");
+        return;
+    }
     if (factionA) Memory::Read(reinterpret_cast<uintptr_t>(factionA) + factionIdOffset, factionIdA);
     if (factionB) Memory::Read(reinterpret_cast<uintptr_t>(factionB) + factionIdOffset, factionIdB);
 

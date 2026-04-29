@@ -57,6 +57,20 @@ static bool s_destroyHookInstalled = false;
 static std::atomic<int> s_totalCreates{0};
 static std::atomic<int> s_totalDestroys{0};
 
+// ── Loading detection via create events ──
+// Updated on EVERY Hook_CharacterCreate call (even in loading passthrough mode).
+// PollForGameLoad reads these instead of CharacterIterator during loading.
+static std::atomic<int64_t> s_lastCreateTimeMs{0};      // steady_clock ms since epoch
+static std::atomic<int>     s_loadingCreateCount{0};     // creates during current loading burst
+static std::atomic<bool>    s_loadingPassthrough{false};  // ultra-lightweight mode for loading
+
+// ── Mod template character capture during loading ──
+// When a character is created during loading passthrough, SEH-safe read its name.
+// If it matches "Player 1" through "Player 16", store the pointer for post-load use.
+static constexpr int MAX_MOD_TEMPLATE_CAPTURES = 16;
+static void* s_capturedModTemplates[MAX_MOD_TEMPLATE_CAPTURES] = {};
+static std::atomic<int> s_capturedModTemplateCount{0};
+
 // ── Position offset in request struct ──
 static int s_positionOffsetInStruct = -1;
 static int s_positionDetectAttempts = 0;
@@ -115,12 +129,115 @@ static bool SEH_MemcpySafe(void* dst, const void* src, size_t size) {
     }
 }
 
-// ── Player faction pointer (captured during savegame loading) ──
-// The FIRST character created during savegame load is the player's squad leader.
-// Kenshi loads player characters before NPCs/buildings, so char #1's faction
-// is reliably the player faction. Locked after first capture — never overwritten.
+// ── Multi-source faction discovery ──
+// Instead of trusting the very first character (which may be a hired NPC),
+// we accumulate faction observations from the first N characters during loading.
+// The faction seen most frequently wins, with a name-match bonus for the
+// character whose name matches the player's config name.
+
+static constexpr int FACTION_SCAN_WINDOW = 8;    // Scan first N characters
+static constexpr int FACTION_MAX_CANDIDATES = 4;  // Track up to 4 distinct factions
+static constexpr int FACTION_NAME_MATCH_BONUS = 10; // Weight for name-match
+
+struct FactionCandidate {
+    uintptr_t ptr = 0;
+    int       score = 0;       // Frequency count + bonuses
+    bool      nameMatched = false; // True if this faction came from a name-matched character
+};
+
+static FactionCandidate s_factionCandidates[FACTION_MAX_CANDIDATES] = {};
+static int  s_factionCandidateCount = 0;
+static int  s_factionScanCount = 0;          // How many characters we've scanned so far
+static bool s_factionVotingDone = false;      // True after we've elected a winner
+
+// The elected player faction (replaces old s_earlyPlayerFaction)
 static std::atomic<uintptr_t> s_earlyPlayerFaction{0};
 static std::atomic<bool>      s_earlyFactionLocked{false};
+
+// SEH-safe character name read into a fixed buffer (no std::string in __try).
+// Returns length of name read, or 0 on failure.
+static int SEH_ReadCharName(void* character, char* outBuf, int bufSize) {
+    __try {
+        uintptr_t charPtr = reinterpret_cast<uintptr_t>(character);
+        if (charPtr < 0x10000 || charPtr > 0x00007FFFFFFFFFFF) return 0;
+
+        int nameOff = game::GetOffsets().character.name;
+        if (nameOff < 0) return 0;
+
+        uintptr_t strAddr = charPtr + nameOff;
+        uint64_t strSize = 0, strCap = 0;
+        Memory::Read(strAddr + 0x10, strSize);
+        Memory::Read(strAddr + 0x18, strCap);
+
+        if (strSize == 0 || strSize >= (uint64_t)(bufSize - 1)) return 0;
+
+        uintptr_t dataPtr = strAddr; // SSO: inline
+        if (strCap > 15) Memory::Read(strAddr, dataPtr); // heap
+        if (dataPtr < 0x10000) return 0;
+
+        SEH_MemcpySafe(outBuf, reinterpret_cast<void*>(dataPtr), (size_t)strSize);
+        outBuf[strSize] = '\0';
+        return (int)strSize;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
+// Record a faction observation during loading. Called for each of the first
+// FACTION_SCAN_WINDOW characters. If nameMatched is true, the faction gets
+// a large bonus score (this character's name matched the config playerName).
+static void RecordFactionVote(uintptr_t factionPtr, bool nameMatched) {
+    if (factionPtr == 0 || factionPtr < 0x10000 || factionPtr > 0x00007FFFFFFFFFFF) return;
+    if ((factionPtr & 0x7) != 0) return;
+
+    // Check if this faction is already in the candidate list
+    for (int i = 0; i < s_factionCandidateCount; i++) {
+        if (s_factionCandidates[i].ptr == factionPtr) {
+            s_factionCandidates[i].score++;
+            if (nameMatched) {
+                s_factionCandidates[i].score += FACTION_NAME_MATCH_BONUS;
+                s_factionCandidates[i].nameMatched = true;
+            }
+            return;
+        }
+    }
+
+    // New faction — add if we have room
+    if (s_factionCandidateCount < FACTION_MAX_CANDIDATES) {
+        auto& c = s_factionCandidates[s_factionCandidateCount++];
+        c.ptr = factionPtr;
+        c.score = 1 + (nameMatched ? FACTION_NAME_MATCH_BONUS : 0);
+        c.nameMatched = nameMatched;
+    }
+}
+
+// Elect the winning faction from accumulated votes.
+// Returns the faction pointer with the highest score, or 0 if no candidates.
+static uintptr_t ElectBestFaction() {
+    uintptr_t best = 0;
+    int bestScore = 0;
+    for (int i = 0; i < s_factionCandidateCount; i++) {
+        if (s_factionCandidates[i].score > bestScore) {
+            bestScore = s_factionCandidates[i].score;
+            best = s_factionCandidates[i].ptr;
+        }
+    }
+    return best;
+}
+
+// Also check the faction's isPlayerFaction flag as an additional signal.
+// Returns true if the pointer passes the flag check.
+static bool SEH_CheckIsPlayerFaction(uintptr_t factionPtr) {
+    __try {
+        const int flagOff = game::GetOffsets().faction.isPlayerFaction;
+        if (flagOff < 0) return false;
+        bool isPlayer = false;
+        Memory::Read(factionPtr + flagOff, isPlayer);
+        return isPlayer;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
 
 // SEH-protected faction read from a character pointer.
 // Returns the faction pointer at char+0x10, or 0 on failure.
@@ -175,7 +292,10 @@ static SEH_CharData SEH_ReadCharacterData(void* character) {
 
         Memory::Read(charPtr + 0x10, result.factionPtr);
         if (result.factionPtr > 0x10000 && result.factionPtr < 0x00007FFFFFFFFFFF && (result.factionPtr & 0x7) == 0) {
-            Memory::Read(result.factionPtr + game::GetOffsets().faction.id, result.factionId);
+            const int fIdOff = game::GetOffsets().faction.id;
+            if (fIdOff >= 0) {
+                Memory::Read(result.factionPtr + fIdOff, result.factionId);
+            }
             UpdateFallbackFaction(result.factionPtr);
         }
 
@@ -324,6 +444,22 @@ static void SEH_CaptureTemplateData(void* templateData) {
     }
 }
 
+// ── SEH-safe SpawnManager propagation (for already-captured pre-call data) ──
+// Called from loading passthrough after s_preCallStruct is populated.
+static void SEH_PropagateToSpawnManager(void* templateData, void* factory) {
+    __try {
+        auto& spawnMgr = Core::Get().GetSpawnManager();
+        spawnMgr.SetPreCallData(s_preCallStruct, REQUEST_STRUCT_SIZE,
+                                reinterpret_cast<uintptr_t>(templateData));
+        spawnMgr.SetSavedRequestStruct(s_preCallStruct, REQUEST_STRUCT_SIZE);
+        if (factory && !spawnMgr.IsReady()) {
+            spawnMgr.SetFactory(factory);
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // SpawnManager propagation failed — non-fatal, will retry post-load
+    }
+}
+
 // ── SEH-safe entity data reading (pure C, no C++ objects) ──
 struct SEH_EntityInfo {
     SEH_CharData charData;
@@ -345,11 +481,11 @@ static SEH_EntityInfo SEH_ReadAndRegisterEntity(void* character, void* templateD
         if (info.charData.position.x == 0.f && info.charData.position.y == 0.f && info.charData.position.z == 0.f) return info;
 
         // ── Faction matching: only register entities that belong to the LOCAL player ──
-        // Priority chain: PlayerController → early loading capture → fallback
+        // Priority chain: PlayerController → elected faction (multi-source voting) → fallback
         uintptr_t playerFaction = coreRef.GetPlayerController().GetLocalFactionPtr();
 
         if (playerFaction == 0) {
-            // Use faction captured during savegame loading (first character = player's squad leader)
+            // Use faction elected during savegame loading (multi-source voting with name match)
             playerFaction = s_earlyPlayerFaction.load(std::memory_order_relaxed);
         }
         if (playerFaction == 0) {
@@ -466,6 +602,67 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
     int createNum = s_totalCreates.fetch_add(1) + 1;
     g_lastCharacterCreateNum = createNum;
 
+    // ── Always update loading detection timestamp ──
+    // PollForGameLoad uses this to detect when the loading burst has finished
+    // without needing CharacterIterator (which corrupts the heap during loading).
+    {
+        auto now = std::chrono::steady_clock::now();
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        s_lastCreateTimeMs.store(ms, std::memory_order_relaxed);
+    }
+
+    // ── Loading passthrough: ultra-lightweight mode ──
+    // During savegame loading, the hook only updates timestamp/counter and calls
+    // original. No game memory reads, no faction voting, no entity registration.
+    // Safe with MovRaxRsp because minimal stack usage + sequential (not reentrant).
+    if (s_loadingPassthrough.load(std::memory_order_acquire)) {
+        s_loadingCreateCount.fetch_add(1, std::memory_order_relaxed);
+
+        // One-time factory pointer save (no game memory read, just saving the arg)
+        if (!s_savedFactory) s_savedFactory = factory;
+
+        // Capture pre-call data from the FIRST call during loading (just memcpy the arg)
+        if (templateData && !s_havePreCallData) {
+            if (SEH_MemcpySafe(s_preCallStruct, templateData, REQUEST_STRUCT_SIZE)) {
+                s_havePreCallData = true;
+                // Propagate to SpawnManager via SEH wrapper (separate function
+                // required because Hook_CharacterCreate has C++ objects with dtors)
+                SEH_PropagateToSpawnManager(templateData, factory);
+            }
+        }
+
+        void* r = CallOriginalCreate(factory, templateData);
+
+        // ── Mod template character name capture ──
+        // SEH-safe read just the name string. If it matches "Player N" (1-16),
+        // store the pointer so post-load code doesn't need a heap scan.
+        if (r && s_capturedModTemplateCount.load(std::memory_order_relaxed) < MAX_MOD_TEMPLATE_CAPTURES) {
+            char nameBuf[64] = {};
+            int nameLen = SEH_ReadCharName(r, nameBuf, sizeof(nameBuf));
+            if (nameLen >= 8 && nameLen <= 9) { // "Player 1" (8) to "Player 16" (9)
+                if (strncmp(nameBuf, "Player ", 7) == 0) {
+                    int num = atoi(nameBuf + 7);
+                    if (num >= 1 && num <= 16) {
+                        int idx = s_capturedModTemplateCount.fetch_add(1, std::memory_order_relaxed);
+                        if (idx < MAX_MOD_TEMPLATE_CAPTURES) {
+                            s_capturedModTemplates[idx] = r;
+                            // Log first few captures only
+                            if (idx < 3) {
+                                char dbg[128];
+                                sprintf_s(dbg, "KMP: Loading captured mod template '%s' at 0x%llX\n",
+                                          nameBuf, (unsigned long long)reinterpret_cast<uintptr_t>(r));
+                                OutputDebugStringA(dbg);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        s_hookDepth--;
+        return r;
+    }
+
     // One-time factory pointer save
     if (!s_savedFactory) s_savedFactory = factory;
 
@@ -479,11 +676,12 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
     // the original function. Safe here because loading creates are sequential
     // (not reentrant), so the wrapper's global slots don't conflict.
     if (!coreRef.IsConnected()) {
-        // Capture pre-call data + factory + faction from the FIRST call only.
-        // Then DISABLE the hook so all subsequent loading creates go through
-        // the ORIGINAL function with zero hook overhead — no MovRaxRsp wrapper,
-        // no stack manipulation, nothing that could corrupt game state.
+        // Capture pre-call data + factory from the FIRST call, then accumulate
+        // faction votes from the first FACTION_SCAN_WINDOW characters to handle
+        // the case where the first character is a hired NPC, not the squad leader.
+        // After the scan window closes, elect the best faction and DISABLE the hook.
         if (!s_loadingCapturesDone) {
+            // Pre-call data + factory: capture once from the first character
             if (templateData && !s_havePreCallData) {
                 if (SEH_MemcpySafe(s_preCallStruct, templateData, REQUEST_STRUCT_SIZE)) {
                     s_havePreCallData = true;
@@ -500,27 +698,97 @@ static void* __fastcall Hook_CharacterCreate(void* factory, void* templateData) 
 
             void* r = CallOriginalCreate(factory, templateData);
 
-            // Capture faction from this first character (player's squad leader)
-            if (r) {
+            // ── Multi-source faction voting ──
+            // Instead of trusting only the first character, accumulate votes
+            // from the first FACTION_SCAN_WINDOW characters. A character whose
+            // name matches the config playerName gets a large bonus.
+            if (r && !s_factionVotingDone) {
+                s_factionScanCount++;
+
                 uintptr_t fac = SEH_ReadFaction(r);
                 if (fac != 0) {
-                    s_earlyPlayerFaction.store(fac, std::memory_order_relaxed);
-                    s_earlyFactionLocked.store(true, std::memory_order_relaxed);
                     UpdateFallbackFaction(fac);
+
+                    // Check if this character's name matches the config player name
+                    bool isNameMatch = false;
+                    char charName[64] = {};
+                    int nameLen = SEH_ReadCharName(r, charName, sizeof(charName));
+                    if (nameLen > 0) {
+                        const std::string& cfgName = coreRef.GetConfig().playerName;
+                        if (cfgName.size() > 0 && cfgName.size() == (size_t)nameLen &&
+                            _strnicmp(charName, cfgName.c_str(), nameLen) == 0) {
+                            isNameMatch = true;
+                        }
+                    }
+
+                    // Also check the isPlayerFaction flag on the faction object
+                    bool isFlaggedPlayer = SEH_CheckIsPlayerFaction(fac);
+                    if (isFlaggedPlayer) {
+                        // isPlayerFaction flag is a strong signal — boost score significantly
+                        RecordFactionVote(fac, false); // Extra vote
+                        RecordFactionVote(fac, false); // Extra vote (total +3 with the main one below)
+                    }
+
+                    RecordFactionVote(fac, isNameMatch);
+
+                    if (isNameMatch) {
+                        spdlog::info("entity_hooks: Loading char #{} NAME MATCH '{}' faction=0x{:X}",
+                                     s_factionScanCount, charName, fac);
+                    }
                 }
 
-                // CRITICAL: Feed SpawnManager the first character so it captures
-                // the GameData backpointer and discovers GameDataManager. Without
-                // this, the heap scan has no m_managerPointer and fails on Steam.
-                SEH_FeedSpawnManager(factory, templateData, r);
+                // Feed SpawnManager the first character with valid data
+                if (s_factionScanCount == 1) {
+                    SEH_FeedSpawnManager(factory, templateData, r);
+                }
+
+                // After scanning enough characters OR if a name match gave us certainty,
+                // elect the best faction and lock it.
+                bool haveNameMatch = false;
+                for (int i = 0; i < s_factionCandidateCount; i++) {
+                    if (s_factionCandidates[i].nameMatched) { haveNameMatch = true; break; }
+                }
+
+                if (s_factionScanCount >= FACTION_SCAN_WINDOW || haveNameMatch) {
+                    uintptr_t bestFac = ElectBestFaction();
+                    if (bestFac != 0) {
+                        s_earlyPlayerFaction.store(bestFac, std::memory_order_relaxed);
+                        s_earlyFactionLocked.store(true, std::memory_order_relaxed);
+                        spdlog::info("entity_hooks: Faction ELECTED 0x{:X} after {} chars ({} candidates, nameMatch={})",
+                                     bestFac, s_factionScanCount, s_factionCandidateCount, haveNameMatch);
+                        // Log all candidates for diagnostics
+                        for (int i = 0; i < s_factionCandidateCount; i++) {
+                            spdlog::info("  candidate[{}]: 0x{:X} score={} nameMatch={}",
+                                         i, s_factionCandidates[i].ptr, s_factionCandidates[i].score,
+                                         s_factionCandidates[i].nameMatched);
+                        }
+                    }
+                    s_factionVotingDone = true;
+                }
             }
 
-            // Got everything we need — DISABLE the hook for the rest of loading.
-            // This prevents 100+ calls through MovRaxRsp wrapper during savegame load.
-            if (s_havePreCallData && s_savedFactory) {
+            // DISABLE hook once we have pre-call data + factory AND faction voting is done.
+            // Safety: also disable after 2x the scan window to prevent hanging in the hook
+            // if characters consistently fail to create or have no factions.
+            bool safetyTimeout = (createNum > FACTION_SCAN_WINDOW * 2 + 2);
+            if (safetyTimeout && !s_factionVotingDone) {
+                // Force election with whatever we have
+                uintptr_t bestFac = ElectBestFaction();
+                if (bestFac != 0) {
+                    s_earlyPlayerFaction.store(bestFac, std::memory_order_relaxed);
+                    s_earlyFactionLocked.store(true, std::memory_order_relaxed);
+                    spdlog::warn("entity_hooks: Faction SAFETY ELECT 0x{:X} after {} creates (voting stalled)",
+                                 bestFac, createNum);
+                }
+                s_factionVotingDone = true;
+            }
+
+            // Switch to loading passthrough for remaining loads.
+            // This prevents 100+ calls through full hook body during savegame load.
+            if (s_havePreCallData && s_savedFactory && s_factionVotingDone) {
                 s_loadingCapturesDone = true;
-                HookManager::Get().Disable("CharacterCreate");
-                OutputDebugStringA("KMP: Hook DISABLED after loading capture — safe passthrough for remaining loads\n");
+                s_loadingPassthrough.store(true, std::memory_order_release);
+                OutputDebugStringA("KMP: Loading passthrough re-enabled after faction voting\n");
             }
 
             s_hookDepth--;
@@ -730,8 +998,8 @@ static void __fastcall Hook_CharacterDestroy(void* character) {
     if (core.IsConnected()) {
         EntityID netId = core.GetEntityRegistry().GetNetId(character);
         if (netId != INVALID_ENTITY) {
-            auto* info = core.GetEntityRegistry().GetInfo(netId);
-            bool isOurs = info && info->ownerPlayerId == core.GetLocalPlayerId();
+            auto info = core.GetEntityRegistry().GetInfo(netId);
+            bool isOurs = info.has_value() && info->ownerPlayerId == core.GetLocalPlayerId();
 
             if (isOurs) {
                 PacketWriter writer;
@@ -740,6 +1008,16 @@ static void __fastcall Hook_CharacterDestroy(void* character) {
                 writer.WriteU8(0);
                 core.GetClient().SendReliable(writer.Data(), writer.Size());
             }
+
+            // BUG 2 FIX: Decrement spawn cap for remote entities so the slot
+            // is freed for future spawns. Without this, the per-player cap
+            // saturates and blocks all new remote entity spawns.
+            if (info.has_value() && info->isRemote) {
+                DecrementSpawnCount(info->ownerPlayerId);
+            }
+
+            // BUG 3 FIX: Clean up orphaned interpolation state for this entity.
+            core.GetInterpolation().RemoveEntity(netId);
 
             core.GetEntityRegistry().Unregister(netId);
         }
@@ -908,15 +1186,17 @@ bool Install() {
             core.GetSpawnManager().SetOrigProcess(
                 reinterpret_cast<FactoryProcessFn>(s_createTargetAddr));
 
-            // Hook installed DISABLED during loading. The 130+ character creates
-            // during game load fire through the MovRaxRsp wrapper whose global
-            // RSP slots get corrupted, causing DEP violations (0x3FFD).
-            // The hook is enabled in OnGameLoaded() after the loading burst
-            // completes, so factory data is captured from the first runtime
-            // NPC spawn (safe — single calls don't corrupt the wrapper).
-            HookManager::Get().Disable("CharacterCreate");
-            spdlog::info("entity_hooks: CharacterCreate installed DISABLED (enabled after loading)");
-            OutputDebugStringA("KMP: entity_hooks — CharacterCreate installed DISABLED (safe during load)\n");
+            // Hook installed in LOADING PASSTHROUGH mode. The 130+ character
+            // creates during savegame load go through the hook but take the
+            // ultra-lightweight path: just update timestamp/counter, capture
+            // factory pointer, check for mod template names, and call original.
+            // No game memory reads beyond SEH_ReadCharName (SEH-protected).
+            // This lets PollForGameLoad detect loading completion via create
+            // events instead of CharacterIterator (which corrupts the heap
+            // when reading the lektor during active resizing).
+            s_loadingPassthrough.store(true, std::memory_order_release);
+            spdlog::info("entity_hooks: CharacterCreate installed in LOADING PASSTHROUGH mode");
+            OutputDebugStringA("KMP: entity_hooks — CharacterCreate installed (loading passthrough)\n");
         }
     }
 
@@ -974,12 +1254,23 @@ void ResumeForNetwork() {
     s_earlyFactionLocked.store(false);
     s_earlyPlayerFaction.store(0);
 
-    // Enable CharacterCreate hook for multiplayer.
+    // Reset multi-source faction voting state for next load
+    memset(s_factionCandidates, 0, sizeof(s_factionCandidates));
+    s_factionCandidateCount = 0;
+    s_factionScanCount = 0;
+    s_factionVotingDone = false;
+
+    // Disable loading passthrough — full hook body active for multiplayer.
     // At this point loading is complete — only single/few runtime spawns will
     // trigger the hook (new zone NPCs, remote player injection). MovRaxRsp
-    // handles single calls fine; it's only the 130+ loading burst that crashes.
+    // handles single calls fine; it's only the 130+ loading burst that uses
+    // the lightweight passthrough path.
+    s_loadingPassthrough.store(false, std::memory_order_release);
+
+    // Ensure hook is enabled (should already be, but re-enable in case
+    // the loading capture code path disabled it via HookManager::Disable)
     if (HookManager::Get().Enable("CharacterCreate")) {
-        spdlog::info("entity_hooks: ResumeForNetwork — CharacterCreate hook ENABLED");
+        spdlog::info("entity_hooks: ResumeForNetwork — CharacterCreate hook ENABLED (full mode)");
     } else {
         spdlog::warn("entity_hooks: ResumeForNetwork — CharacterCreate Enable() returned false");
     }
@@ -990,14 +1281,12 @@ void ResumeForNetwork() {
 }
 
 void SuspendForDisconnect() {
-    // Disable CharacterCreate hook when disconnecting from multiplayer.
-    // Zone-load bursts (90+ creates) go through MovRaxRsp and corrupt the heap
-    // when the hook body is active. With the hook disabled, zone loads are safe.
-    if (HookManager::Get().Disable("CharacterCreate")) {
-        spdlog::info("entity_hooks: SuspendForDisconnect — CharacterCreate hook DISABLED");
-    } else {
-        spdlog::warn("entity_hooks: SuspendForDisconnect — Disable() returned false");
-    }
+    // Switch to loading passthrough mode when disconnecting from multiplayer.
+    // Zone-load bursts (90+ creates) still fire through the hook, but the
+    // lightweight passthrough path only updates timestamp/counter — no game
+    // memory reads, no entity registration, no faction voting.
+    s_loadingPassthrough.store(true, std::memory_order_release);
+    spdlog::info("entity_hooks: SuspendForDisconnect — loading passthrough enabled");
 }
 
 bool HasRecentInPlaceSpawn(int withinSeconds) {
@@ -1008,6 +1297,15 @@ bool HasRecentInPlaceSpawn(int withinSeconds) {
 
 int GetInPlaceSpawnCount() {
     return s_inPlaceSpawnCount.load();
+}
+
+void DecrementSpawnCount(uint32_t owner) {
+    std::lock_guard lock(s_spawnsPerPlayerMutex);
+    auto it = s_spawnsPerPlayer.find(owner);
+    if (it != s_spawnsPerPlayer.end() && it->second > 0) {
+        it->second--;
+        spdlog::debug("entity_hooks: DecrementSpawnCount owner={} -> {}", owner, it->second);
+    }
 }
 
 int GetTotalCreates() {
@@ -1095,12 +1393,140 @@ void* CallFactoryCreateRandom(void* factory) {
     return result;
 }
 
+// ── SEH-safe faction pointer validation ──
+// Returns true if the pointer is still readable and has a plausible vtable.
+static bool SEH_IsFactionValid(uintptr_t factionPtr) {
+    if (factionPtr < 0x10000 || factionPtr > 0x00007FFFFFFFFFFF || (factionPtr & 0x7) != 0)
+        return false;
+    __try {
+        uintptr_t vtable = 0;
+        Memory::Read(factionPtr, vtable);
+        uintptr_t modBase = Memory::GetModuleBase();
+        size_t modSize = Core::Get().GetScanner().GetSize();
+        return (vtable != 0 && vtable >= modBase && vtable < modBase + modSize);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 uintptr_t GetFallbackFaction() {
-    return s_fallbackFaction.load(std::memory_order_relaxed);
+    uintptr_t fac = s_fallbackFaction.load(std::memory_order_relaxed);
+    // Validate before returning — the pointer may have become stale after a load
+    if (fac != 0 && !SEH_IsFactionValid(fac)) {
+        s_fallbackFaction.store(0, std::memory_order_relaxed);
+        return 0;
+    }
+    return fac;
 }
 
 uintptr_t GetEarlyPlayerFaction() {
-    return s_earlyPlayerFaction.load(std::memory_order_relaxed);
+    uintptr_t fac = s_earlyPlayerFaction.load(std::memory_order_relaxed);
+    // Validate before returning — the pointer may have become stale after a load
+    if (fac != 0 && !SEH_IsFactionValid(fac)) {
+        spdlog::warn("entity_hooks: GetEarlyPlayerFaction — stored faction 0x{:X} is STALE, clearing", fac);
+        s_earlyPlayerFaction.store(0, std::memory_order_relaxed);
+        s_earlyFactionLocked.store(false, std::memory_order_relaxed);
+        return 0;
+    }
+    return fac;
+}
+
+bool RevalidateFaction() {
+    // Check if the stored faction pointers are still valid.
+    // If not, re-scan the local squad (via CharacterIterator) to find a fresh one.
+    // Called periodically from game_tick_hooks or on reconnect.
+
+    uintptr_t earlyFac = s_earlyPlayerFaction.load(std::memory_order_relaxed);
+    uintptr_t fallbackFac = s_fallbackFaction.load(std::memory_order_relaxed);
+    uintptr_t controllerFac = Core::Get().GetPlayerController().GetLocalFactionPtr();
+
+    // If any stored faction is still valid, no work needed
+    if ((earlyFac != 0 && SEH_IsFactionValid(earlyFac)) ||
+        (controllerFac != 0 && SEH_IsFactionValid(controllerFac))) {
+        return true;
+    }
+
+    // If fallback is still valid, promote it
+    if (fallbackFac != 0 && SEH_IsFactionValid(fallbackFac)) {
+        s_earlyPlayerFaction.store(fallbackFac, std::memory_order_relaxed);
+        s_earlyFactionLocked.store(true, std::memory_order_relaxed);
+        const_cast<PlayerController&>(Core::Get().GetPlayerController())
+            .SetLocalFactionPtr(fallbackFac);
+        spdlog::info("entity_hooks: RevalidateFaction — promoted fallback 0x{:X}", fallbackFac);
+        return true;
+    }
+
+    // All stored factions are stale — clear them and re-scan
+    spdlog::warn("entity_hooks: RevalidateFaction — all stored factions stale, re-scanning");
+    s_earlyPlayerFaction.store(0, std::memory_order_relaxed);
+    s_earlyFactionLocked.store(false, std::memory_order_relaxed);
+    s_fallbackFaction.store(0, std::memory_order_relaxed);
+
+    // Re-scan via CharacterIterator.
+    // NOTE: Cannot use __try here because CharacterIterator/GetName use C++ objects
+    // with destructors (MSVC C2712). The game memory reads are individually SEH-safe
+    // via the Memory:: helpers and the accessor methods.
+    {
+        const std::string& cfgName = Core::Get().GetConfig().playerName;
+        uintptr_t bestFaction = 0;
+        bool foundNameMatch = false;
+
+        game::CharacterIterator iter;
+        int scanned = 0;
+        while (iter.HasNext() && scanned < 20) {
+            game::CharacterAccessor ch = iter.Next();
+            if (!ch.IsValid()) continue;
+            scanned++;
+
+            uintptr_t fPtr = ch.GetFactionPtr();
+            if (fPtr < 0x10000 || fPtr > 0x00007FFFFFFFFFFF || (fPtr & 0x7) != 0) continue;
+            if (!SEH_IsFactionValid(fPtr)) continue;
+
+            // Reject module-internal pointers
+            uintptr_t modBase = Memory::GetModuleBase();
+            if (fPtr >= modBase && fPtr < modBase + 0x4000000) continue;
+
+            // Prefer character whose name matches config playerName
+            if (!foundNameMatch && cfgName.size() > 0) {
+                std::string charName = ch.GetName();
+                if (charName.size() == cfgName.size() &&
+                    _strnicmp(charName.c_str(), cfgName.c_str(), cfgName.size()) == 0) {
+                    bestFaction = fPtr;
+                    foundNameMatch = true;
+                    spdlog::info("entity_hooks: RevalidateFaction — name match '{}' -> faction 0x{:X}",
+                                 charName, fPtr);
+                    continue;
+                }
+            }
+
+            // Also check isPlayerFaction flag
+            if (!foundNameMatch && SEH_CheckIsPlayerFaction(fPtr)) {
+                bestFaction = fPtr;
+                foundNameMatch = true; // Treat isPlayerFaction as definitive
+                spdlog::info("entity_hooks: RevalidateFaction — isPlayerFaction flag -> 0x{:X}", fPtr);
+                continue;
+            }
+
+            // Take first valid faction as fallback
+            if (bestFaction == 0) {
+                bestFaction = fPtr;
+            }
+        }
+
+        if (bestFaction != 0) {
+            s_earlyPlayerFaction.store(bestFaction, std::memory_order_relaxed);
+            s_earlyFactionLocked.store(true, std::memory_order_relaxed);
+            UpdateFallbackFaction(bestFaction);
+            const_cast<PlayerController&>(Core::Get().GetPlayerController())
+                .SetLocalFactionPtr(bestFaction);
+            spdlog::info("entity_hooks: RevalidateFaction — re-discovered faction 0x{:X} (nameMatch={})",
+                         bestFaction, foundNameMatch);
+            return true;
+        }
+    }
+
+    spdlog::warn("entity_hooks: RevalidateFaction — FAILED to find any valid faction");
+    return false;
 }
 
 int GetGameDataOffsetInStruct() {
@@ -1109,6 +1535,47 @@ int GetGameDataOffsetInStruct() {
 
 int GetPositionOffsetInStruct() {
     return s_positionOffsetInStruct;
+}
+
+// ── Loading detection via create events ──
+
+int64_t GetTimeSinceLastCreate() {
+    int64_t lastMs = s_lastCreateTimeMs.load(std::memory_order_relaxed);
+    if (lastMs == 0) return INT64_MAX; // Never fired
+    auto now = std::chrono::steady_clock::now();
+    auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return nowMs - lastMs;
+}
+
+int GetLoadingCreateCount() {
+    return s_loadingCreateCount.load(std::memory_order_relaxed);
+}
+
+void ResetLoadingCreateCount() {
+    s_loadingCreateCount.store(0, std::memory_order_relaxed);
+    s_lastCreateTimeMs.store(0, std::memory_order_relaxed);
+    // Also reset mod template captures for the new loading cycle
+    s_capturedModTemplateCount.store(0, std::memory_order_relaxed);
+    memset(s_capturedModTemplates, 0, sizeof(s_capturedModTemplates));
+}
+
+void SetLoadingPassthrough(bool enabled) {
+    s_loadingPassthrough.store(enabled, std::memory_order_release);
+    if (enabled) {
+        spdlog::info("entity_hooks: Loading passthrough ENABLED — lightweight create tracking active");
+    } else {
+        spdlog::info("entity_hooks: Loading passthrough DISABLED — full hook body active");
+    }
+}
+
+int GetCapturedModTemplates(void** outPtrs, int maxCount) {
+    int count = s_capturedModTemplateCount.load(std::memory_order_relaxed);
+    if (count > maxCount) count = maxCount;
+    if (count > MAX_MOD_TEMPLATE_CAPTURES) count = MAX_MOD_TEMPLATE_CAPTURES;
+    for (int i = 0; i < count; i++) {
+        outPtrs[i] = s_capturedModTemplates[i];
+    }
+    return count;
 }
 
 } // namespace kmp::entity_hooks

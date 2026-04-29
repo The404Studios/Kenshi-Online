@@ -243,8 +243,8 @@ static void Test_EntityRegistry() {
     TestAssert(obj == fake2.Ptr(), "Lookup by netId returns correct game object");
 
     // Get entity info
-    const kmp::EntityInfo* info = registry.GetInfo(id1);
-    TestAssert(info != nullptr, "GetInfo returns non-null");
+    auto info = registry.GetInfo(id1);
+    TestAssert(info.has_value(), "GetInfo returns non-empty optional");
     TestAssert(info->ownerPlayerId == 1, "Owner matches");
     TestAssert(!info->isRemote, "Local entity is not remote");
 
@@ -285,8 +285,8 @@ static void Test_RemoteEntityLifecycle() {
     // Step 3: Position updates from server
     kmp::Vec3 newPos{-51180.0f, 1605.0f, 2720.0f};
     registry.UpdatePosition(100, newPos);
-    const kmp::EntityInfo* info = registry.GetInfo(100);
-    TestAssert(info != nullptr, "Info still valid after position update");
+    auto info = registry.GetInfo(100);
+    TestAssert(info.has_value(), "Info still valid after position update");
     TestAssert(FloatEq(info->lastPosition.x, -51180.0f), "Updated position.x stored");
 
     // Step 4: Player disconnects, server sends PlayerLeft

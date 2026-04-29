@@ -1,53 +1,39 @@
 # Build output
 build/
-*.obj
-*.lib
-*.dll
-*.exe
-*.pdb
-*.ilk
-*.exp
-*.iobj
-*.ipdb
-*.log
-*.tlog
+build-debug/
+out/
+x64/
+Debug/
+Release/
 
 # Visual Studio
 .vs/
-*.vcxproj.user
+*.user
 *.suo
+*.ncb
 *.sdf
 *.opensdf
-*.cachefile
-*.ipch
-Debug/
-Release/
-x64/
-*.VC.db
-*.VC.opendb
-encrypteddata/
+*.db
+*.opendb
+ipch/
 
 # CMake
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-install_manifest.txt
+CMakeSettings.json
+
+# Compiled binaries (keep source, not output)
+*.dll
+*.exe
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.obj
+*.o
 
 # OS files
 Thumbs.db
 desktop.ini
 .DS_Store
 
-# IDE
-.idea/
-*.swp
-*.swo
-*~
-
-# Kenshi logs
-kenshi*.log
-
-# Misc
-*.zip
-*.bak
-*.tmp
+# Offset cache (generated at runtime)
+KenshiOnline_offset_cache.json

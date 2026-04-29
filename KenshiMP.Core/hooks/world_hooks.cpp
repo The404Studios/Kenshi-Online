@@ -1,4 +1,5 @@
 #include "world_hooks.h"
+#include "entity_hooks.h"
 #include "../core.h"
 #include "../game/game_types.h"
 #include "kmp/hook_manager.h"
@@ -119,7 +120,18 @@ void ProcessDeferredZoneEvents() {
             core.GetClient().SendReliable(writer.Data(), writer.Size());
         } else {
             spdlog::info("world_hooks: [deferred] ZoneUnload ({}, {})", evt.zoneX, evt.zoneY);
-            core.GetEntityRegistry().RemoveEntitiesInZone(ZoneCoord(evt.zoneX, evt.zoneY));
+            // BUG 2+3 FIX: Clean up interpolation state and spawn caps for
+            // entities in the zone before bulk-removing them from the registry.
+            ZoneCoord zone(evt.zoneX, evt.zoneY);
+            auto zoneEntities = core.GetEntityRegistry().GetEntitiesInZone(zone);
+            for (EntityID eid : zoneEntities) {
+                auto info = core.GetEntityRegistry().GetInfo(eid);
+                if (info.has_value() && info->isRemote) {
+                    entity_hooks::DecrementSpawnCount(info->ownerPlayerId);
+                }
+                core.GetInterpolation().RemoveEntity(eid);
+            }
+            core.GetEntityRegistry().RemoveEntitiesInZone(zone);
         }
     }
 }

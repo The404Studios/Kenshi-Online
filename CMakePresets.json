@@ -1,0 +1,56 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": { "major": 3, "minor": 20, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "x64-release",
+            "displayName": "x64 Release",
+            "description": "MSVC x64 Release — the default for Kenshi modding",
+            "generator": "Visual Studio 17 2022",
+            "architecture": { "value": "x64", "strategy": "set" },
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_CXX_STANDARD": "17"
+            }
+        },
+        {
+            "name": "x64-debug",
+            "displayName": "x64 Debug",
+            "description": "MSVC x64 Debug (still uses _ITERATOR_DEBUG_LEVEL=0 for ABI compat)",
+            "generator": "Visual Studio 17 2022",
+            "architecture": { "value": "x64", "strategy": "set" },
+            "binaryDir": "${sourceDir}/build-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_STANDARD": "17"
+            }
+        },
+        {
+            "name": "x64-release-vs2019",
+            "displayName": "x64 Release (VS 2019)",
+            "description": "For users with Visual Studio 2019 instead of 2022",
+            "generator": "Visual Studio 16 2019",
+            "architecture": { "value": "x64", "strategy": "set" },
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_CXX_STANDARD": "17"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "release",
+            "displayName": "Build Release",
+            "configurePreset": "x64-release",
+            "configuration": "Release"
+        },
+        {
+            "name": "debug",
+            "displayName": "Build Debug",
+            "configurePreset": "x64-debug",
+            "configuration": "Debug"
+        }
+    ]
+}

@@ -53,6 +53,10 @@ enum class MessageType : uint8_t {
     S2C_HealthUpdate      = 0x51,
     S2C_EquipmentUpdate   = 0x52,
     C2S_EquipmentUpdate   = 0x53,
+    C2S_LimbHealth        = 0x54,
+    S2C_LimbHealth        = 0x55,
+    C2S_StatusEffect      = 0x56,
+    S2C_StatusEffect      = 0x57,
 
     // Inventory (Channel 1)
     C2S_ItemPickup        = 0x60,
@@ -107,6 +111,10 @@ enum class MessageType : uint8_t {
     S2C_PipelineSnapshot  = 0xE1,  // Server → client: forwarded snapshot from peer
     C2S_PipelineEvent     = 0xE2,  // Client → server: pipeline event batch
     S2C_PipelineEvent     = 0xE3,  // Server → client: forwarded events from peer
+
+    // ── Entity Heartbeat (Channel 0) ──
+    S2C_EntityHeartbeat   = 0x14,  // Server periodic entity presence list
+    C2S_EntityAck         = 0x15,  // Client confirms receipt (optional)
 
     // ── Lobby ──
     S2C_FactionAssignment = 0xF0,  // Server assigns faction string to client

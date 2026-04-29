@@ -76,8 +76,8 @@ void CommandRegistry::RegisterBuiltins() {
             Vec3 targetPos(0, 0, 0);
             bool foundPos = false;
             for (EntityID eid : remoteEntities) {
-                auto* info = core.GetEntityRegistry().GetInfo(eid);
-                if (info && info->ownerPlayerId == foundId) {
+                auto info = core.GetEntityRegistry().GetInfo(eid);
+                if (info.has_value() && info->ownerPlayerId == foundId) {
                     Vec3 pos = info->lastPosition;
                     if (pos.x != 0.f || pos.y != 0.f || pos.z != 0.f) {
                         targetPos = pos;
@@ -179,10 +179,26 @@ void CommandRegistry::RegisterBuiltins() {
         return buf;
     });
 
-    // /connect ip [port] — Connect to a server
-    Register("connect", "Connect to a server (ip [port])", [](const CommandArgs& args) -> std::string {
+    // /connect [ip] [port] — Connect to a server, or trigger sync if already connected
+    Register("connect", "Connect to a server (ip [port]), or trigger sync if already connected", [](const CommandArgs& args) -> std::string {
         auto& core = Core::Get();
-        if (core.IsConnected()) return "Already connected. Use /disconnect first.";
+
+        // If already connected and no args: trigger sync (same as /sync)
+        if (core.IsConnected() && args.args.empty()) {
+            if (!core.IsGameLoaded()) return "Connected but game not loaded. Load a save first.";
+            entity_hooks::ResumeForNetwork();
+            core.SendExistingEntitiesToServer();
+            core.ForceSpawnRemotePlayers();
+            auto localCount = core.GetEntityRegistry().GetPlayerEntities(core.GetLocalPlayerId()).size();
+            return "Sync triggered! " + std::to_string(localCount) + " local entities sent. Use /status for details.";
+        }
+
+        // If already connected with args: disconnect first
+        if (core.IsConnected()) {
+            core.GetClient().Disconnect();
+            core.SetConnected(false);
+        }
+
         if (args.args.empty()) return "Usage: /connect <ip> [port]";
 
         std::string ip = args.args[0];
@@ -195,12 +211,53 @@ void CommandRegistry::RegisterBuiltins() {
             }
         }
 
+        // Set player name for handshake
+        core.GetOverlay().SetConnectionInfo(ip, port, core.GetConfig().playerName);
+
         if (core.GetClient().ConnectAsync(ip, port)) {
             core.TransitionTo(ClientPhase::Connecting);
             core.GetOverlay().SetConnecting(true);
-            return "Connecting to " + ip + ":" + std::to_string(port) + "...";
+            if (core.IsGameLoaded()) {
+                return "Connecting to " + ip + ":" + std::to_string(port) + "...";
+            } else {
+                return "Connecting to " + ip + ":" + std::to_string(port) + " — sync starts when you load a save.";
+            }
         }
         return "Connection failed to start.";
+    });
+
+    // /sync — Manually trigger entity scan + spawn remote players
+    Register("sync", "Rescan local squad and spawn remote players", [](const CommandArgs&) -> std::string {
+        auto& core = Core::Get();
+        if (!core.IsConnected()) return "Not connected. Use /connect <ip> first.";
+        if (!core.IsGameLoaded()) return "Game not loaded yet. Load a save first.";
+
+        // Re-enable entity hooks if they were deferred
+        entity_hooks::ResumeForNetwork();
+
+        // Force entity rescan (registers local characters with server)
+        core.SendExistingEntitiesToServer();
+        auto localCount = core.GetEntityRegistry().GetPlayerEntities(core.GetLocalPlayerId()).size();
+
+        // Force spawn any pending remote characters
+        core.ForceSpawnRemotePlayers();
+        size_t pending = core.GetSpawnManager().GetPendingSpawnCount();
+
+        std::string result = "Sync triggered! " + std::to_string(localCount) + " local entities sent.";
+        if (pending > 0) {
+            result += " " + std::to_string(pending) + " remote spawn(s) queued.";
+        }
+
+        auto remoteEntities = core.GetEntityRegistry().GetRemoteEntities();
+        int spawned = 0;
+        for (auto eid : remoteEntities) {
+            if (core.GetEntityRegistry().GetGameObject(eid)) spawned++;
+        }
+        if (spawned > 0) {
+            result += " " + std::to_string(spawned) + " remote player(s) visible.";
+        }
+
+        return result;
     });
 
     // /disconnect — Disconnect from server
@@ -582,7 +639,6 @@ void CommandRegistry::RegisterBuiltins() {
         // Local entities
         for (EntityID eid : localEntities) {
             void* obj = registry.GetGameObject(eid);
-            auto* info = registry.GetInfo(eid);
             if (obj) {
                 game::CharacterAccessor accessor(obj);
                 Vec3 pos = accessor.GetPosition();
@@ -598,8 +654,8 @@ void CommandRegistry::RegisterBuiltins() {
         // Remote entities
         for (EntityID eid : remoteEntities) {
             void* obj = registry.GetGameObject(eid);
-            auto* info = registry.GetInfo(eid);
-            PlayerID owner = info ? info->ownerPlayerId : 0;
+            auto info = registry.GetInfo(eid);
+            PlayerID owner = info.has_value() ? info->ownerPlayerId : 0;
             if (obj) {
                 game::CharacterAccessor accessor(obj);
                 Vec3 pos = accessor.GetPosition();
@@ -1156,7 +1212,10 @@ void CommandRegistry::RegisterBuiltins() {
 
             // Also try reading faction ID at candidate+0x08
             uint32_t factionId = 0;
-            Memory::Read(candidate + game::GetOffsets().faction.id, factionId);
+            const int fIdOff = game::GetOffsets().faction.id;
+            if (fIdOff >= 0) {
+                Memory::Read(candidate + fIdOff, factionId);
+            }
             snprintf(buf, sizeof(buf), " (id=%u)", factionId);
             r += buf;
 
@@ -1454,7 +1513,7 @@ void CommandRegistry::RegisterBuiltins() {
             int requeued = 0;
             for (auto eid : remoteEntities) {
                 if (!core.GetEntityRegistry().GetGameObject(eid)) {
-                    auto infoCopy = core.GetEntityRegistry().GetInfoCopy(eid);
+                    auto infoCopy = core.GetEntityRegistry().GetInfo(eid);
                     if (infoCopy) {
                         SpawnRequest req;
                         req.netId = eid;
@@ -1677,6 +1736,36 @@ void CommandRegistry::RegisterBuiltins() {
         r += " — " + std::string(shared_save_sync::IsOtherCharacterFound() ? "FOUND" : "searching...");
         r += "\nTracked characters: " + std::to_string(char_tracker_hooks::GetTrackedCount());
         return r;
+    });
+
+    // /ready — Mark as ready in lobby (triggers game start when all ready)
+    Register("ready", "Mark as ready in lobby", [](const CommandArgs&) -> std::string {
+        auto& core = Core::Get();
+        if (!core.IsConnected()) return "Not connected to a server.";
+        if (!core.GetLobbyManager().HasFaction()) return "No faction assigned yet — wait for server.";
+
+        PacketWriter writer;
+        writer.WriteHeader(MessageType::C2S_LobbyReady);
+        core.GetClient().SendReliable(writer.Data(), writer.Size());
+
+        int slot = core.GetLobbyManager().GetPlayerSlot();
+        return "Ready! You are Player " + std::to_string(slot) + ". Waiting for other players...";
+    });
+
+    // /claim — Manually scan for mod characters and claim yours
+    Register("claim", "Scan for mod characters (Player 1-16) and claim yours", [](const CommandArgs&) -> std::string {
+        auto& core = Core::Get();
+        if (!core.IsConnected()) return "Not connected to a server.";
+        if (!core.GetLobbyManager().HasFaction()) return "No faction assigned — connect first.";
+
+        core.FindAndClaimModCharacters();
+
+        auto localCount = core.GetEntityRegistry().GetPlayerEntities(core.GetLocalPlayerId()).size();
+        if (localCount > 0) {
+            return "Claimed " + std::to_string(localCount) + " character(s) as Player " +
+                   std::to_string(core.GetLobbyManager().GetPlayerSlot());
+        }
+        return "No mod characters found — is kenshi-online.mod active?";
     });
 
     spdlog::info("CommandRegistry: {} built-in commands registered", GetAll().size());

@@ -149,6 +149,29 @@ struct MsgStatUpdate {
     float    statValue; // Whole = level, decimal = XP%
 };
 
+// ── Limb Health Messages ──
+
+struct MsgLimbHealth {
+    EntityID entityId;
+    float    health[7]; // Per body part: Head, Chest, Stomach, LArm, RArm, LLeg, RLeg
+};
+
+// ── Status Effect Messages ──
+
+enum StatusEffectType : uint8_t {
+    StatusEffect_None         = 0,
+    StatusEffect_Bleeding     = 1,
+    StatusEffect_Unconscious  = 2,
+    StatusEffect_Crippled     = 3,
+    StatusEffect_Bandaged     = 4,
+};
+
+struct MsgStatusEffect {
+    EntityID entityId;
+    uint8_t  effectType; // StatusEffectType
+    uint8_t  active;     // 0=inactive, 1=active
+};
+
 // ── Building Messages ──
 
 struct MsgBuildRequest {
@@ -282,6 +305,17 @@ struct MsgBuildDismantle {
 struct MsgBuildRepair {
     EntityID buildingId;
     float    amount;         // Repair amount
+};
+
+// ── Entity Heartbeat ──
+// Server sends periodically (every 5s) with the list of all entity IDs
+// that should exist on each client. Client compares against local state
+// and cleans up orphaned entities or requests missing ones.
+
+struct MsgEntityHeartbeat {
+    uint32_t serverTick;
+    uint16_t entityCount;
+    // Followed by entityCount x EntityID (uint32_t each)
 };
 
 // ── Time Sync ──

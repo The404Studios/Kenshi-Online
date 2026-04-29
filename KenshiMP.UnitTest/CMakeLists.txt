@@ -4,6 +4,7 @@ add_executable(KenshiMP.UnitTest
     # Compile game-facing source files directly into the test.
     # These are the SAME files that run inside Kenshi via KenshiMP.Core.dll.
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game/game_character.cpp
+    ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game/game_offset_prober.cpp
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/sync/entity_registry.cpp
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/sync/interpolation.cpp
 )

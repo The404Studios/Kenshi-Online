@@ -28,6 +28,7 @@ struct EntityInfo {
     // Game state
     float         health = 100.f;
     LimbHealth    limbs;
+    uint8_t       statusEffects[5] = {}; // StatusEffectType -> active (0/1)
     CombatInfo    combat;
     uint8_t       moveSpeed = 0;
     uint8_t       animState = 0;
@@ -52,11 +53,8 @@ public:
     // Find network ID by game object pointer
     EntityID GetNetId(void* gameObject) const;
 
-    // Get entity info (raw pointer — caller must not hold across lock boundaries)
-    const EntityInfo* GetInfo(EntityID netId) const;
-
     // Get entity info as a copy (thread-safe — no dangling pointer risk)
-    std::optional<EntityInfo> GetInfoCopy(EntityID netId) const;
+    std::optional<EntityInfo> GetInfo(EntityID netId) const;
 
     // Associate a real game object with a remote entity after spawning
     void SetGameObject(EntityID netId, void* gameObject);
@@ -70,6 +68,12 @@ public:
 
     // Update equipment tracking for a single slot
     void UpdateEquipment(EntityID netId, int slot, uint32_t itemTemplateId);
+
+    // Update limb health (7 body parts)
+    void UpdateLimbHealth(EntityID netId, const float health[7]);
+
+    // Update a status effect flag
+    void UpdateStatusEffect(EntityID netId, uint8_t effectType, bool active);
 
     // Update dirty flags (thread-safe bitwise OR / AND-NOT)
     void SetDirtyFlags(EntityID netId, uint16_t flags);

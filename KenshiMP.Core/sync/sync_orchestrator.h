@@ -74,6 +74,7 @@ private:
     void StageSwapBuffers();
     void StageApplyRemotePositions();
     void StagePollAndSendPositions();
+    void StagePollAndSendEquipment();
     void StageProcessSpawns();
     void StageKickBackgroundWork();
     void StageUpdatePlayers(float deltaTime);
@@ -124,6 +125,8 @@ private:
 
     // ---- Poll throttle ----
     std::chrono::steady_clock::time_point m_lastPollTime;
+    std::chrono::steady_clock::time_point m_lastEquipmentPollTime;
+    static constexpr int EQUIPMENT_POLL_INTERVAL_MS = 2000; // 2 seconds
 
     // ---- Diagnostics ----
     int               m_diagTickCount = 0;

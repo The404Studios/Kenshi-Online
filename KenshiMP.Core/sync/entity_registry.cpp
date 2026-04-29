@@ -1,5 +1,6 @@
 #include "entity_registry.h"
 #include <spdlog/spdlog.h>
+#include <algorithm>
 
 namespace kmp {
 
@@ -63,8 +64,10 @@ EntityID EntityRegistry::RegisterRemote(EntityID netId, EntityType type,
 
     m_entities[netId] = info;
 
-    // Ensure our local ID counter stays ahead of server IDs
-    if (netId >= m_nextId) m_nextId = netId + 1;
+    // Ensure our local ID counter stays ahead of ALL known IDs (not just larger ones).
+    // Without max(), a server-assigned ID lower than m_nextId would leave m_nextId
+    // unchanged, and a future Register() could allocate the same ID → collision.
+    m_nextId = std::max(m_nextId, netId + 1);
 
     spdlog::info("EntityRegistry: RegisterRemote entity {} (owner={}, pos=({:.0f},{:.0f},{:.0f}), state=Spawning)",
                  netId, owner, pos.x, pos.y, pos.z);
@@ -84,13 +87,7 @@ EntityID EntityRegistry::GetNetId(void* gameObject) const {
     return it != m_ptrToId.end() ? it->second : INVALID_ENTITY;
 }
 
-const EntityInfo* EntityRegistry::GetInfo(EntityID netId) const {
-    std::shared_lock lock(m_mutex);
-    auto it = m_entities.find(netId);
-    return it != m_entities.end() ? &it->second : nullptr;
-}
-
-std::optional<EntityInfo> EntityRegistry::GetInfoCopy(EntityID netId) const {
+std::optional<EntityInfo> EntityRegistry::GetInfo(EntityID netId) const {
     std::shared_lock lock(m_mutex);
     auto it = m_entities.find(netId);
     if (it != m_entities.end()) return it->second;
@@ -170,6 +167,24 @@ void EntityRegistry::UpdateEquipment(EntityID netId, int slot, uint32_t itemTemp
     }
 }
 
+void EntityRegistry::UpdateLimbHealth(EntityID netId, const float health[7]) {
+    std::unique_lock lock(m_mutex);
+    auto it = m_entities.find(netId);
+    if (it != m_entities.end()) {
+        for (int i = 0; i < 7; i++) {
+            it->second.limbs.hp[i] = health[i];
+        }
+    }
+}
+
+void EntityRegistry::UpdateStatusEffect(EntityID netId, uint8_t effectType, bool active) {
+    std::unique_lock lock(m_mutex);
+    auto it = m_entities.find(netId);
+    if (it != m_entities.end() && effectType < 5) {
+        it->second.statusEffects[effectType] = active ? 1 : 0;
+    }
+}
+
 void EntityRegistry::SetDirtyFlags(EntityID netId, uint16_t flags) {
     std::unique_lock lock(m_mutex);
     auto it = m_entities.find(netId);
@@ -203,8 +218,8 @@ bool EntityRegistry::RemapEntityId(EntityID oldId, EntityID newId) {
     m_entities.erase(it);
     m_entities[newId] = info;
 
-    // Keep our local ID counter ahead of server IDs
-    if (newId >= m_nextId) m_nextId = newId + 1;
+    // Keep our local ID counter ahead of ALL known IDs to prevent collisions.
+    m_nextId = std::max(m_nextId, newId + 1);
 
     return true;
 }

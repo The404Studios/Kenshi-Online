@@ -28,7 +28,10 @@ public:
     void SendReliableUnordered(const uint8_t* data, size_t len);
     void SendUnreliable(const uint8_t* data, size_t len);
 
-    void SetPacketCallback(PacketCallback cb) { m_callback = cb; }
+    void SetPacketCallback(PacketCallback cb) {
+        std::lock_guard lock(m_enetMutex);
+        m_callback = std::move(cb);
+    }
 
     bool IsConnected() const { return m_connected; }
     bool IsConnecting() const { return m_connecting; }

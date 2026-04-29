@@ -65,42 +65,78 @@ stop     - Shutdown server
 ## Building
 
 ### Requirements
-- **Visual Studio 2022** with C++ Desktop Development workload
-- **CMake 3.20+**
-- **vcpkg** (for dependency management)
+- **Visual Studio 2022** (or 2019) with **Desktop development with C++** workload
+- **CMake 3.20+** ([download](https://cmake.org/download/) or `winget install Kitware.CMake`)
+- **Git** (for submodules)
 
-### Steps
+No vcpkg needed -- all dependencies are bundled as git submodules.
+
+### One-Click Build
 
 ```bash
-# 1. Clone with submodules
+git clone --recursive https://github.com/yourname/Kenshi-Online.git
+cd Kenshi-Online
+build.bat
+```
+
+That's it. `build.bat` detects your Visual Studio version, configures CMake, builds all targets, and runs unit tests.
+
+### Open in Visual Studio
+
+**Option A -- CMake native (recommended):**
+1. Open Visual Studio 2022
+2. File > Open > CMake...
+3. Select `CMakeLists.txt` in the project root
+4. VS reads `CMakePresets.json` and configures automatically
+5. Select **x64-release** preset from the toolbar
+6. Build > Build All (Ctrl+Shift+B)
+
+**Option B -- Solution file:**
+```bash
+cmake -B build -G "Visual Studio 17 2022" -A x64
+start build\KenshiMP.sln
+```
+Set configuration to **Release** and build.
+
+### Manual (Command Line)
+
+```bash
+# Clone with submodules
 git clone --recursive https://github.com/yourname/Kenshi-Online.git
 cd Kenshi-Online
 
-# 2. Install dependencies via vcpkg
-vcpkg install enet:x64-windows
-vcpkg install minhook:x64-windows
-vcpkg install nlohmann-json:x64-windows
-vcpkg install spdlog:x64-windows
+# If you forgot --recursive:
+git submodule update --init --recursive
 
-# 3. Configure with CMake
-cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=[vcpkg root]/scripts/buildsystems/vcpkg.cmake
+# Configure
+cmake -B build -G "Visual Studio 17 2022" -A x64
 
-# 4. Build
+# Build
 cmake --build build --config Release
 
-# 5. Output
-# build/bin/Release/KenshiMP.Injector.exe
-# build/bin/Release/KenshiMP.Core.dll
-# build/bin/Release/KenshiMP.Server.exe
-# build/bin/Release/KenshiMP.MasterServer.exe
+# Run tests
+build\bin\Release\KenshiMP.UnitTest.exe
 ```
 
-### Manual Library Setup (without vcpkg)
-Place the following in the `lib/` directory:
-- `lib/enet/` - [ENet 1.3.x](https://github.com/lsalzman/enet) source
-- `lib/minhook/` - [MinHook 1.3.3](https://github.com/TsudaKageyu/minhook) source
-- `lib/json/` - [nlohmann/json](https://github.com/nlohmann/json) source
-- `lib/spdlog/` - [spdlog](https://github.com/gabime/spdlog) source
+### Output
+
+```
+build/bin/Release/
+    KenshiMP.Core.dll           # Client plugin (auto-deployed to Kenshi dir)
+    KenshiMP.Server.exe         # Dedicated server (auto-deployed to Kenshi dir)
+    KenshiMP.Injector.exe       # Launcher / installer
+    KenshiMP.MasterServer.exe   # Server browser registry
+    KenshiMP.TestClient.exe     # Fake player for testing
+    KenshiMP.IntegrationTest.exe
+    KenshiMP.UnitTest.exe
+```
+
+### Dependencies (bundled as submodules in `lib/`)
+- [ENet 1.3.x](https://github.com/lsalzman/enet) -- reliable UDP networking
+- [MinHook 1.3.3](https://github.com/TsudaKageyu/minhook) -- x64 API hooking
+- [nlohmann/json](https://github.com/nlohmann/json) -- JSON for C++
+- [spdlog](https://github.com/gabime/spdlog) -- fast logging
+- [Dear ImGui](https://github.com/ocornut/imgui) -- debug overlay (optional)
 
 ## Controls (In-Game)
 

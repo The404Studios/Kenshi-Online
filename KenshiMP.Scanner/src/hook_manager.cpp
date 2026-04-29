@@ -301,7 +301,7 @@ bool HookManager::InstallRaw(const std::string& name, void* target, void* detour
         // Caller must explicitly Enable() to activate the hook. This prevents
         // the hook from intercepting calls during loading/startup.
         if (fix.bypassFlag) {
-            *fix.bypassFlag = 1;
+            InterlockedExchange(reinterpret_cast<volatile LONG*>(fix.bypassFlag), 1);
         }
 
         // Phase 7: Record
@@ -450,7 +450,7 @@ bool HookManager::Enable(const std::string& name) {
     // MH_EnableHook re-patches function bytes + suspends all threads — unsafe after
     // a Disable/Enable cycle for MovRaxRsp hooks (corrupts the detour chain).
     if (it->second.hasMovRaxRsp && it->second.movRaxRspHook.bypassFlag) {
-        *it->second.movRaxRspHook.bypassFlag = 0;  // Clear bypass → hook active
+        InterlockedExchange(reinterpret_cast<volatile LONG*>(it->second.movRaxRspHook.bypassFlag), 0);  // Clear bypass → hook active
         it->second.enabled = true;
         spdlog::info("HookManager::Enable('{}') — bypass flag cleared (hook active)", name);
         return true;
@@ -491,7 +491,7 @@ bool HookManager::Disable(const std::string& name) {
     // The bypass flag makes the naked detour JMP straight to the raw trampoline
     // (pure passthrough, zero hook overhead, no thread suspension).
     if (it->second.hasMovRaxRsp && it->second.movRaxRspHook.bypassFlag) {
-        *it->second.movRaxRspHook.bypassFlag = 1;  // Set bypass → passthrough
+        InterlockedExchange(reinterpret_cast<volatile LONG*>(it->second.movRaxRspHook.bypassFlag), 1);  // Set bypass → passthrough
         it->second.enabled = false;
         spdlog::info("HookManager::Disable('{}') — bypass flag set (passthrough)", name);
         return true;

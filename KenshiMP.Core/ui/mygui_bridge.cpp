@@ -149,6 +149,7 @@ MyGuiBridge& MyGuiBridge::Get() {
 }
 
 bool MyGuiBridge::Init() {
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (m_ready) return true;
 
     m_hMyGUI = GetModuleHandleA("MyGUIEngine_x64.dll");
@@ -292,6 +293,7 @@ void* MyGuiBridge::GetGui() {
 }
 
 bool MyGuiBridge::LoadLayout(const std::string& layoutFile, const std::string& prefix) {
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_ready) return false;
 
     void* layoutMgr = GetLayoutManager();
@@ -300,8 +302,8 @@ bool MyGuiBridge::LoadLayout(const std::string& layoutFile, const std::string& p
         return false;
     }
 
-    // Unload this specific layout if it was already loaded
-    UnloadLayout(layoutFile);
+    // Unload this specific layout if it was already loaded (lock already held)
+    UnloadLayoutImpl(layoutFile);
 
     spdlog::info("MyGuiBridge: Loading layout '{}' (fn=0x{:X}, mgr=0x{:X})",
                  layoutFile, (uintptr_t)m_fnLoadLayout, (uintptr_t)layoutMgr);
@@ -329,6 +331,11 @@ bool MyGuiBridge::LoadLayout(const std::string& layoutFile, const std::string& p
 }
 
 void MyGuiBridge::UnloadLayout(const std::string& layoutFile) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    UnloadLayoutImpl(layoutFile);
+}
+
+void MyGuiBridge::UnloadLayoutImpl(const std::string& layoutFile) {
     auto it = m_loadedLayouts.find(layoutFile);
     if (it == m_loadedLayouts.end() || it->second.empty()) return;
     if (!m_ready) return;
@@ -343,6 +350,7 @@ void MyGuiBridge::UnloadLayout(const std::string& layoutFile) {
 }
 
 void MyGuiBridge::UnloadAllLayouts() {
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_ready) return;
 
     void* layoutMgr = GetLayoutManager();

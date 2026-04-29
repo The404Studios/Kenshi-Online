@@ -29,6 +29,7 @@ add_library(KenshiMP.Core SHARED
     game/game_building.cpp
     game/game_faction.cpp
     game/game_stats.cpp
+    game/game_offset_prober.cpp
     game/spawn_manager.cpp
     game/player_controller.cpp
     game/loading_orchestrator.cpp
@@ -51,6 +52,9 @@ add_library(KenshiMP.Core SHARED
     sync/sync_orchestrator.cpp
     sync/pipeline_orchestrator.cpp
     sync/sync_facilitator.cpp
+    # SDK (polling-based game state + visual proxy)
+    sdk/kenshi_sdk.cpp
+    sdk/visual_proxy.cpp
     # System / orchestrator
     sys/task_orchestrator.cpp
     sys/command_registry.cpp

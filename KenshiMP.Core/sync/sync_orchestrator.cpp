@@ -26,8 +26,40 @@ static bool SEH_WritePositionRotation(void* gameObj, Vec3 pos, Quat rot) {
 
         auto& offsets = game::GetOffsets().character;
         if (offsets.rotation >= 0) {
-            uintptr_t charPtr = reinterpret_cast<uintptr_t>(gameObj);
-            Memory::Write(charPtr + offsets.rotation, rot);
+            // Validate quaternion before writing — prevents Ogre crash where
+            // a quaternion w=1.0 (0x3F800000) was read as a pointer.
+            // NaN/Inf check + magnitude sanity check.
+            bool quatValid = true;
+            float magSq = rot.w * rot.w + rot.x * rot.x + rot.y * rot.y + rot.z * rot.z;
+            if (std::isnan(magSq) || std::isinf(magSq) || magSq < 0.5f || magSq > 1.5f) {
+                quatValid = false;
+            }
+            if (std::isnan(rot.w) || std::isnan(rot.x) || std::isnan(rot.y) || std::isnan(rot.z) ||
+                std::isinf(rot.w) || std::isinf(rot.x) || std::isinf(rot.y) || std::isinf(rot.z)) {
+                quatValid = false;
+            }
+
+            if (quatValid) {
+                uintptr_t charPtr = reinterpret_cast<uintptr_t>(gameObj);
+
+                // Safety: read current value first — if the existing value at the
+                // rotation offset looks like a pointer (>0x10000), DON'T overwrite
+                // it. It might be a SceneNode* or other Ogre pointer, not a quaternion.
+                uintptr_t existingVal = 0;
+                Memory::Read(charPtr + offsets.rotation, existingVal);
+                bool looksLikePointer = (existingVal > 0x10000 && existingVal < 0x00007FFFFFFFFFFF
+                                          && (existingVal & 0x3) == 0);
+                if (!looksLikePointer) {
+                    Memory::Write(charPtr + offsets.rotation, rot);
+                } else {
+                    static int s_skipCount = 0;
+                    if (++s_skipCount <= 5) {
+                        spdlog::warn("SyncOrch SEH_WritePositionRotation: SKIPPED rotation write — "
+                                     "char+0x{:X} = 0x{:X} looks like pointer, not quaternion",
+                                     offsets.rotation, existingVal);
+                    }
+                }
+            }
         }
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -83,6 +115,37 @@ static bool SEH_FixFactionAndSetup(void* character, uintptr_t localFactionPtr,
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         OutputDebugStringA("KMP: SEH_FixFactionAndSetup CRASHED\n");
+        return false;
+    }
+}
+
+// Write moveSpeed and animState to a remote character's game object.
+// Requires the corresponding offsets to be discovered by the probe system.
+// Safe no-op when offsets are -1 (unknown).
+static bool SEH_WriteMoveData(void* gameObj, uint8_t moveSpeedU8, uint8_t animState) {
+    __try {
+        auto& offsets = game::GetOffsets().character;
+        uintptr_t charPtr = reinterpret_cast<uintptr_t>(gameObj);
+
+        // Write move speed: decode uint8 (0-255) back to float (0.0-15.0 m/s)
+        if (offsets.moveSpeed >= 0) {
+            float speed = (moveSpeedU8 / 255.f) * 15.f;
+            Memory::Write(charPtr + offsets.moveSpeed, speed);
+        }
+
+        // Write animation state
+        if (offsets.animState >= 0) {
+            Memory::Write(charPtr + offsets.animState, animState);
+        }
+
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        static int s_count = 0;
+        if (++s_count <= 5) {
+            char buf[128];
+            sprintf_s(buf, "KMP: SyncOrch SEH_WriteMoveData CRASHED for 0x%p\n", gameObj);
+            OutputDebugStringA(buf);
+        }
         return false;
     }
 }
@@ -250,6 +313,7 @@ void SyncOrchestrator::Initialize(PlayerID localId, const std::string& playerNam
     auto now = std::chrono::steady_clock::now();
     m_lastZoneRebuild = now;
     m_lastPollTime = now;
+    m_lastEquipmentPollTime = now;
     m_lastSpawnLog = now;
     m_lastDiagLog = now;
 
@@ -318,6 +382,9 @@ bool SyncOrchestrator::Tick(float deltaTime) {
     // Stage 4: Poll local entity positions and send updates
     if (m_tickCount <= 5) spdlog::debug("SyncOrch: Stage4 PollAndSendPositions");
     StagePollAndSendPositions();
+
+    // Stage 4b: Poll local entity equipment and send changes
+    StagePollAndSendEquipment();
 
     // Stage 5: Process spawn queue
     if (m_tickCount <= 5) spdlog::debug("SyncOrch: Stage5 ProcessSpawns");
@@ -408,6 +475,10 @@ void SyncOrchestrator::StageApplyRemotePositions() {
             m_registry.UpdatePosition(result.netId, result.position);
             m_registry.UpdateRotation(result.netId, result.rotation);
             applied++;
+
+            // Write animation state and move speed when offsets are known.
+            // Safe no-op when offsets are -1 (probing system hasn't found them yet).
+            SEH_WriteMoveData(gameObj, result.moveSpeed, result.animState);
         } else {
             // Unlink bad game object
             m_registry.SetGameObject(result.netId, nullptr);
@@ -433,29 +504,43 @@ void SyncOrchestrator::StagePollAndSendPositions() {
     if (localEntities.empty()) return;
 
     for (EntityID netId : localEntities) {
-        auto infoCopy = m_registry.GetInfoCopy(netId);
+        auto infoCopy = m_registry.GetInfo(netId);
         if (!infoCopy) continue;
 
         void* gameObj = m_registry.GetGameObject(netId);
         if (!gameObj) continue;
 
-        Vec3 pos;
-        Quat rotation;
-        if (!SEH_ReadPosition(gameObj, pos, rotation)) {
+        // Read position, rotation, moveSpeed, and animState from the character.
+        // SEH_ReadCharacterBG reads all fields via CharacterAccessor (returns 0
+        // for moveSpeed/animState when offsets are -1, which is fine — we fall
+        // back to derived values below).
+        BGReadResult rd = SEH_ReadCharacterBG(gameObj);
+        if (!rd.valid) {
             m_registry.SetGameObject(netId, nullptr);
             continue;
         }
+        Vec3 pos = rd.pos;
+        Quat rotation = rd.rot;
 
         if (pos.DistanceTo(infoCopy->lastPosition) < KMP_POS_CHANGE_THRESHOLD) continue;
 
         float elapsedSec = elapsed.count() / 1000.f;
         float dist = pos.DistanceTo(infoCopy->lastPosition);
-        float moveSpeed = (elapsedSec > 0.001f) ? dist / elapsedSec : 0.f;
+        float computedSpeed = (elapsedSec > 0.001f) ? dist / elapsedSec : 0.f;
+
+        // Prefer game-read moveSpeed; fall back to computed speed from position delta
+        float moveSpeed = rd.speed;
+        if (moveSpeed <= 0.f && computedSpeed > 0.f) {
+            moveSpeed = computedSpeed;
+        }
 
         uint32_t compQuat = rotation.Compress();
-        uint8_t animState = 0;
-        if (moveSpeed > 5.0f) animState = 2;
-        else if (moveSpeed > 0.5f) animState = 1;
+
+        // Prefer game-read animState; fall back to speed-derived heuristic
+        uint8_t animState = rd.animState;
+        if (animState == 0 && moveSpeed > 0.5f) {
+            animState = (moveSpeed > 5.0f) ? 2 : 1;
+        }
 
         uint8_t moveSpeedU8 = static_cast<uint8_t>(
             std::min(255.f, moveSpeed / 15.f * 255.f));
@@ -483,6 +568,69 @@ void SyncOrchestrator::StagePollAndSendPositions() {
     // BackgroundReadEntities(), but we already sent fresh per-entity updates
     // above on the main thread.  Sending packetBytes here would duplicate
     // every position update, doubling outbound bandwidth.  Skipped.
+}
+
+// SEH-protected equipment slot read.  Returns the item template ID for a
+// given equipment slot, or 0 on failure/empty.  Must be a free function
+// because __try cannot coexist with C++ unwind objects.
+static uint32_t SEH_ReadEquipmentSlot(void* gameObj, EquipSlot slot) {
+    uint32_t result = 0;
+    __try {
+        game::CharacterAccessor accessor(gameObj);
+        uintptr_t itemPtr = accessor.GetEquipmentSlot(slot);
+        if (itemPtr == 0) return 0;
+        // Read template ID from item pointer (ItemOffsets::templateId = 0x20)
+        static const game::ItemOffsets itemOffsets;
+        Memory::Read(itemPtr + itemOffsets.templateId, result);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        result = 0;
+    }
+    return result;
+}
+
+void SyncOrchestrator::StagePollAndSendEquipment() {
+    if (m_localPlayerId == INVALID_PLAYER) return;
+
+    // Throttle: equipment changes are infrequent, poll every 2 seconds
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastEquipmentPollTime);
+    if (elapsed.count() < EQUIPMENT_POLL_INTERVAL_MS) return;
+    m_lastEquipmentPollTime = now;
+
+    auto localEntities = m_registry.GetPlayerEntities(m_localPlayerId);
+    if (localEntities.empty()) return;
+
+    for (EntityID netId : localEntities) {
+        auto infoCopy = m_registry.GetInfo(netId);
+        if (!infoCopy) continue;
+
+        void* gameObj = m_registry.GetGameObject(netId);
+        if (!gameObj) continue;
+
+        // Read all equipment slots and diff against cached state
+        constexpr int SLOT_COUNT = static_cast<int>(EquipSlot::Count);
+        for (int s = 0; s < SLOT_COUNT; s++) {
+            uint32_t currentId = SEH_ReadEquipmentSlot(gameObj, static_cast<EquipSlot>(s));
+            uint32_t cachedId  = infoCopy->lastEquipment[s];
+
+            if (currentId == cachedId) continue;
+
+            // Slot changed — send update and cache new value
+            m_registry.UpdateEquipment(netId, s, currentId);
+
+            PacketWriter writer;
+            writer.WriteHeader(MessageType::C2S_EquipmentUpdate);
+            MsgEquipmentUpdate msg{};
+            msg.entityId = netId;
+            msg.slot = static_cast<uint8_t>(s);
+            msg.itemTemplateId = currentId;
+            writer.WriteRaw(&msg, sizeof(msg));
+            m_client.SendReliable(writer.Data(), writer.Size());
+
+            spdlog::debug("SyncOrch: Equipment change entity={} slot={} {} -> {}",
+                          netId, s, cachedId, currentId);
+        }
+    }
 }
 
 void SyncOrchestrator::StageProcessSpawns() {
@@ -604,34 +752,54 @@ void SyncOrchestrator::StageProcessSpawns() {
 
                     void* character = m_spawnManager.SpawnCharacterDirect(&spawnReq.position, modSlot);
                     if (character) {
-                        // Fix the faction use-after-free: write local player's faction
-                        uintptr_t localFaction = Core::Get().GetPlayerController().GetLocalFactionPtr();
-                        if (!SEH_FixFactionAndSetup(character, localFaction, spawnReq.position)) {
-                            spdlog::error("SyncOrch: Faction fix failed for entity {}", spawnReq.netId);
+                        // BUG FIX: Check if the entity still exists in the registry before
+                        // calling SetGameObject. If the owning player disconnected while the
+                        // spawn was in progress, the entity will have been unregistered. Without
+                        // this check the spawned game object would exist in the world but not be
+                        // tracked, becoming an orphan.
+                        auto info = m_registry.GetInfo(spawnReq.netId);
+                        if (!info.has_value()) {
+                            spdlog::warn("SyncOrch: Entity {} no longer exists (owner disconnected?), "
+                                         "skipping direct spawn setup", spawnReq.netId);
+                            entity_hooks::DecrementSpawnCount(spawnReq.owner);
+                            // character is leaked into the world but not tracked — harmless NPC
+                        } else {
+                            // Fix the faction use-after-free: write local player's faction
+                            uintptr_t localFaction = Core::Get().GetPlayerController().GetLocalFactionPtr();
+                            if (!SEH_FixFactionAndSetup(character, localFaction, spawnReq.position)) {
+                                spdlog::error("SyncOrch: Faction fix failed for entity {}", spawnReq.netId);
+                            }
+
+                            // Register in entity registry
+                            m_registry.SetGameObject(spawnReq.netId, character);
+                            m_registry.UpdatePosition(spawnReq.netId, spawnReq.position);
+
+                            // Full post-spawn setup (name, AI, squad)
+                            Core::Get().GetPlayerController().OnRemoteCharacterSpawned(
+                                spawnReq.netId, character, spawnReq.owner);
+                            ai_hooks::MarkRemoteControlled(character);
+                            squad_hooks::AddCharacterToLocalSquad(character);
+                            game::WritePlayerControlled(reinterpret_cast<uintptr_t>(character), true);
+                            game::ScheduleDeferredAnimClassProbe(reinterpret_cast<uintptr_t>(character));
+
+                            spdlog::info("SyncOrch: DIRECT SPAWN SUCCESS — entity {} at ({:.0f},{:.0f},{:.0f})",
+                                         spawnReq.netId, spawnReq.position.x, spawnReq.position.y,
+                                         spawnReq.position.z);
+                            nativeHud.AddSystemMessage("Remote player spawned!");
                         }
-
-                        // Register in entity registry
-                        m_registry.SetGameObject(spawnReq.netId, character);
-                        m_registry.UpdatePosition(spawnReq.netId, spawnReq.position);
-
-                        // Full post-spawn setup (name, AI, squad)
-                        Core::Get().GetPlayerController().OnRemoteCharacterSpawned(
-                            spawnReq.netId, character, spawnReq.owner);
-                        ai_hooks::MarkRemoteControlled(character);
-                        squad_hooks::AddCharacterToLocalSquad(character);
-                        game::WritePlayerControlled(reinterpret_cast<uintptr_t>(character), true);
-                        game::ScheduleDeferredAnimClassProbe(reinterpret_cast<uintptr_t>(character));
-
-                        spdlog::info("SyncOrch: DIRECT SPAWN SUCCESS — entity {} at ({:.0f},{:.0f},{:.0f})",
-                                     spawnReq.netId, spawnReq.position.x, spawnReq.position.y,
-                                     spawnReq.position.z);
-                        nativeHud.AddSystemMessage("Remote player spawned!");
                     } else {
                         // Factory returned null — re-queue for retry
                         spdlog::warn("SyncOrch: DIRECT SPAWN FAILED — factory returned null");
                         spawnReq.retryCount++;
-                        if (spawnReq.retryCount < MAX_SPAWN_RETRIES)
+                        if (spawnReq.retryCount < MAX_SPAWN_RETRIES) {
                             m_spawnManager.RequeueSpawn(spawnReq);
+                        } else {
+                            // BUG FIX: Release the spawn cap slot when retries are exhausted.
+                            // Without this, the slot stays held forever and blocks future spawns.
+                            spdlog::warn("SyncOrch: DIRECT SPAWN retries exhausted for entity {} owner={}, "
+                                         "releasing spawn cap", spawnReq.netId, spawnReq.owner);
+                            entity_hooks::DecrementSpawnCount(spawnReq.owner);
+                        }
                         nativeHud.AddSystemMessage("Direct spawn failed, will retry...");
                     }
                 }
@@ -696,7 +864,7 @@ void SyncOrchestrator::BackgroundReadEntities() {
         void* gameObj = m_registry.GetGameObject(netId);
         if (!gameObj) continue;
 
-        auto infoCopy = m_registry.GetInfoCopy(netId);
+        auto infoCopy = m_registry.GetInfo(netId);
         if (!infoCopy || infoCopy->isRemote) continue;
         Vec3 lastPos = infoCopy->lastPosition;
 
@@ -790,7 +958,7 @@ void SyncOrchestrator::BackgroundInterpolate() {
 // ════════════════════════════════════════════════════════════════════════════
 
 SyncPriority SyncOrchestrator::ComputePriority(EntityID entityId) const {
-    auto infoCopy = m_registry.GetInfoCopy(entityId);
+    auto infoCopy = m_registry.GetInfo(entityId);
     if (!infoCopy) return SyncPriority::None;
 
     ZoneCoord localZone = m_zoneEngine.GetLocalZone();

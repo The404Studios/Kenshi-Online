@@ -23,6 +23,7 @@ struct ConnectedPlayer {
     uint32_t    ping;
     float       lastUpdate;
     std::vector<EntityID> ownedEntities;
+    bool        lobbyReady = false;
 };
 
 struct ServerEntity {
@@ -46,6 +47,8 @@ struct ServerEntity {
     uint32_t    factionId = 0;
     std::string templateName;   // GameData template name for spawning (e.g. "Greenlander")
     float       health[7] = {100.f, 100.f, 100.f, 100.f, 100.f, 100.f, 100.f};
+    float       limbHealth[7] = {100.f, 100.f, 100.f, 100.f, 100.f, 100.f, 100.f};
+    uint8_t     statusEffects[5] = {}; // StatusEffectType -> active (0/1)
     CombatInfo  combat;
     uint8_t     animState = 0;
     uint8_t     moveSpeed = 0;  // 0-255 mapped to 0.0-15.0 m/s
@@ -53,6 +56,13 @@ struct ServerEntity {
     bool        alive = true;
     float       buildProgress = 0.f; // 0.0-1.0 for buildings
     uint32_t    equipment[14] = {};  // EquipSlot::Count = 14
+};
+
+// Saved player record -- persisted across restarts so reconnecting
+// players can reclaim their entities.
+struct SavedPlayer {
+    std::string name;
+    std::vector<EntityID> entityIds;
 };
 
 class GameServer {
@@ -97,9 +107,12 @@ private:
     void HandleCombatStance(ConnectedPlayer& player, PacketReader& reader);
     void HandleCombatKO(ConnectedPlayer& player, PacketReader& reader);
     void HandleCombatDeath(ConnectedPlayer& player, PacketReader& reader);
+    void HandleLimbHealth(ConnectedPlayer& player, PacketReader& reader);
+    void HandleStatusEffect(ConnectedPlayer& player, PacketReader& reader);
     void HandleItemTransfer(ConnectedPlayer& player, PacketReader& reader);
     void HandleDoorInteract(ConnectedPlayer& player, PacketReader& reader);
     void HandleAdminCommand(ConnectedPlayer& player, PacketReader& reader);
+    void HandleLobbyReady(ConnectedPlayer& player, PacketReader& reader);
 
     // Broadcasting
     void Broadcast(const uint8_t* data, size_t len, int channel, uint32_t flags);
@@ -109,6 +122,7 @@ private:
     // Game state
     void BroadcastPositions();
     void BroadcastTimeSync();
+    void BroadcastEntityHeartbeat();
     void SendWorldSnapshot(ConnectedPlayer& player);
 
     // Helpers
@@ -123,6 +137,7 @@ private:
     ServerConfig m_config;
     std::unordered_map<PlayerID, ConnectedPlayer> m_players;
     std::unordered_map<EntityID, ServerEntity> m_entities;
+    std::unordered_map<std::string, SavedPlayer> m_savedPlayers; // name → saved entities (persisted)
     std::recursive_mutex m_mutex;
 
     PlayerID m_nextPlayerId = 1;
@@ -133,10 +148,14 @@ private:
     float    m_timeOfDay = 0.5f;
     int      m_weatherState = 0;
     float    m_timeSinceTimeSync = 0.f;
+    float    m_timeSinceHeartbeat = 0.f;
     float    m_uptime = 0.f;
 
     // UPnP auto port mapping (runs synchronously before ENet host is created)
     UPnPMapper m_upnp;
+
+    // Orphan entity cleanup
+    float    m_timeSinceOrphanCleanup = 0.f;
 
     // Auto-save
     float    m_timeSinceAutoSave = 0.f;
@@ -161,9 +180,11 @@ private:
 // World persistence (defined in world_persistence.cpp)
 bool SaveWorldToFile(const std::string& path,
                      const std::unordered_map<EntityID, ServerEntity>& entities,
+                     const std::unordered_map<std::string, SavedPlayer>& savedPlayers,
                      float timeOfDay, int weatherState);
 bool LoadWorldFromFile(const std::string& path,
                        std::unordered_map<EntityID, ServerEntity>& entities,
+                       std::unordered_map<std::string, SavedPlayer>& savedPlayers,
                        float& timeOfDay, int& weatherState,
                        EntityID& nextEntityId);
 

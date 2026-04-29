@@ -7,6 +7,7 @@
 #include "../core.h"
 #include "../game/game_types.h"
 #include <spdlog/spdlog.h>
+#include <Windows.h>
 
 namespace kmp::building_hooks {
 
@@ -30,13 +31,38 @@ static int s_constructCount = 0;
 static int s_repairCount = 0;
 static bool s_loading = false;
 
-// Crash counters — auto-disable hooks after 3 crashes (wrong function matched by scanner)
+// Crash counters — auto-disable hooks after MAX_CRASHES crashes (wrong function matched by scanner)
+// Recovery: after RECOVERY_SECONDS with no crashes, reset counter to 0 so temporary glitches
+// don't permanently disable building sync for the rest of the session.
 static int s_placeCrashCount = 0;
 static int s_destroyCrashCount = 0;
 static int s_dismantleCrashCount = 0;
 static int s_constructCrashCount = 0;
 static int s_repairCrashCount = 0;
-static constexpr int MAX_CRASHES = 3;
+static constexpr int MAX_CRASHES = 10;
+static constexpr double RECOVERY_SECONDS = 60.0;
+
+// Last crash timestamps (GetTickCount64 ms) for recovery logic
+static ULONGLONG s_placeCrashTime = 0;
+static ULONGLONG s_destroyCrashTime = 0;
+static ULONGLONG s_dismantleCrashTime = 0;
+static ULONGLONG s_constructCrashTime = 0;
+static ULONGLONG s_repairCrashTime = 0;
+
+// Helper: check if enough time has passed since last crash to reset the counter.
+// Returns true if the counter was reset (caller should proceed normally).
+static bool TryRecover(int& crashCount, ULONGLONG& lastCrashTime, const char* hookName) {
+    if (crashCount > 0 && crashCount < MAX_CRASHES) {
+        ULONGLONG now = GetTickCount64();
+        if (now - lastCrashTime >= static_cast<ULONGLONG>(RECOVERY_SECONDS * 1000)) {
+            spdlog::info("building_hooks: {} — no crashes for {:.0f}s, resetting crash counter ({} -> 0)",
+                         hookName, RECOVERY_SECONDS, crashCount);
+            crashCount = 0;
+            return true;
+        }
+    }
+    return false;
+}
 
 // ── SEH wrappers (no C++ objects with destructors) ──
 
@@ -89,8 +115,10 @@ static bool SEH_BuildingRepair(void* building, float amount) {
 
 static void __fastcall Hook_BuildingPlace(void* world, void* building, float x, float y, float z) {
     s_placeCount++;
+    TryRecover(s_placeCrashCount, s_placeCrashTime, "BuildingPlace");
 
     if (!SEH_BuildingPlace(world, building, x, y, z)) {
+        s_placeCrashTime = GetTickCount64();
         if (++s_placeCrashCount <= MAX_CRASHES) {
             spdlog::error("building_hooks: BuildingPlace crashed ({}/{})", s_placeCrashCount, MAX_CRASHES);
         }
@@ -121,12 +149,18 @@ static void __fastcall Hook_BuildingPlace(void* world, void* building, float x, 
         Memory::Read(gameData + 0x08, templateId);
     }
 
-    // Extract rotation from building struct
+    // Extract rotation from building struct (skip if offset unverified)
     uint32_t compQuat = 0;
     if (bldOffsets.rotation >= 0) {
         Quat rot;
         if (Memory::Read(bldPtr + bldOffsets.rotation, rot)) {
             compQuat = rot.Compress();
+        }
+    } else {
+        static bool s_loggedRotationSkip = false;
+        if (!s_loggedRotationSkip) {
+            spdlog::warn("building_hooks: BuildingPlace skipping rotation read — offset unverified (-1)");
+            s_loggedRotationSkip = true;
         }
     }
 
@@ -144,8 +178,10 @@ static void __fastcall Hook_BuildingPlace(void* world, void* building, float x, 
 
 static void __fastcall Hook_BuildingDestroyed(void* building) {
     s_destroyCount++;
+    TryRecover(s_destroyCrashCount, s_destroyCrashTime, "BuildingDestroyed");
 
     if (!SEH_BuildingDestroyed(building)) {
+        s_destroyCrashTime = GetTickCount64();
         if (++s_destroyCrashCount <= MAX_CRASHES) {
             spdlog::error("building_hooks: BuildingDestroyed crashed ({}/{})", s_destroyCrashCount, MAX_CRASHES);
         }
@@ -178,8 +214,10 @@ static void __fastcall Hook_BuildingDestroyed(void* building) {
 
 static void __fastcall Hook_BuildingDismantle(void* building) {
     s_dismantleCount++;
+    TryRecover(s_dismantleCrashCount, s_dismantleCrashTime, "BuildingDismantle");
 
     if (!SEH_BuildingDismantle(building)) {
+        s_dismantleCrashTime = GetTickCount64();
         if (++s_dismantleCrashCount <= MAX_CRASHES) {
             spdlog::error("building_hooks: BuildingDismantle crashed ({}/{})", s_dismantleCrashCount, MAX_CRASHES);
         }
@@ -214,8 +252,10 @@ static void __fastcall Hook_BuildingDismantle(void* building) {
 
 static void __fastcall Hook_BuildingConstruct(void* building, float progress) {
     s_constructCount++;
+    TryRecover(s_constructCrashCount, s_constructCrashTime, "BuildingConstruct");
 
     if (!SEH_BuildingConstruct(building, progress)) {
+        s_constructCrashTime = GetTickCount64();
         if (++s_constructCrashCount <= MAX_CRASHES) {
             spdlog::error("building_hooks: BuildingConstruct crashed ({}/{})", s_constructCrashCount, MAX_CRASHES);
         }
@@ -240,8 +280,10 @@ static void __fastcall Hook_BuildingConstruct(void* building, float progress) {
 
 static void __fastcall Hook_BuildingRepair(void* building, float amount) {
     s_repairCount++;
+    TryRecover(s_repairCrashCount, s_repairCrashTime, "BuildingRepair");
 
     if (!SEH_BuildingRepair(building, amount)) {
+        s_repairCrashTime = GetTickCount64();
         if (++s_repairCrashCount <= MAX_CRASHES) {
             spdlog::error("building_hooks: BuildingRepair crashed ({}/{})", s_repairCrashCount, MAX_CRASHES);
         }

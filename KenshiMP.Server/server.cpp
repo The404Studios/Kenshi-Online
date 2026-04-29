@@ -163,11 +163,47 @@ void GameServer::Update(float deltaTime) {
         m_timeSinceTimeSync = 0.f;
     }
 
+    // Entity heartbeat every 5 seconds — clients detect and clean up ghost entities
+    m_timeSinceHeartbeat += deltaTime;
+    if (m_timeSinceHeartbeat >= 5.0f && !m_entities.empty()) {
+        BroadcastEntityHeartbeat();
+        m_timeSinceHeartbeat = 0.f;
+    }
+
     // Update player pings
     for (auto& [id, player] : m_players) {
         if (player.peer) {
             player.ping = player.peer->roundTripTime;
         }
+    }
+
+    // Periodic orphan entity cleanup — remove entities whose owner is no longer
+    // connected (e.g., stale entries loaded from world save files). These are
+    // filtered from snapshots but accumulate in m_entities if not cleaned.
+    m_timeSinceOrphanCleanup += deltaTime;
+    if (m_timeSinceOrphanCleanup >= 30.0f && !m_entities.empty()) {
+        std::vector<EntityID> orphans;
+        for (const auto& [eid, entity] : m_entities) {
+            // owner == 0 means server-owned (world entity), skip those
+            if (entity.owner != 0 && !GetPlayer(entity.owner)) {
+                orphans.push_back(eid);
+            }
+        }
+        if (!orphans.empty()) {
+            for (EntityID eid : orphans) {
+                // Broadcast despawn to all remaining players so they remove the ghost
+                PacketWriter despawnWriter;
+                despawnWriter.WriteHeader(MessageType::S2C_EntityDespawn);
+                despawnWriter.WriteU32(eid);
+                despawnWriter.WriteU8(2); // reason: orphan cleanup
+                Broadcast(despawnWriter.Data(), despawnWriter.Size(),
+                         KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+                m_entities.erase(eid);
+            }
+            spdlog::info("GameServer: Orphan cleanup removed {} entities with no connected owner",
+                         orphans.size());
+        }
+        m_timeSinceOrphanCleanup = 0.f;
     }
 
     // Auto-save periodically
@@ -208,25 +244,22 @@ void GameServer::HandleDisconnect(ENetPeer* peer) {
     if (player) {
         spdlog::info("GameServer: Player '{}' (ID: {}) disconnected", player->name, player->id);
 
-        // Despawn all entities owned by this player and notify other clients
-        std::vector<EntityID> toRemove;
+        // Preserve entities for reconnection — mark them as unowned and record
+        // the player→entity mapping so the player can reclaim them later.
+        std::vector<EntityID> ownedIds;
         for (auto& [eid, entity] : m_entities) {
             if (entity.owner == player->id) {
-                toRemove.push_back(eid);
+                entity.owner = 0; // Unowned until reconnect
+                ownedIds.push_back(eid);
             }
         }
-        for (EntityID eid : toRemove) {
-            PacketWriter despawnWriter;
-            despawnWriter.WriteHeader(MessageType::S2C_EntityDespawn);
-            despawnWriter.WriteU32(eid);
-            despawnWriter.WriteU8(1); // reason: player left
-            BroadcastExcept(player->id, despawnWriter.Data(), despawnWriter.Size(),
-                           KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
-            m_entities.erase(eid);
-        }
-        if (!toRemove.empty()) {
-            spdlog::info("GameServer: Despawned {} entities from player '{}'",
-                         toRemove.size(), player->name);
+        if (!ownedIds.empty()) {
+            SavedPlayer sp;
+            sp.name = player->name;
+            sp.entityIds = ownedIds;
+            m_savedPlayers[player->name] = std::move(sp);
+            spdlog::info("GameServer: Preserved {} entities for player '{}' (reconnectable)",
+                         ownedIds.size(), player->name);
         }
 
         // Notify others that player left
@@ -268,6 +301,26 @@ void GameServer::HandlePacket(ENetPeer* peer, const uint8_t* data, size_t size, 
 
     // Note: m_mutex is already held by Update() which calls this method.
     // Using recursive_mutex so public methods (KickPlayer, etc.) can also lock safely.
+
+    // Channel validation: reject messages arriving on the wrong channel.
+    // Position updates must use the unreliable channel; all other gameplay
+    // messages must arrive on a reliable channel (ordered or unordered).
+    PacketReader peekReader(data, size);
+    PacketHeader peekHeader;
+    if (peekReader.ReadHeader(peekHeader)) {
+        bool isPositionUpdate = (peekHeader.type == MessageType::C2S_PositionUpdate);
+        if (isPositionUpdate && channel != KMP_CHANNEL_UNRELIABLE_SEQ) {
+            spdlog::debug("GameServer: Position update on wrong channel {} (expected {})",
+                         channel, KMP_CHANNEL_UNRELIABLE_SEQ);
+            return;
+        }
+        if (!isPositionUpdate && channel == KMP_CHANNEL_UNRELIABLE_SEQ &&
+            peekHeader.type != MessageType::C2S_Keepalive) {
+            spdlog::debug("GameServer: Reliable message 0x{:02X} on unreliable channel",
+                         static_cast<uint8_t>(peekHeader.type));
+            return;
+        }
+    }
 
     PacketReader reader(data, size);
     PacketHeader header;
@@ -377,6 +430,16 @@ void GameServer::HandlePacket(ENetPeer* peer, const uint8_t* data, size_t size, 
         if (player) HandleCombatDeath(*player, reader);
         break;
     }
+    case MessageType::C2S_LimbHealth: {
+        auto* player = GetPlayer(peer);
+        if (player) HandleLimbHealth(*player, reader);
+        break;
+    }
+    case MessageType::C2S_StatusEffect: {
+        auto* player = GetPlayer(peer);
+        if (player) HandleStatusEffect(*player, reader);
+        break;
+    }
     case MessageType::C2S_ItemTransfer: {
         auto* player = GetPlayer(peer);
         if (player) HandleItemTransfer(*player, reader);
@@ -392,6 +455,11 @@ void GameServer::HandlePacket(ENetPeer* peer, const uint8_t* data, size_t size, 
         if (player) HandleAdminCommand(*player, reader);
         break;
     }
+    case MessageType::C2S_LobbyReady: {
+        auto* player = GetPlayer(peer);
+        if (player) HandleLobbyReady(*player, reader);
+        break;
+    }
     case MessageType::C2S_Keepalive: {
         // Reset activity timer and send ack
         auto* player = GetPlayer(peer);
@@ -400,6 +468,10 @@ void GameServer::HandlePacket(ENetPeer* peer, const uint8_t* data, size_t size, 
             PacketWriter ackWriter;
             ackWriter.WriteHeader(MessageType::S2C_KeepaliveAck);
             ENetPacket* pkt = enet_packet_create(ackWriter.Data(), ackWriter.Size(), ENET_PACKET_FLAG_RELIABLE);
+            if (!pkt) {
+                spdlog::error("Failed to create packet ({} bytes)", ackWriter.Size());
+                break;
+            }
             enet_peer_send(peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
         }
         break;
@@ -462,6 +534,11 @@ void GameServer::HandleHandshake(ENetPeer* peer, PacketReader& reader) {
                  (int)m_players.size(), m_config.maxPlayers);
         writer.WriteRaw(&reject, sizeof(reject));
         ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
+        if (!pkt) {
+            spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+            enet_peer_disconnect_later(peer, 0);
+            return;
+        }
         enet_peer_send(peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
         enet_peer_disconnect_later(peer, 0);
         return;
@@ -478,6 +555,11 @@ void GameServer::HandleHandshake(ENetPeer* peer, PacketReader& reader) {
         writer.WriteRaw(&reject, sizeof(reject));
 
         ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
+        if (!pkt) {
+            spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+            enet_peer_disconnect_later(peer, 0);
+            return;
+        }
         enet_peer_send(peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
         enet_peer_disconnect_later(peer, 0);
         return;
@@ -503,6 +585,23 @@ void GameServer::HandleHandshake(ENetPeer* peer, PacketReader& reader) {
     peer->data = reinterpret_cast<void*>(static_cast<uintptr_t>(id));
     m_players[id] = player;
 
+    // Reconnect: if this player name matches a saved record, reclaim their entities
+    auto savedIt = m_savedPlayers.find(sanitizedName);
+    if (savedIt != m_savedPlayers.end()) {
+        int reclaimed = 0;
+        for (EntityID eid : savedIt->second.entityIds) {
+            auto entIt = m_entities.find(eid);
+            if (entIt != m_entities.end() && entIt->second.owner == 0) {
+                entIt->second.owner = id;
+                m_players[id].ownedEntities.push_back(eid);
+                reclaimed++;
+            }
+        }
+        spdlog::info("GameServer: Player '{}' reconnected — reclaimed {}/{} entities",
+                     sanitizedName, reclaimed, savedIt->second.entityIds.size());
+        m_savedPlayers.erase(savedIt);
+    }
+
     // First connected player is the host
     if (m_hostPlayerId == 0) {
         m_hostPlayerId = id;
@@ -526,6 +625,12 @@ void GameServer::HandleHandshake(ENetPeer* peer, PacketReader& reader) {
         writer.WriteRaw(&ack, sizeof(ack));
 
         ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
+        if (!pkt) {
+            spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+            m_players.erase(id);
+            peer->data = nullptr;
+            return;
+        }
         enet_peer_send(peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
     }
 
@@ -556,6 +661,12 @@ void GameServer::HandleHandshake(ENetPeer* peer, PacketReader& reader) {
 
         ENetPacket* factionPkt = enet_packet_create(factionWriter.Data(), factionWriter.Size(),
                                                      ENET_PACKET_FLAG_RELIABLE);
+        if (!factionPkt) {
+            spdlog::error("Failed to create packet ({} bytes)", factionWriter.Size());
+            m_players.erase(id);
+            peer->data = nullptr;
+            return;
+        }
         enet_peer_send(peer, KMP_CHANNEL_RELIABLE_ORDERED, factionPkt);
         spdlog::info("GameServer: Assigned faction '{}' (slot {}) to player {}",
                      factionStr, slot, id);
@@ -586,6 +697,10 @@ void GameServer::HandleHandshake(ENetPeer* peer, PacketReader& reader) {
         writer.WriteRaw(&joined, sizeof(joined));
 
         ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
+        if (!pkt) {
+            spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+            continue;
+        }
         enet_peer_send(peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
     }
 
@@ -619,6 +734,11 @@ void GameServer::HandleServerQuery(ENetPeer* peer, PacketReader& reader) {
     writer.WriteRaw(&info, sizeof(info));
 
     ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
+    if (!pkt) {
+        spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+        enet_peer_disconnect_later(peer, 0);
+        return;
+    }
     enet_peer_send(peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
 
     // Disconnect the query peer after responding (they're not joining)
@@ -775,6 +895,29 @@ void GameServer::HandleBuildRequest(ConnectedPlayer& player, PacketReader& reade
     MsgBuildRequest msg;
     if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
+    // Validate build coordinates — reject NaN/inf/extreme values
+    if (std::isnan(msg.posX) || std::isnan(msg.posY) || std::isnan(msg.posZ) ||
+        std::isinf(msg.posX) || std::isinf(msg.posY) || std::isinf(msg.posZ) ||
+        std::abs(msg.posX) > 1000000.f || std::abs(msg.posY) > 1000000.f ||
+        std::abs(msg.posZ) > 1000000.f) {
+        spdlog::warn("GameServer: Rejected invalid build position from '{}' ({},{},{})",
+                     player.name, msg.posX, msg.posY, msg.posZ);
+        return;
+    }
+
+    // Validate build position is within reasonable distance of player's known position
+    // (prevents building across the map via modified client)
+    constexpr float MAX_BUILD_DISTANCE = 500.f;
+    float dx = msg.posX - player.position.x;
+    float dy = msg.posY - player.position.y;
+    float dz = msg.posZ - player.position.z;
+    float distSq = dx*dx + dy*dy + dz*dz;
+    if (distSq > MAX_BUILD_DISTANCE * MAX_BUILD_DISTANCE) {
+        spdlog::warn("GameServer: Rejected build from '{}' too far from player ({:.0f}m away)",
+                     player.name, std::sqrt(distSq));
+        return;
+    }
+
     // Create building entity
     EntityID buildId = m_nextEntityId++;
     ServerEntity building;
@@ -800,7 +943,8 @@ void GameServer::HandleBuildRequest(ConnectedPlayer& player, PacketReader& reade
     placed.compressedQuat = msg.compressedQuat;
     placed.builderId = player.id;
     writer.WriteRaw(&placed, sizeof(placed));
-    Broadcast(writer.Data(), writer.Size(), KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+    BroadcastExcept(player.id, writer.Data(), writer.Size(),
+                    KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
 
     spdlog::info("GameServer: Player '{}' placed building {} at ({:.1f}, {:.1f}, {:.1f})",
                  player.name, buildId, msg.posX, msg.posY, msg.posZ);
@@ -843,6 +987,10 @@ void GameServer::BroadcastPositions() {
         }
 
         ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), 0);
+        if (!pkt) {
+            spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+            continue;
+        }
         enet_peer_send(player.peer, KMP_CHANNEL_UNRELIABLE_SEQ, pkt);
     }
 }
@@ -857,6 +1005,39 @@ void GameServer::BroadcastTimeSync() {
     msg.gameSpeed = static_cast<uint8_t>(m_config.gameSpeed);
     writer.WriteRaw(&msg, sizeof(msg));
     Broadcast(writer.Data(), writer.Size(), KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+}
+
+void GameServer::BroadcastEntityHeartbeat() {
+    // Send per-player heartbeat: each client gets the list of entity IDs that
+    // should exist in their interest zone. Client compares against local registry
+    // and cleans up entities the server no longer knows about (ghost entities from
+    // silent disconnects, zone changes, or missed despawn messages).
+    for (auto& [playerId, player] : m_players) {
+        PacketWriter writer;
+        writer.WriteHeader(MessageType::S2C_EntityHeartbeat);
+        writer.WriteU32(m_serverTick);
+
+        // Collect entity IDs relevant to this player
+        std::vector<EntityID> relevantIds;
+        for (const auto& [entityId, entity] : m_entities) {
+            if (entity.state != EntityState::Active) continue;
+
+            // Include: entities owned by this player, or in nearby zones
+            if (entity.owner == playerId ||
+                entity.zone.IsAdjacent(player.zone) ||
+                entity.owner == 0) {
+                relevantIds.push_back(entityId);
+            }
+        }
+
+        writer.WriteU16(static_cast<uint16_t>(relevantIds.size()));
+        for (EntityID id : relevantIds) {
+            writer.WriteU32(id);
+        }
+
+        SendTo(playerId, writer.Data(), writer.Size(),
+               KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+    }
 }
 
 void GameServer::HandleEntitySpawnReq(ConnectedPlayer& player, PacketReader& reader) {
@@ -1071,6 +1252,10 @@ void GameServer::HandleZoneRequest(ConnectedPlayer& player, PacketReader& reader
         writer.WriteU8(entity.alive ? 1 : 0);
 
         ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
+        if (!pkt) {
+            spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+            continue;
+        }
         enet_peer_send(player.peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
     }
 }
@@ -1121,6 +1306,10 @@ void GameServer::SendWorldSnapshot(ConnectedPlayer& player) {
         writer.WriteU8(entity.alive ? 1 : 0);
 
         ENetPacket* pkt = enet_packet_create(writer.Data(), writer.Size(), ENET_PACKET_FLAG_RELIABLE);
+        if (!pkt) {
+            spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+            continue;
+        }
         enet_peer_send(player.peer, KMP_CHANNEL_RELIABLE_ORDERED, pkt);
 
         // Send equipment for each non-zero slot
@@ -1135,6 +1324,10 @@ void GameServer::SendWorldSnapshot(ConnectedPlayer& player) {
                 equipWriter.WriteRaw(&equipMsg, sizeof(equipMsg));
 
                 ENetPacket* equipPkt = enet_packet_create(equipWriter.Data(), equipWriter.Size(), ENET_PACKET_FLAG_RELIABLE);
+                if (!equipPkt) {
+                    spdlog::error("Failed to create packet ({} bytes)", equipWriter.Size());
+                    break;
+                }
                 enet_peer_send(player.peer, KMP_CHANNEL_RELIABLE_UNORDERED, equipPkt);
             }
         }
@@ -1152,6 +1345,10 @@ void GameServer::SendWorldSnapshot(ConnectedPlayer& player) {
 
 void GameServer::Broadcast(const uint8_t* data, size_t len, int channel, uint32_t flags) {
     ENetPacket* pkt = enet_packet_create(data, len, flags);
+    if (!pkt) {
+        spdlog::error("Failed to create packet ({} bytes)", len);
+        return;
+    }
     enet_host_broadcast(m_host, channel, pkt);
 }
 
@@ -1162,6 +1359,10 @@ void GameServer::BroadcastExcept(PlayerID exclude, const uint8_t* data, size_t l
         if (id == exclude) continue;
         if (!player.peer) continue;
         ENetPacket* pkt = enet_packet_create(data, len, flags);
+        if (!pkt) {
+            spdlog::error("Failed to create packet ({} bytes)", len);
+            continue;
+        }
         enet_peer_send(player.peer, channel, pkt);
         sent++;
     }
@@ -1173,6 +1374,10 @@ void GameServer::SendTo(PlayerID id, const uint8_t* data, size_t len, int channe
     auto it = m_players.find(id);
     if (it != m_players.end()) {
         ENetPacket* pkt = enet_packet_create(data, len, flags);
+        if (!pkt) {
+            spdlog::error("Failed to create packet ({} bytes)", len);
+            return;
+        }
         enet_peer_send(it->second.peer, channel, pkt);
     }
 }
@@ -1229,12 +1434,12 @@ void GameServer::LoadWorld() {
     int loadedWeather = m_weatherState;
     EntityID loadedNextId = m_nextEntityId;
 
-    if (LoadWorldFromFile(savePath, m_entities, loadedTime, loadedWeather, loadedNextId)) {
+    if (LoadWorldFromFile(savePath, m_entities, m_savedPlayers, loadedTime, loadedWeather, loadedNextId)) {
         m_timeOfDay = loadedTime;
         m_weatherState = loadedWeather;
         m_nextEntityId = loadedNextId;
-        spdlog::info("GameServer: Loaded world from '{}' ({} entities, time={:.2f})",
-                     savePath, m_entities.size(), m_timeOfDay);
+        spdlog::info("GameServer: Loaded world from '{}' ({} entities, {} saved players, time={:.2f})",
+                     savePath, m_entities.size(), m_savedPlayers.size(), m_timeOfDay);
     } else {
         spdlog::info("GameServer: No saved world at '{}', starting fresh", savePath);
     }
@@ -1248,7 +1453,21 @@ void GameServer::SaveWorld() {
     std::string savePath = m_config.savePath.empty()
         ? "kenshi_mp_world.json" : m_config.savePath;
 
-    if (SaveWorldToFile(savePath, m_entities, m_timeOfDay, m_weatherState)) {
+    // Build a combined saved-players map: merge currently-connected players
+    // (their live entity ownership) with previously-saved offline players.
+    auto savedForWrite = m_savedPlayers;
+    for (auto& [pid, cp] : m_players) {
+        SavedPlayer sp;
+        sp.name = cp.name;
+        for (auto& [eid, entity] : m_entities) {
+            if (entity.owner == pid) sp.entityIds.push_back(eid);
+        }
+        if (!sp.entityIds.empty()) {
+            savedForWrite[cp.name] = std::move(sp);
+        }
+    }
+
+    if (SaveWorldToFile(savePath, m_entities, savedForWrite, m_timeOfDay, m_weatherState)) {
         spdlog::info("GameServer: World saved to '{}'", savePath);
     } else {
         spdlog::error("GameServer: Failed to save world to '{}'", savePath);
@@ -1521,8 +1740,8 @@ void GameServer::HandleBuildDismantle(ConnectedPlayer& player, PacketReader& rea
     writer.WriteHeader(MessageType::S2C_BuildDestroyed);
     writer.WriteU32(msg.buildingId);
     writer.WriteU8(2); // reason: dismantled
-    Broadcast(writer.Data(), writer.Size(),
-             KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+    BroadcastExcept(player.id, writer.Data(), writer.Size(),
+                    KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
 }
 
 void GameServer::HandleBuildRepair(ConnectedPlayer& player, PacketReader& reader) {
@@ -1592,9 +1811,18 @@ void GameServer::HandleCombatKO(ConnectedPlayer& player, PacketReader& reader) {
     if (!reader.ReadU32(entityId) || !reader.ReadU32(attackerId) ||
         !reader.ReadU8(reason) || !reader.ReadF32(chestHealth)) return;
 
-    // Validate entity ownership
+    // Validate entity exists and is alive (reject KO on dead entities)
     auto it = m_entities.find(entityId);
-    if (it == m_entities.end() || it->second.owner != player.id) return;
+    if (it == m_entities.end() || !it->second.alive) return;
+
+    // Cross-player combat: accept KO reports from entity owner or attacker owner
+    bool victimIsReporter = (it->second.owner == player.id);
+    bool attackerIsReporter = false;
+    if (attackerId != 0) {
+        auto attackerIt = m_entities.find(attackerId);
+        attackerIsReporter = (attackerIt != m_entities.end() && attackerIt->second.owner == player.id);
+    }
+    if (!victimIsReporter && !attackerIsReporter) return;
 
     spdlog::info("GameServer: Player '{}' reports entity {} KO (attacker={}, reason={}, health={:.1f})",
                  player.name, entityId, attackerId, reason, chestHealth);
@@ -1624,15 +1852,34 @@ void GameServer::HandleCombatDeath(ConnectedPlayer& player, PacketReader& reader
     MsgCombatDeath msg;
     if (!reader.ReadRaw(&msg, sizeof(msg))) return;
 
-    // Validate entity ownership — only the owner can report their entity's death
+    // Validate entity exists
     auto it = m_entities.find(msg.entityId);
-    if (it == m_entities.end() || it->second.owner != player.id) return;
+    if (it == m_entities.end()) return;
+
+    // Reject duplicate death reports — both players may report the same kill
+    if (!it->second.alive) {
+        spdlog::debug("GameServer: Ignoring duplicate death report for entity {} from '{}'",
+                      msg.entityId, player.name);
+        return;
+    }
+
+    // Cross-player combat: accept death reports from either the entity owner
+    // or the killer's owner. When player A kills player B's character, player A
+    // reports the death with killerId pointing to their own entity.
+    bool victimIsReporter = (it->second.owner == player.id);
+    bool killerIsReporter = false;
+    if (msg.killerId != 0) {
+        auto killerIt = m_entities.find(msg.killerId);
+        killerIsReporter = (killerIt != m_entities.end() && killerIt->second.owner == player.id);
+    }
+    if (!victimIsReporter && !killerIsReporter) return;
 
     // Mark entity as dead on the server so future attacks are rejected
     it->second.alive = false;
 
-    spdlog::info("GameServer: Player '{}' reports entity {} death (killer={})",
-                 player.name, msg.entityId, msg.killerId);
+    spdlog::info("GameServer: Player '{}' reports entity {} death (killer={}, reporter={})",
+                 player.name, msg.entityId, msg.killerId,
+                 victimIsReporter ? "victim-owner" : "killer-owner");
 
     // Broadcast death to ALL players (including reporter for authoritative sync)
     PacketWriter writer;
@@ -1640,6 +1887,59 @@ void GameServer::HandleCombatDeath(ConnectedPlayer& player, PacketReader& reader
     writer.WriteRaw(&msg, sizeof(msg));
     Broadcast(writer.Data(), writer.Size(),
                    KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+}
+
+// ── Limb Health Handler ──
+
+void GameServer::HandleLimbHealth(ConnectedPlayer& player, PacketReader& reader) {
+    MsgLimbHealth msg;
+    if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+    // Validate entity ownership
+    auto it = m_entities.find(msg.entityId);
+    if (it == m_entities.end() || it->second.owner != player.id) return;
+
+    // Store limb health values on server entity
+    for (int i = 0; i < 7; i++) {
+        it->second.limbHealth[i] = msg.health[i];
+    }
+
+    spdlog::debug("GameServer: Player '{}' limb health for entity {} (chest={:.1f})",
+                  player.name, msg.entityId, msg.health[static_cast<int>(BodyPart::Chest)]);
+
+    // Broadcast to other players
+    PacketWriter writer;
+    writer.WriteHeader(MessageType::S2C_LimbHealth);
+    writer.WriteRaw(&msg, sizeof(msg));
+    BroadcastExcept(player.id, writer.Data(), writer.Size(),
+                    KMP_CHANNEL_RELIABLE_UNORDERED, ENET_PACKET_FLAG_RELIABLE);
+}
+
+// ── Status Effect Handler ──
+
+void GameServer::HandleStatusEffect(ConnectedPlayer& player, PacketReader& reader) {
+    MsgStatusEffect msg;
+    if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+
+    // Validate entity ownership
+    auto it = m_entities.find(msg.entityId);
+    if (it == m_entities.end() || it->second.owner != player.id) return;
+
+    // Validate effect type range
+    if (msg.effectType > StatusEffect_Bandaged) return;
+
+    // Store status effect on server entity
+    it->second.statusEffects[msg.effectType] = msg.active;
+
+    spdlog::debug("GameServer: Player '{}' entity {} status effect {} = {}",
+                  player.name, msg.entityId, msg.effectType, msg.active);
+
+    // Broadcast to other players
+    PacketWriter writer;
+    writer.WriteHeader(MessageType::S2C_StatusEffect);
+    writer.WriteRaw(&msg, sizeof(msg));
+    BroadcastExcept(player.id, writer.Data(), writer.Size(),
+                    KMP_CHANNEL_RELIABLE_UNORDERED, ENET_PACKET_FLAG_RELIABLE);
 }
 
 // ── Item Transfer Handler ──
@@ -1734,6 +2034,38 @@ void GameServer::HandleDoorInteract(ConnectedPlayer& player, PacketReader& reade
 
 // ── Admin Command Handler ──
 
+void GameServer::HandleLobbyReady(ConnectedPlayer& player, PacketReader& reader) {
+    player.lobbyReady = true;
+    spdlog::info("GameServer: Player '{}' (slot {}) is READY", player.name, player.id);
+
+    // Broadcast to all clients that this player is ready
+    BroadcastSystemMessage(player.name + " is ready!");
+
+    // Check if ALL connected players are ready
+    bool allReady = true;
+    int readyCount = 0;
+    for (const auto& [id, p] : m_players) {
+        if (p.lobbyReady) {
+            readyCount++;
+        } else {
+            allReady = false;
+        }
+    }
+
+    spdlog::info("GameServer: {}/{} players ready", readyCount, m_players.size());
+
+    if (allReady && !m_players.empty()) {
+        spdlog::info("GameServer: ALL PLAYERS READY — sending LobbyStart!");
+        BroadcastSystemMessage("All players ready — starting game!");
+
+        PacketWriter writer;
+        writer.WriteHeader(MessageType::S2C_LobbyStart);
+        writer.WriteU8(static_cast<uint8_t>(m_players.size()));
+        Broadcast(writer.Data(), writer.Size(),
+                  KMP_CHANNEL_RELIABLE_ORDERED, ENET_PACKET_FLAG_RELIABLE);
+    }
+}
+
 void GameServer::HandleAdminCommand(ConnectedPlayer& player, PacketReader& reader) {
     MsgAdminCommand msg;
     if (!reader.ReadRaw(&msg, sizeof(msg))) return;
@@ -1771,8 +2103,13 @@ void GameServer::HandleAdminCommand(ConnectedPlayer& player, PacketReader& reade
             strncpy(reject.reasonText, reason.c_str(), sizeof(reject.reasonText) - 1);
             kickWriter.WriteRaw(&reject, sizeof(reject));
             ENetPacket* kickPkt = enet_packet_create(kickWriter.Data(), kickWriter.Size(), ENET_PACKET_FLAG_RELIABLE);
-            enet_peer_send(target->peer, KMP_CHANNEL_RELIABLE_ORDERED, kickPkt);
-            enet_peer_disconnect_later(target->peer, 0);
+            if (!kickPkt) {
+                spdlog::error("Failed to create packet ({} bytes)", kickWriter.Size());
+                enet_peer_disconnect_later(target->peer, 0);
+            } else {
+                enet_peer_send(target->peer, KMP_CHANNEL_RELIABLE_ORDERED, kickPkt);
+                enet_peer_disconnect_later(target->peer, 0);
+            }
 
             responseText = "Kicked " + target->name;
         } else {
@@ -1889,6 +2226,10 @@ void GameServer::SendMasterRegister() {
 
     ENetPacket* packet = enet_packet_create(writer.Data(), writer.Size(),
                                              ENET_PACKET_FLAG_RELIABLE);
+    if (!packet) {
+        spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+        return;
+    }
     enet_peer_send(m_masterPeer, 0, packet);
     enet_host_flush(m_masterHost);
 
@@ -1912,6 +2253,10 @@ void GameServer::SendMasterHeartbeat() {
 
     ENetPacket* packet = enet_packet_create(writer.Data(), writer.Size(),
                                              ENET_PACKET_FLAG_RELIABLE);
+    if (!packet) {
+        spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+        return;
+    }
     enet_peer_send(m_masterPeer, 0, packet);
 }
 
@@ -1923,6 +2268,10 @@ void GameServer::SendMasterDeregister() {
 
     ENetPacket* packet = enet_packet_create(writer.Data(), writer.Size(),
                                              ENET_PACKET_FLAG_RELIABLE);
+    if (!packet) {
+        spdlog::error("Failed to create packet ({} bytes)", writer.Size());
+        return;
+    }
     enet_peer_send(m_masterPeer, 0, packet);
     enet_host_flush(m_masterHost);
 }

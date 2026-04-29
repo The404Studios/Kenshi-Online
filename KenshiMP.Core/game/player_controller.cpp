@@ -200,26 +200,87 @@ void PlayerController::ApplyRemotePositionUpdate(EntityID entityId, const Vec3& 
 void PlayerController::OnGameWorldLoaded() {
     spdlog::info("PlayerController: Game world loaded");
 
-    // Capture local faction from the first player-controlled character
+    // Multi-source faction discovery: scan characters and pick the faction
+    // that appears most often, with bonus for name-match and isPlayerFaction flag.
+    // This handles the case where the first character is a hired NPC.
+
+    struct FacVote { uintptr_t ptr; int score; bool nameMatch; };
+    FacVote votes[4] = {};
+    int voteCount = 0;
+    int scanned = 0;
+
+    const std::string& cfgName = Core::Get().GetConfig().playerName;
+
     game::CharacterIterator iter;
-    while (iter.HasNext()) {
+    while (iter.HasNext() && scanned < 12) {
         game::CharacterAccessor character = iter.Next();
         if (!character.IsValid()) continue;
+        scanned++;
 
         uintptr_t faction = character.GetFactionPtr();
-        // Must be in user-space heap range and 8-byte aligned
-        if (faction > 0x10000 && faction < 0x00007FFFFFFFFFFF &&
-            (faction & 0x7) == 0 && m_localFactionPtr == 0) {
-            // Reject if faction pointer is within the module image (not a heap object)
-            uintptr_t modBase = Memory::GetModuleBase();
-            if (faction >= modBase && faction < modBase + 0x4000000) continue;
+        if (faction < 0x10000 || faction > 0x00007FFFFFFFFFFF || (faction & 0x7) != 0) continue;
 
-            uint32_t factionId = 0;
-            Memory::Read(faction + game::GetOffsets().faction.id, factionId);
-            m_localFactionPtr = faction;
-            spdlog::info("PlayerController: Captured local faction 0x{:X} (id={}) from game world",
-                         faction, factionId);
-            break;
+        // Reject module-internal pointers
+        uintptr_t modBase = Memory::GetModuleBase();
+        if (faction >= modBase && faction < modBase + 0x4000000) continue;
+
+        // Check name match
+        bool isNameMatch = false;
+        if (cfgName.size() > 0) {
+            std::string charName = character.GetName();
+            if (charName.size() == cfgName.size() &&
+                _strnicmp(charName.c_str(), cfgName.c_str(), cfgName.size()) == 0) {
+                isNameMatch = true;
+            }
+        }
+
+        // Check isPlayerFaction flag
+        bool isFlagged = false;
+        {
+            const int flagOff = game::GetOffsets().faction.isPlayerFaction;
+            if (flagOff >= 0) {
+                bool flag = false;
+                Memory::Read(faction + flagOff, flag);
+                isFlagged = flag;
+            }
+        }
+
+        // Find or add to vote list
+        int idx = -1;
+        for (int i = 0; i < voteCount; i++) {
+            if (votes[i].ptr == faction) { idx = i; break; }
+        }
+        if (idx < 0 && voteCount < 4) {
+            idx = voteCount++;
+            votes[idx] = { faction, 0, false };
+        }
+        if (idx >= 0) {
+            votes[idx].score++;
+            if (isNameMatch) { votes[idx].score += 10; votes[idx].nameMatch = true; }
+            if (isFlagged) { votes[idx].score += 3; }
+        }
+    }
+
+    // Elect winner
+    uintptr_t bestFaction = 0;
+    int bestScore = 0;
+    for (int i = 0; i < voteCount; i++) {
+        if (votes[i].score > bestScore) {
+            bestScore = votes[i].score;
+            bestFaction = votes[i].ptr;
+        }
+    }
+
+    if (bestFaction != 0 && m_localFactionPtr == 0) {
+        uint32_t factionId = 0;
+        const int fIdOff = game::GetOffsets().faction.id;
+        if (fIdOff >= 0) Memory::Read(bestFaction + fIdOff, factionId);
+        m_localFactionPtr = bestFaction;
+        spdlog::info("PlayerController: Elected faction 0x{:X} (id={}) from {} chars ({} candidates)",
+                     bestFaction, factionId, scanned, voteCount);
+        for (int i = 0; i < voteCount; i++) {
+            spdlog::info("  vote[{}]: 0x{:X} score={} nameMatch={}",
+                         i, votes[i].ptr, votes[i].score, votes[i].nameMatch);
         }
     }
 }

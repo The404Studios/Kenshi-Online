@@ -226,6 +226,12 @@ void SetResolvedPlayerBase(uintptr_t addr);
 uintptr_t GetResolvedGameWorld();
 void SetResolvedGameWorld(uintptr_t addr);
 
+// Loading state bridge: set by Core when entering/exiting Loading phase.
+// CharacterIterator checks this and skips game memory reads during loading
+// to prevent heap corruption from non-atomic lektor reads.
+bool IsGameLoading();
+void SetGameLoadingState(bool loading);
+
 // SetPosition bridge: set by Core with the resolved CharacterSetPosition function ptr.
 void SetGameSetPositionFn(void* fn);
 
@@ -250,6 +256,11 @@ void ProbePlayerControlledOffset(uintptr_t playerCharPtr, uintptr_t npcCharPtr);
 
 // Write the isPlayerControlled flag on a character (requires discovered offset).
 bool WritePlayerControlled(uintptr_t charPtr, bool controlled);
+
+// ── Unified Runtime Offset Prober ──
+// Discovers sceneNode, isPlayerControlled, aiPackage, equipment, animClassOffset, squad
+// offsets at runtime by probing live game objects. Caches results to disk.
+// Include game_offset_prober.h for the full API (RunOffsetProber, LoadOffsetCache, etc.).
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  GAME ENUMS (from fcs_enums.def)

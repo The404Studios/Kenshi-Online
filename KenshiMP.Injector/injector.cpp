@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <nlohmann/json.hpp>
 
 namespace kmp {
 
@@ -95,16 +96,19 @@ bool WriteConnectConfig(const char* address, const char* port, const char* playe
     int portNum = 27800;
     try { portNum = std::stoi(port); } catch (...) {}
 
+    // Build JSON via nlohmann::json so strings are properly escaped
+    // (handles quotes, backslashes, control chars in playerName/address)
+    nlohmann::json j;
+    j["playerName"]  = std::string(playerName);
+    j["lastServer"]  = std::string(address);
+    j["lastPort"]    = portNum;
+    j["autoConnect"] = true;
+    j["overlayScale"] = 1.0;
+
     std::ofstream file(path);
     if (!file.is_open()) return false;
 
-    file << "{\n";
-    file << "  \"playerName\": \"" << playerName << "\",\n";
-    file << "  \"lastServer\": \"" << address << "\",\n";
-    file << "  \"lastPort\": " << portNum << ",\n";
-    file << "  \"autoConnect\": true,\n";
-    file << "  \"overlayScale\": 1.0\n";
-    file << "}\n";
+    file << j.dump(2) << "\n";
 
     return true;
 }

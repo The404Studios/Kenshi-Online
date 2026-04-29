@@ -69,8 +69,8 @@ static void* __fastcall Hook_AICreate(void* character, void* faction) {
     auto& registry = core.GetEntityRegistry();
     EntityID netId = registry.GetNetId(character);
     if (netId != INVALID_ENTITY) {
-        auto* info = registry.GetInfo(netId);
-        if (info && info->isRemote) {
+        auto info = registry.GetInfo(netId);
+        if (info.has_value() && info->isRemote) {
             MarkRemoteControlled(character);
             spdlog::info("ai_hooks: AICreate for remote entity {} — AI controller CREATED "
                          "(decisions will be overridden by network), char=0x{:X}",
@@ -106,8 +106,8 @@ static void __fastcall Hook_AIPackages(void* character, void* aiPackage) {
     auto& registry = core.GetEntityRegistry();
     EntityID netId = registry.GetNetId(character);
     if (netId != INVALID_ENTITY) {
-        auto* info = registry.GetInfo(netId);
-        if (info && info->isRemote) {
+        auto info = registry.GetInfo(netId);
+        if (info.has_value() && info->isRemote) {
             spdlog::debug("ai_hooks: AI packages LOADED for remote entity {} "
                            "(behavior tree valid, decisions overridden)",
                            netId);

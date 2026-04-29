@@ -23,14 +23,14 @@ public:
 
     // Check if the local player owns this entity
     bool IsLocallyOwned(EntityID entityId) const {
-        auto infoCopy = m_registry->GetInfoCopy(entityId);
+        auto infoCopy = m_registry->GetInfo(entityId);
         if (!infoCopy) return false;
         return infoCopy->ownerPlayerId == m_localPlayerId;
     }
 
     // Check if the server (host) owns this entity
     bool IsServerOwned(EntityID entityId) const {
-        auto infoCopy = m_registry->GetInfoCopy(entityId);
+        auto infoCopy = m_registry->GetInfo(entityId);
         if (!infoCopy) return false;
         return infoCopy->ownerPlayerId == 0;
     }

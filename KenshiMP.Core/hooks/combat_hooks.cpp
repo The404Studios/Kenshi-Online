@@ -27,6 +27,13 @@ static HookHealth s_koHealth{"CharacterKO"};
 static std::atomic<int> s_deathCount{0};
 static std::atomic<int> s_koCount{0};
 
+// ── Echo suppression flags ──
+// Set by packet_handler before calling native CharacterDeath/CharacterKO from
+// server-sourced events (S2C_CombatDeath, S2C_CombatKO). When set, the hook
+// skips pushing to the deferred queue, preventing C2S→S2C→C2S echo loops.
+static std::atomic<bool> s_serverSourcedDeath{false};
+static std::atomic<bool> s_serverSourcedKO{false};
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  DEFERRED EVENT QUEUE
 //
@@ -50,10 +57,11 @@ struct DeferredCombatEvent {
     uint8_t  reason;    // KO reason
 };
 
-static constexpr int MAX_DEFERRED_EVENTS = 64;
+static constexpr int MAX_DEFERRED_EVENTS = 256;
 static DeferredCombatEvent s_eventRing[MAX_DEFERRED_EVENTS];
 static std::atomic<int> s_eventWriteIdx{0};
 static std::atomic<int> s_eventReadIdx{0};
+static std::atomic<int> s_dropCount{0}; // Tracks events dropped due to full buffer
 
 // Lock-free single-producer (hook) single-consumer (game tick) ring buffer.
 // Safe because: hooks run on game thread (single producer), ProcessDeferredEvents
@@ -62,6 +70,7 @@ static bool PushEvent(const DeferredCombatEvent& evt) {
     int writeIdx = s_eventWriteIdx.load(std::memory_order_relaxed);
     int nextIdx = (writeIdx + 1) % MAX_DEFERRED_EVENTS;
     if (nextIdx == s_eventReadIdx.load(std::memory_order_acquire)) {
+        s_dropCount.fetch_add(1, std::memory_order_relaxed);
         return false; // Full — drop event (better than crash)
     }
     s_eventRing[writeIdx] = evt;
@@ -92,6 +101,11 @@ static void __fastcall Hook_CharacterDeath(void* character, void* killer) {
     SafeCall_Void_PtrPtr(reinterpret_cast<void*>(s_origCharDeath),
                           character, killer, &s_deathHealth);
 
+    // Skip if this death was triggered by the packet handler applying a server
+    // event (S2C_CombatDeath). Without this, receiving a remote death would
+    // push a new C2S_CombatDeath → server re-broadcasts → infinite echo.
+    if (s_serverSourcedDeath.load(std::memory_order_acquire)) return;
+
     // Capture entity IDs (cheap pointer lookups, no allocation)
     auto& core = Core::Get();
     if (!core.IsConnected()) return;
@@ -115,6 +129,10 @@ static void __fastcall Hook_CharacterKO(void* character, void* attacker, int rea
     // Call original FIRST (SEH-protected) — game KO logic must always run
     SafeCall_Void_PtrPtrI(reinterpret_cast<void*>(s_origCharKO),
                            character, attacker, reason, &s_koHealth);
+
+    // Skip if this KO was triggered by the packet handler applying a server
+    // event (S2C_CombatKO). Prevents infinite echo loops.
+    if (s_serverSourcedKO.load(std::memory_order_acquire)) return;
 
     // Capture entity IDs (cheap pointer lookups, no allocation)
     auto& core = Core::Get();
@@ -144,6 +162,35 @@ static float SEH_ReadChestHealth(void* gameObj) {
     }
 }
 
+// ── SEH wrapper for reading all 7 limb health values ──
+static bool SEH_ReadAllLimbHealth(void* gameObj, float outHealth[7]) {
+    __try {
+        game::CharacterAccessor accessor(gameObj);
+        for (int i = 0; i < static_cast<int>(BodyPart::Count); i++) {
+            outHealth[i] = accessor.GetHealth(static_cast<BodyPart>(i));
+        }
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        for (int i = 0; i < 7; i++) outHealth[i] = -100.f;
+        return false;
+    }
+}
+
+// ── Helper: send C2S_LimbHealth for an entity after a combat event ──
+static void SendLimbHealthUpdate(EntityID entityId, void* gameObj) {
+    if (!gameObj) return;
+    float limbHealth[7];
+    if (!SEH_ReadAllLimbHealth(gameObj, limbHealth)) return;
+
+    PacketWriter writer;
+    writer.WriteHeader(MessageType::C2S_LimbHealth);
+    writer.WriteU32(entityId);
+    for (int i = 0; i < 7; i++) {
+        writer.WriteF32(limbHealth[i]);
+    }
+    Core::Get().GetClient().SendReliable(writer.Data(), writer.Size());
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  DEFERRED PROCESSING — called from Core::OnGameTick (safe context)
 //  Here we can safely: log, build packets, send via ENet, read game memory.
@@ -158,14 +205,24 @@ void ProcessDeferredEvents() {
         return;
     }
 
+    // Report and reset drop counter (can't log from hook context, so we log here)
+    int dropped = s_dropCount.exchange(0, std::memory_order_relaxed);
+    if (dropped > 0) {
+        spdlog::warn("combat_hooks: {} combat events DROPPED (ring buffer was full)", dropped);
+    }
+
     DeferredCombatEvent evt;
     int processed = 0;
-    while (PopEvent(evt) && processed < 16) { // Cap per tick to avoid stalls
+    while (PopEvent(evt) && processed < 64) { // Cap per tick to avoid stalls
         processed++;
 
-        // Only send events for entities we OWN
-        auto infoCopy = core.GetEntityRegistry().GetInfoCopy(evt.entityId);
-        if (!infoCopy || infoCopy->ownerPlayerId != core.GetLocalPlayerId()) continue;
+        // Send events for ANY registered entity (not just owned).
+        // Cross-player combat: when player A kills player B's character,
+        // the death fires on A's machine and must be reported to the server.
+        // Echo suppression is handled by s_serverSourcedDeath/KO flags in
+        // the hook body — events that arrive here are genuine local combat.
+        auto infoCopy = core.GetEntityRegistry().GetInfo(evt.entityId);
+        if (!infoCopy) continue;
 
         if (evt.type == CombatEventType::Death) {
             spdlog::info("combat_hooks: [deferred] Death — entity {} killer {}",
@@ -176,6 +233,10 @@ void ProcessDeferredEvents() {
             writer.WriteU32(evt.entityId);
             writer.WriteU32(evt.otherId);
             core.GetClient().SendReliable(writer.Data(), writer.Size());
+
+            // Piggyback limb health snapshot after death event
+            void* deathObj = core.GetEntityRegistry().GetGameObject(evt.entityId);
+            SendLimbHealthUpdate(evt.entityId, deathObj);
 
         } else if (evt.type == CombatEventType::KO) {
             spdlog::info("combat_hooks: [deferred] KO — entity {} attacker {} reason {}",
@@ -192,6 +253,9 @@ void ProcessDeferredEvents() {
             float chestHealth = gameObj ? SEH_ReadChestHealth(gameObj) : -100.f;
             writer.WriteF32(chestHealth);
             core.GetClient().SendReliable(writer.Data(), writer.Size());
+
+            // Piggyback limb health snapshot after KO event
+            SendLimbHealthUpdate(evt.entityId, gameObj);
         }
     }
 }
@@ -234,6 +298,14 @@ void Uninstall() {
     HookManager::Get().Remove("CharacterDeath");
     HookManager::Get().Remove("CharacterKO");
     spdlog::info("combat_hooks: Uninstalled");
+}
+
+void SetServerSourcedDeath(bool active) {
+    s_serverSourcedDeath.store(active, std::memory_order_release);
+}
+
+void SetServerSourcedKO(bool active) {
+    s_serverSourcedKO.store(active, std::memory_order_release);
 }
 
 } // namespace kmp::combat_hooks
