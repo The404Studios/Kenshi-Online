@@ -15,7 +15,7 @@
 
 ```bash
 # 1. Clone
-git clone https://github.com/The404Studios/Kenshi-Online.git
+git clone --recursive https://github.com/The404Studios/Kenshi-Online.git
 cd Kenshi-Online
 
 # 2. Build

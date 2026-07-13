@@ -48,13 +48,17 @@ This document covers CMake configuration, dependencies, build targets, project d
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/The404Studios/Kenshi-Online.git
+git clone --recursive https://github.com/The404Studios/Kenshi-Online.git
 cd Kenshi-Online
 ```
 
-### 2. Initialize Submodules (if present)
+### 2. Initialize Submodules
 
-All dependencies are currently included in `lib/` directory. No separate submodule initialization needed.
+Third-party dependencies are pinned Git submodules in `lib/`. If the repository was cloned without `--recursive`, initialize them before configuring CMake:
+
+```bash
+git submodule update --init --recursive
+```
 
 ### 3. Generate Build Files
 
@@ -98,7 +102,7 @@ All third-party libraries are located in `lib/` and built automatically via CMak
 
 ### 1. ENet (Networking)
 
-- **Version:** Latest from https://github.com/lsalzman/enet
+- **Version:** Pinned commit `8be2368a8001f28db44e81d5939de5e613025023` from https://github.com/lsalzman/enet
 - **Purpose:** Reliable UDP networking library for client-server communication
 - **Build Type:** Static library (`enet.lib`)
 - **CMake Target:** `enet`
@@ -115,7 +119,7 @@ target_include_directories(enet PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib/enet/incl
 
 ### 2. MinHook (Function Hooking)
 
-- **Version:** Latest from https://github.com/TsudaKageyu/minhook
+- **Version:** Pinned commit `1e9ad1eb42db11bfcb65461f687c656612d1b555` from https://github.com/TsudaKageyu/minhook
 - **Purpose:** x64 function hooking via trampoline technique
 - **Build Type:** Static library (`minhook.lib`)
 - **CMake Target:** `minhook`
@@ -131,7 +135,7 @@ add_subdirectory(lib/minhook)
 
 ### 3. spdlog (Logging)
 
-- **Version:** Latest from https://github.com/gabime/spdlog
+- **Version:** Pinned commit `48bcf39a661a13be22666ac64db8a7f886f2637e` from https://github.com/gabime/spdlog
 - **Purpose:** Fast C++ logging library
 - **Build Type:** Header-only mode
 - **CMake Target:** `spdlog::spdlog`
@@ -148,7 +152,7 @@ add_subdirectory(lib/spdlog EXCLUDE_FROM_ALL)
 
 ### 4. nlohmann/json (JSON Parsing)
 
-- **Version:** Latest from https://github.com/nlohmann/json
+- **Version:** Pinned commit `9cca280a4d0ccf0c08f47a99aa71d1b0e52f8d03` from https://github.com/nlohmann/json
 - **Purpose:** JSON serialization/deserialization
 - **Build Type:** Header-only
 - **CMake Target:** `nlohmann_json::nlohmann_json`
@@ -166,6 +170,7 @@ add_subdirectory(lib/json EXCLUDE_FROM_ALL)
 ### 5. imgui (Optional, currently unused)
 
 - **Location:** `lib/imgui/`
+- **Version:** Pinned commit `dbb5eeaadffb6a3ba6a60de1290312e5802dba5a` from https://github.com/ocornut/imgui
 - **Status:** Included but not currently linked to any project
 - **Note:** Native MyGUI overlay is used instead for in-game UI
 
@@ -786,13 +791,11 @@ target_link_libraries(KenshiMP.Scanner PUBLIC
 MinHook: Could not find hde64.c
 ```
 
-**Cause:** Incomplete MinHook submodule.
+**Cause:** MinHook submodule is not initialized or is incomplete.
 
 **Fix:**
 ```bash
-cd lib/minhook
-git pull origin master
-cd ../..
+git submodule update --init --checkout lib/minhook
 cmake --build build --target minhook --config Release
 ```
 
@@ -812,9 +815,8 @@ error: nlohmann/json.hpp: No such file or directory
 # Check if lib/json exists
 ls lib/json/
 
-# If empty, reclone
-rm -rf lib/json
-git clone https://github.com/nlohmann/json.git lib/json
+# If empty, restore the pinned submodule revision
+git submodule update --init --checkout lib/json
 
 # Rebuild
 cmake --build build --config Release
