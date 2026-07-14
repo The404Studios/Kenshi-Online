@@ -7,9 +7,22 @@ namespace kmp {
 
 class Memory {
 public:
+    // Cheap pre-check that rejects pointers which cannot possibly be valid
+    // user-mode x64 addresses. This avoids triggering SEH on the most common
+    // bad-pointer cases (NULL, freed-pointer-poison values, kernel addrs).
+    // SEH still catches anything that slips through.
+    static bool IsValidPointer(uintptr_t addr) {
+        // Anything below 0x10000 is in the NULL guard region.
+        if (addr < 0x10000) return false;
+        // User-mode x64 addresses are bounded to the 48-bit canonical range.
+        if (addr >= 0x00007FFFFFFFFFFFULL) return false;
+        return true;
+    }
+
     // Safe read from game memory (handles access violations)
     template<typename T>
     static bool Read(uintptr_t address, T& out) {
+        if (!IsValidPointer(address)) return false;
         __try {
             out = *reinterpret_cast<T*>(address);
             return true;
@@ -21,6 +34,7 @@ public:
     // Safe write to game memory
     template<typename T>
     static bool Write(uintptr_t address, const T& value) {
+        if (!IsValidPointer(address)) return false;
         DWORD oldProtect;
         if (!VirtualProtect(reinterpret_cast<void*>(address), sizeof(T),
                            PAGE_EXECUTE_READWRITE, &oldProtect)) {

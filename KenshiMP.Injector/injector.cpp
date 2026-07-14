@@ -25,6 +25,8 @@ bool InstallOgrePlugin(const std::wstring& gamePath) {
     while (std::getline(inFile, line)) {
         // Remove trailing CR if present
         if (!line.empty() && line.back() == '\r') line.pop_back();
+        // Skip blank lines created by repeated patching
+        if (line.empty()) continue;
 
         if (line == PLUGIN_LINE) {
             alreadyInstalled = true;
@@ -35,16 +37,19 @@ bool InstallOgrePlugin(const std::wstring& gamePath) {
 
     if (alreadyInstalled) return true; // Already installed
 
-    // Add our plugin line
+    // Add our plugin line. We always write with a trailing newline so that the
+    // next tool to append doesn't merge two plugin lines into one (which
+    // produces e.g. `Plugin=RenderSystem_Direct3D11Plugin=KenshiMP.Core` and
+    // crashes Ogre on launch — Kenshi simply fails to start, see issues #64 #72).
     lines.push_back(PLUGIN_LINE);
 
-    // Write back
-    std::ofstream outFile(cfgPath);
+    // Write back with consistent CRLF line endings (Kenshi's existing file uses
+    // CRLF on Windows; matching avoids touching the user's diff unnecessarily).
+    std::ofstream outFile(cfgPath, std::ios::binary);
     if (!outFile.is_open()) return false;
 
     for (size_t i = 0; i < lines.size(); i++) {
-        outFile << lines[i];
-        if (i + 1 < lines.size()) outFile << "\n";
+        outFile << lines[i] << "\r\n";
     }
     outFile.close();
 
@@ -68,12 +73,11 @@ bool RemoveOgrePlugin(const std::wstring& gamePath) {
     }
     inFile.close();
 
-    std::ofstream outFile(cfgPath);
+    std::ofstream outFile(cfgPath, std::ios::binary);
     if (!outFile.is_open()) return false;
 
     for (size_t i = 0; i < lines.size(); i++) {
-        outFile << lines[i];
-        if (i + 1 < lines.size()) outFile << "\n";
+        outFile << lines[i] << "\r\n";
     }
     outFile.close();
 

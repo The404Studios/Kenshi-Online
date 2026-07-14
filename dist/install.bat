@@ -1,245 +1,393 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableExtensions DisableDelayedExpansion
 title KenshiMP Installer
 color 0A
+
+set "EXIT_CODE=0"
+set "QUIET=0"
+set "FIRST_INSTALL=0"
+if /I "%~2"=="/quiet" set "QUIET=1"
 
 echo.
 echo  ============================================
 echo   KenshiMP - Kenshi Multiplayer Mod
-echo   One-Click Installer
-echo   made with love by fourzerofour
+echo   Safe Windows Installer
 echo  ============================================
 echo.
 
-:: ── Auto-detect Kenshi directory ──
-:: Try common locations, then fall back to asking
+set "KENSHI_DIR=%~1"
+if defined KENSHI_DIR goto :validate_kenshi
 
-set "KENSHI_DIR="
+if exist "%~dp0kenshi_x64.exe" set "KENSHI_DIR=%~dp0"
+if defined KENSHI_DIR goto :validate_kenshi
+if exist "%~dp0..\kenshi_x64.exe" set "KENSHI_DIR=%~dp0.."
+if defined KENSHI_DIR goto :validate_kenshi
+if exist "C:\Program Files (x86)\Steam\steamapps\common\Kenshi\kenshi_x64.exe" set "KENSHI_DIR=C:\Program Files (x86)\Steam\steamapps\common\Kenshi"
+if defined KENSHI_DIR goto :validate_kenshi
+if exist "C:\GOG Games\Kenshi\kenshi_x64.exe" set "KENSHI_DIR=C:\GOG Games\Kenshi"
+if defined KENSHI_DIR goto :validate_kenshi
 
-:: Check if we're already in the Kenshi folder
-if exist "%~dp0kenshi_x64.exe" (
-    set "KENSHI_DIR=%~dp0"
-    goto :found_kenshi
+if "%QUIET%"=="1" (
+    echo  [ERROR] Kenshi was not found and interactive prompting is disabled.
+    goto :invalid_kenshi
 )
 
-:: Check if we're in a subfolder of Kenshi
-if exist "%~dp0..\kenshi_x64.exe" (
-    set "KENSHI_DIR=%~dp0..\"
-    goto :found_kenshi
-)
-
-:: Try Steam default location
-set "STEAM_KENSHI=C:\Program Files (x86)\Steam\steamapps\common\Kenshi"
-if exist "%STEAM_KENSHI%\kenshi_x64.exe" (
-    set "KENSHI_DIR=%STEAM_KENSHI%"
-    goto :found_kenshi
-)
-
-:: Try GOG default
-set "GOG_KENSHI=C:\GOG Games\Kenshi"
-if exist "%GOG_KENSHI%\kenshi_x64.exe" (
-    set "KENSHI_DIR=%GOG_KENSHI%"
-    goto :found_kenshi
-)
-
-:: Ask user
-echo  Could not auto-detect Kenshi installation.
-echo  Please enter the path to your Kenshi folder:
-echo  (The folder containing kenshi_x64.exe)
-echo.
+echo  Kenshi could not be auto-detected.
+echo  Enter the folder containing kenshi_x64.exe.
 set /p "KENSHI_DIR=Path: "
 
+:validate_kenshi
+if not defined KENSHI_DIR goto :invalid_kenshi
+for %%I in ("%KENSHI_DIR%") do set "KENSHI_DIR=%%~fI"
 if not exist "%KENSHI_DIR%\kenshi_x64.exe" (
-    echo.
-    echo  [ERROR] kenshi_x64.exe not found at: %KENSHI_DIR%
-    echo  Make sure you entered the correct Kenshi folder.
-    echo.
-    pause
-    exit /b 1
+    echo  [ERROR] kenshi_x64.exe was not found in:
+    echo          "%KENSHI_DIR%"
+    echo          Select the Kenshi installation directory, not a subdirectory.
+    goto :invalid_kenshi
+)
+if not exist "%KENSHI_DIR%\data\gui\layout" (
+    echo  [ERROR] Required Kenshi layout directory is missing:
+    echo          "%KENSHI_DIR%\data\gui\layout"
+    goto :invalid_kenshi
+)
+if not exist "%KENSHI_DIR%\Plugins_x64.cfg" (
+    echo  [ERROR] Required Kenshi file is missing: Plugins_x64.cfg
+    goto :invalid_kenshi
+)
+if not exist "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout" (
+    echo  [ERROR] Required Kenshi file is missing: Kenshi_MainMenu.layout
+    goto :invalid_kenshi
+)
+if not exist "%KENSHI_DIR%\mods" (
+    echo  [ERROR] Required Kenshi mods directory is missing:
+    echo          "%KENSHI_DIR%\mods"
+    goto :invalid_kenshi
 )
 
-:found_kenshi
-:: Remove trailing backslash if present
-if "%KENSHI_DIR:~-1%"=="\" set "KENSHI_DIR=%KENSHI_DIR:~0,-1%"
-
-echo  Found Kenshi at: %KENSHI_DIR%
+echo  Found Kenshi at: "%KENSHI_DIR%"
 echo.
 
-:: ── Check if Kenshi is running ──
+echo  [1/6] Validating release package...
+call :require_file "%~dp0KenshiMP.Core.dll" "KenshiMP.Core.dll" 65536
+if errorlevel 1 goto :invalid_package
+call :require_file "%~dp0KenshiMP.Server.exe" "KenshiMP.Server.exe" 1
+if errorlevel 1 goto :invalid_package
+call :require_file "%~dp0Kenshi_MainMenu.layout" "Kenshi_MainMenu.layout" 1
+if errorlevel 1 goto :invalid_package
+call :require_file "%~dp0Kenshi_MultiplayerHUD.layout" "Kenshi_MultiplayerHUD.layout" 1
+if errorlevel 1 goto :invalid_package
+call :require_file "%~dp0Kenshi_MultiplayerPanel.layout" "Kenshi_MultiplayerPanel.layout" 1
+if errorlevel 1 goto :invalid_package
+call :require_file "%~dp0kenshi-online.mod" "kenshi-online.mod" 1
+if errorlevel 1 goto :invalid_package
+call :require_file "%~dp0server.json" "server.json" 1
+if errorlevel 1 goto :invalid_package
+echo         All required package files are present.
+
 tasklist /FI "IMAGENAME eq kenshi_x64.exe" 2>NUL | find /I "kenshi_x64.exe" >NUL
-if %errorlevel% equ 0 (
-    echo  [WARNING] Kenshi is currently running!
-    echo  Please close Kenshi before installing.
-    echo.
-    pause
-    exit /b 1
+if not errorlevel 1 (
+    echo  [ERROR] Kenshi is running. Close it before installing.
+    set "EXIT_CODE=3"
+    goto :finish
 )
 
-:: ── Create backups ──
-echo  [1/5] Creating backups...
+echo  [2/6] Checking write access...
+call :probe_directory "%KENSHI_DIR%"
+if errorlevel 1 goto :permission_error
+call :probe_directory "%KENSHI_DIR%\data"
+if errorlevel 1 goto :permission_error
+call :probe_directory "%KENSHI_DIR%\data\gui\layout"
+if errorlevel 1 goto :permission_error
+call :probe_directory "%KENSHI_DIR%\mods"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\KenshiMP.Core.dll"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\KenshiMP.Server.exe"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\server.json"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\Plugins_x64.cfg"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerPanel.layout"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerHUD.layout"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\data\kenshi-online.mod"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\mods\kenshi-online\kenshi-online.mod"
+if errorlevel 1 goto :permission_error
+call :probe_file "%KENSHI_DIR%\data\__mods.list"
+if errorlevel 1 goto :permission_error
+echo         Required locations are writable.
 
-set "BACKUP_DIR=%KENSHI_DIR%\KenshiMP_backup"
-if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
-
-if exist "%KENSHI_DIR%\Plugins_x64.cfg" (
-    if not exist "%BACKUP_DIR%\Plugins_x64.cfg.bak" (
-        copy /Y "%KENSHI_DIR%\Plugins_x64.cfg" "%BACKUP_DIR%\Plugins_x64.cfg.bak" >nul
-        echo         Backed up Plugins_x64.cfg
-    )
+set "STATE_DIR=%KENSHI_DIR%\.KenshiMP-install-state"
+if exist "%STATE_DIR%\installed.marker" (
+    findstr /X /C:"KenshiMP managed installation v1" "%STATE_DIR%\installed.marker" >NUL 2>&1
+    if errorlevel 1 goto :unsafe_state
+    call :validate_state
+    if errorlevel 1 goto :unsafe_state
+    set "FIRST_INSTALL=0"
+    echo  [3/6] Existing managed installation found; preserving original backups.
+    goto :install_files
+)
+if exist "%STATE_DIR%" (
+    echo  [ERROR] Unsafe or incomplete installer state exists:
+    echo          "%STATE_DIR%"
+    echo          Move it aside after inspecting it, then run the installer again.
+    set "EXIT_CODE=4"
+    goto :finish
 )
 
-if exist "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout" (
-    if not exist "%BACKUP_DIR%\Kenshi_MainMenu.layout.bak" (
-        copy /Y "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout" "%BACKUP_DIR%\Kenshi_MainMenu.layout.bak" >nul
-        echo         Backed up Kenshi_MainMenu.layout
-    )
+echo  [3/6] Recording original files...
+mkdir "%STATE_DIR%" >NUL 2>&1
+if errorlevel 1 goto :permission_error
+>"%STATE_DIR%\transaction.marker" echo KenshiMP installer transaction v1
+if not exist "%STATE_DIR%\transaction.marker" goto :permission_error
+set "FIRST_INSTALL=1"
+
+call :capture_original "%KENSHI_DIR%\KenshiMP.Core.dll" "core"
+if errorlevel 1 goto :install_failed
+call :capture_original "%KENSHI_DIR%\KenshiMP.Server.exe" "server"
+if errorlevel 1 goto :install_failed
+call :capture_original "%KENSHI_DIR%\server.json" "server-config"
+if errorlevel 1 goto :install_failed
+call :capture_original "%KENSHI_DIR%\Plugins_x64.cfg" "plugins-config"
+if errorlevel 1 goto :install_failed
+call :capture_original "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout" "main-menu"
+if errorlevel 1 goto :install_failed
+call :capture_original "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerPanel.layout" "panel-layout"
+if errorlevel 1 goto :install_failed
+call :capture_original "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerHUD.layout" "hud-layout"
+if errorlevel 1 goto :install_failed
+call :capture_original "%KENSHI_DIR%\data\kenshi-online.mod" "data-mod"
+if errorlevel 1 goto :install_failed
+call :capture_original "%KENSHI_DIR%\mods\kenshi-online\kenshi-online.mod" "folder-mod"
+if errorlevel 1 goto :install_failed
+call :capture_original "%KENSHI_DIR%\data\__mods.list" "mods-list"
+if errorlevel 1 goto :install_failed
+
+:install_files
+echo  [4/6] Installing package-owned files...
+if not exist "%KENSHI_DIR%\mods\kenshi-online" mkdir "%KENSHI_DIR%\mods\kenshi-online" >NUL 2>&1
+if not exist "%KENSHI_DIR%\mods\kenshi-online" goto :install_failed
+
+call :copy_required "%~dp0KenshiMP.Core.dll" "%KENSHI_DIR%\KenshiMP.Core.dll"
+if errorlevel 1 goto :install_failed
+call :copy_required "%~dp0KenshiMP.Server.exe" "%KENSHI_DIR%\KenshiMP.Server.exe"
+if errorlevel 1 goto :install_failed
+call :copy_required "%~dp0server.json" "%KENSHI_DIR%\server.json"
+if errorlevel 1 goto :install_failed
+call :copy_required "%~dp0Kenshi_MainMenu.layout" "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout"
+if errorlevel 1 goto :install_failed
+call :copy_required "%~dp0Kenshi_MultiplayerPanel.layout" "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerPanel.layout"
+if errorlevel 1 goto :install_failed
+call :copy_required "%~dp0Kenshi_MultiplayerHUD.layout" "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerHUD.layout"
+if errorlevel 1 goto :install_failed
+call :copy_required "%~dp0kenshi-online.mod" "%KENSHI_DIR%\data\kenshi-online.mod"
+if errorlevel 1 goto :install_failed
+call :copy_required "%~dp0kenshi-online.mod" "%KENSHI_DIR%\mods\kenshi-online\kenshi-online.mod"
+if errorlevel 1 goto :install_failed
+
+echo  [5/6] Updating Kenshi configuration...
+set "KMP_CONFIG_FILE=%KENSHI_DIR%\Plugins_x64.cfg"
+set "KMP_CONFIG_ENTRY=Plugin=KenshiMP.Core"
+call :ensure_config_entry
+if errorlevel 1 goto :install_failed
+set "KMP_CONFIG_FILE=%KENSHI_DIR%\data\__mods.list"
+set "KMP_CONFIG_ENTRY=kenshi-online"
+call :ensure_config_entry
+if errorlevel 1 goto :install_failed
+
+echo  [6/6] Verifying installation...
+for %%F in (
+    "%KENSHI_DIR%\KenshiMP.Core.dll"
+    "%KENSHI_DIR%\KenshiMP.Server.exe"
+    "%KENSHI_DIR%\server.json"
+    "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout"
+    "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerPanel.layout"
+    "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerHUD.layout"
+    "%KENSHI_DIR%\data\kenshi-online.mod"
+    "%KENSHI_DIR%\mods\kenshi-online\kenshi-online.mod"
+) do if not exist "%%~fF" goto :verification_failed
+findstr /X /C:"Plugin=KenshiMP.Core" "%KENSHI_DIR%\Plugins_x64.cfg" >NUL 2>&1
+if errorlevel 1 goto :verification_failed
+findstr /X /C:"kenshi-online" "%KENSHI_DIR%\data\__mods.list" >NUL 2>&1
+if errorlevel 1 goto :verification_failed
+
+if "%FIRST_INSTALL%"=="1" (
+    >"%STATE_DIR%\installed.marker" echo KenshiMP managed installation v1
+    if not exist "%STATE_DIR%\installed.marker" goto :install_failed
+    del /F /Q "%STATE_DIR%\transaction.marker" >NUL 2>&1
 )
 
-:: ── Copy DLL ──
-echo  [2/5] Installing KenshiMP.Core.dll...
+echo.
+echo  [OK] KenshiMP installation completed and verified.
+echo       Original files are recorded in:
+echo       "%STATE_DIR%"
+set "EXIT_CODE=0"
+goto :finish
 
-if exist "%~dp0KenshiMP.Core.dll" (
-    copy /Y "%~dp0KenshiMP.Core.dll" "%KENSHI_DIR%\KenshiMP.Core.dll" >nul
-    if errorlevel 1 (
-        echo  [ERROR] Failed to copy DLL. Is Kenshi running?
-        pause
-        exit /b 1
-    )
-    echo         Copied KenshiMP.Core.dll
+:invalid_kenshi
+set "EXIT_CODE=1"
+goto :finish
+
+:invalid_package
+echo  [ERROR] The release package is incomplete or contains an invalid file.
+echo          Extract the complete KenshiMP-Install.zip and try again.
+set "EXIT_CODE=2"
+goto :finish
+
+:permission_error
+echo  [ERROR] Kenshi files are not writable.
+echo          Run this installer with permission to modify the Kenshi directory.
+set "EXIT_CODE=3"
+goto :finish
+
+:unsafe_state
+echo  [ERROR] KenshiMP installer state is incomplete or unrecognized:
+echo          "%STATE_DIR%"
+echo          No Kenshi files were changed. Inspect or move the state directory.
+set "EXIT_CODE=4"
+goto :finish
+
+:verification_failed
+echo  [ERROR] Post-install verification failed.
+goto :install_failed
+
+:install_failed
+echo  [ERROR] Installation failed while updating Kenshi files.
+if "%FIRST_INSTALL%"=="1" (
+    echo          Rolling back this first installation...
+    call :rollback_first_install
 ) else (
-    echo  [ERROR] KenshiMP.Core.dll not found in installer folder!
-    pause
+    echo          Original backups were preserved. Re-run the installer or uninstall safely.
+)
+set "EXIT_CODE=4"
+goto :finish
+
+:require_file
+if not exist "%~1" (
+    echo  [ERROR] Missing required package file: %~2
     exit /b 1
 )
+for %%F in ("%~1") do if %%~zF LSS %~3 (
+    echo  [ERROR] Required package file is too small: %~2 ^(%%~zF bytes^)
+    exit /b 1
+)
+exit /b 0
 
-:: ── Patch Plugins_x64.cfg ──
-echo  [3/5] Patching Plugins_x64.cfg...
+:ensure_config_entry
+rem Rewrite through PowerShell so repeated installs leave one exact entry and
+rem files without a trailing newline cannot concatenate the new entry.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = $env:KMP_CONFIG_FILE; $entry = $env:KMP_CONFIG_ENTRY; $lines = @(); if (Test-Path -LiteralPath $p) { $lines = @(Get-Content -LiteralPath $p) }; $lines = @($lines | Where-Object { $_ -ne $entry -and $_ -ne '' }); $lines += $entry; Set-Content -LiteralPath $p -Value $lines -Encoding ASCII" >NUL 2>&1
+if errorlevel 1 exit /b 1
+findstr /X /C:"%KMP_CONFIG_ENTRY%" "%KMP_CONFIG_FILE%" >NUL 2>&1
+exit /b %ERRORLEVEL%
 
-findstr /C:"Plugin=KenshiMP.Core" "%KENSHI_DIR%\Plugins_x64.cfg" >nul 2>&1
+:probe_directory
+set "PROBE_FILE=%~1\.kenshimp-write-test-%RANDOM%-%RANDOM%.tmp"
+>"%PROBE_FILE%" echo write-test
+if not exist "%PROBE_FILE%" exit /b 1
+del /F /Q "%PROBE_FILE%" >NUL 2>&1
+if exist "%PROBE_FILE%" exit /b 1
+exit /b 0
+
+:probe_file
+if not exist "%~1" exit /b 0
+set "KMP_PROBE_FILE=%~1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $stream = [IO.File]::Open($env:KMP_PROBE_FILE, 'Open', 'Write', 'ReadWrite'); $stream.Dispose(); exit 0 } catch { exit 1 }" >NUL 2>&1
+exit /b %ERRORLEVEL%
+
+:capture_original
+if exist "%~1" (
+    copy /B /Y "%~1" "%STATE_DIR%\%~2.bak" >NUL 2>&1
+    if errorlevel 1 exit /b 1
+    >"%STATE_DIR%\%~2.restore" echo restore
+) else (
+    >"%STATE_DIR%\%~2.remove" echo remove
+)
+if not exist "%STATE_DIR%\%~2.restore" if not exist "%STATE_DIR%\%~2.remove" exit /b 1
+exit /b 0
+
+:validate_state
+for %%K in (core server server-config plugins-config main-menu panel-layout hud-layout data-mod folder-mod mods-list) do (
+    call :validate_state_entry "%%K"
+    if errorlevel 1 exit /b 1
+)
+exit /b 0
+
+:validate_state_entry
+if exist "%STATE_DIR%\%~1.restore" (
+    if exist "%STATE_DIR%\%~1.remove" exit /b 1
+    if not exist "%STATE_DIR%\%~1.bak" exit /b 1
+    exit /b 0
+)
+if exist "%STATE_DIR%\%~1.remove" exit /b 0
+exit /b 1
+
+:copy_required
+copy /B /Y "%~1" "%~2" >NUL 2>&1
 if errorlevel 1 (
-    echo Plugin=KenshiMP.Core>> "%KENSHI_DIR%\Plugins_x64.cfg"
-    echo         Added KenshiMP.Core plugin entry
-) else (
-    echo         Plugin entry already exists
-)
-
-:: ── Patch Main Menu Layout ──
-echo  [4/5] Patching main menu layout...
-
-findstr /C:"MultiplayerButton" "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout" >nul 2>&1
-if errorlevel 1 (
-    echo         Adding MULTIPLAYER button to main menu...
-
-    :: We need to insert the button before the OPTIONS button.
-    :: The OPTIONS button has name="OptionsButton".
-    :: We'll use PowerShell for reliable XML insertion.
-
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "$file = '%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout';" ^
-        "$content = Get-Content $file -Raw;" ^
-        "$mpButton = @'" ^
-"            <Widget type=\""Button\"" skin=\""Kenshi_Button1\"" position_real=\""0.260417 0.582407 0.15625 0.0638889\"" name=\""MultiplayerButton\"">`n" ^
-"                <Property key=\""Caption\"" value=\""MULTIPLAYER\""/>`n" ^
-"                <Property key=\""FontName\"" value=\""Kenshi_PaintedTextFont_Large\""/>`n" ^
-"            </Widget>`n" ^
-"'@;" ^
-        "if ($content -match 'OptionsButton') {" ^
-        "  $optLine = '            <Widget type=\"\"Button\"\" skin=\"\"Kenshi_Button1\"\".*name=\"\"OptionsButton\"\"';" ^
-        "  $content = $content -replace '(?m)(^\s*<Widget[^>]+name=\"\"OptionsButton\"\")', ($mpButton + \"`n`$1\");" ^
-        "  Set-Content $file $content -NoNewline;" ^
-        "  Write-Host '        MULTIPLAYER button added';" ^
-        "} else {" ^
-        "  Write-Host '        [WARNING] Could not find OptionsButton anchor';" ^
-        "}"
-
-    if errorlevel 1 (
-        echo         [WARNING] Auto-patch failed. Copying pre-patched layout...
-        if exist "%~dp0Kenshi_MainMenu.layout" (
-            copy /Y "%~dp0Kenshi_MainMenu.layout" "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout" >nul
-            echo         Copied pre-patched Kenshi_MainMenu.layout
-        )
-    )
-) else (
-    echo         MULTIPLAYER button already present
-)
-
-:: ── Copy Multiplayer Layouts ──
-echo  [5/6] Installing multiplayer layouts...
-
-if exist "%~dp0Kenshi_MultiplayerPanel.layout" (
-    copy /Y "%~dp0Kenshi_MultiplayerPanel.layout" "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerPanel.layout" >nul
-    echo         Copied Kenshi_MultiplayerPanel.layout
-) else (
-    echo  [ERROR] Kenshi_MultiplayerPanel.layout not found in installer folder!
-    pause
+    echo  [ERROR] Could not write: "%~2"
     exit /b 1
 )
+exit /b 0
 
-if exist "%~dp0Kenshi_MultiplayerHUD.layout" (
-    copy /Y "%~dp0Kenshi_MultiplayerHUD.layout" "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerHUD.layout" >nul
-    echo         Copied Kenshi_MultiplayerHUD.layout
-) else (
-    echo  [WARNING] Kenshi_MultiplayerHUD.layout not found (in-game HUD may not work)
+:rollback_first_install
+set "ROLLBACK_FAILED=0"
+call :restore_original "%KENSHI_DIR%\KenshiMP.Core.dll" "core"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+call :restore_original "%KENSHI_DIR%\KenshiMP.Server.exe" "server"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+call :restore_original "%KENSHI_DIR%\server.json" "server-config"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+call :restore_original "%KENSHI_DIR%\Plugins_x64.cfg" "plugins-config"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+call :restore_original "%KENSHI_DIR%\data\gui\layout\Kenshi_MainMenu.layout" "main-menu"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+call :restore_original "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerPanel.layout" "panel-layout"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+call :restore_original "%KENSHI_DIR%\data\gui\layout\Kenshi_MultiplayerHUD.layout" "hud-layout"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+call :restore_original "%KENSHI_DIR%\data\kenshi-online.mod" "data-mod"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+call :restore_original "%KENSHI_DIR%\mods\kenshi-online\kenshi-online.mod" "folder-mod"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+call :restore_original "%KENSHI_DIR%\data\__mods.list" "mods-list"
+if errorlevel 1 set "ROLLBACK_FAILED=1"
+if exist "%KENSHI_DIR%\mods\kenshi-online" rmdir "%KENSHI_DIR%\mods\kenshi-online" >NUL 2>&1
+if "%ROLLBACK_FAILED%"=="0" if exist "%STATE_DIR%\transaction.marker" call :remove_state_dir
+if "%ROLLBACK_FAILED%"=="0" if exist "%STATE_DIR%" set "ROLLBACK_FAILED=1"
+if "%ROLLBACK_FAILED%"=="1" echo  [ERROR] Rollback was incomplete; installer state was preserved for recovery.
+exit /b %ROLLBACK_FAILED%
+
+:restore_original
+if exist "%STATE_DIR%\%~2.restore" (
+    copy /B /Y "%STATE_DIR%\%~2.bak" "%~1" >NUL 2>&1
+    exit /b %ERRORLEVEL%
 )
-
-:: ── Install Multiplayer Mod ──
-echo  [6/7] Installing kenshi-online.mod...
-
-if exist "%~dp0kenshi-online.mod" (
-    :: Copy to data/ (always loaded by the game engine)
-    copy /Y "%~dp0kenshi-online.mod" "%KENSHI_DIR%\data\kenshi-online.mod" >nul
-    echo         Copied kenshi-online.mod to data/
-
-    :: Also copy to mods/kenshi-online/ (standard mod location)
-    if not exist "%KENSHI_DIR%\mods\kenshi-online" mkdir "%KENSHI_DIR%\mods\kenshi-online"
-    copy /Y "%~dp0kenshi-online.mod" "%KENSHI_DIR%\mods\kenshi-online\kenshi-online.mod" >nul
-    echo         Copied kenshi-online.mod to mods/
-
-    :: Add to __mods.list if not present
-    findstr /C:"kenshi-online" "%KENSHI_DIR%\data\__mods.list" >nul 2>&1
-    if errorlevel 1 (
-        echo kenshi-online>> "%KENSHI_DIR%\data\__mods.list"
-        echo         Added kenshi-online to mod load list
-    ) else (
-        echo         kenshi-online already in mod load list
-    )
-) else (
-    echo         [INFO] kenshi-online.mod not in package (mod template spawning disabled)
+if exist "%STATE_DIR%\%~2.remove" (
+    if exist "%~1" del /F /Q "%~1" >NUL 2>&1
+    if exist "%~1" exit /b 1
+    exit /b 0
 )
+exit /b 1
 
-:: ── Copy Server ──
-echo  [7/7] Installing dedicated server...
-
-if exist "%~dp0KenshiMP.Server.exe" (
-    copy /Y "%~dp0KenshiMP.Server.exe" "%KENSHI_DIR%\KenshiMP.Server.exe" >nul
-    echo         Copied KenshiMP.Server.exe
-) else (
-    echo         [INFO] KenshiMP.Server.exe not in package (hosting optional)
+:remove_state_dir
+for %%K in (core server server-config plugins-config main-menu panel-layout hud-layout data-mod folder-mod mods-list) do (
+    if exist "%STATE_DIR%\%%K.bak" del /F /Q "%STATE_DIR%\%%K.bak" >NUL 2>&1
+    if exist "%STATE_DIR%\%%K.restore" del /F /Q "%STATE_DIR%\%%K.restore" >NUL 2>&1
+    if exist "%STATE_DIR%\%%K.remove" del /F /Q "%STATE_DIR%\%%K.remove" >NUL 2>&1
 )
+if exist "%STATE_DIR%\installed.marker" del /F /Q "%STATE_DIR%\installed.marker" >NUL 2>&1
+if exist "%STATE_DIR%\transaction.marker" del /F /Q "%STATE_DIR%\transaction.marker" >NUL 2>&1
+rmdir "%STATE_DIR%" >NUL 2>&1
+exit /b 0
 
-:: ── Done ──
+:finish
 echo.
-echo  ============================================
-echo   Installation complete!
-echo  ============================================
-echo.
-echo   TO JOIN A GAME:
-echo   1. Launch Kenshi normally
-echo   2. Click MULTIPLAYER on the main menu
-echo   3. Click JOIN GAME, enter the host's IP
-echo   4. Click CONNECT, then click NEW GAME
-echo   5. You'll auto-connect when the world loads!
-echo.
-echo   TO HOST A GAME:
-echo   1. Launch Kenshi normally
-echo   2. Click MULTIPLAYER on the main menu
-echo   3. Click HOST GAME (starts the server)
-echo   4. Port 27800 is auto-forwarded via UPnP
-echo   5. Share your IP with friends!
-echo   6. Click NEW GAME to start playing
-echo.
-echo   Default port: 27800
-echo   Backups saved to: %BACKUP_DIR%
-echo   To uninstall, run uninstall.bat
-echo.
-pause
+if not "%EXIT_CODE%"=="0" echo  Installer exit code: %EXIT_CODE%
+if "%QUIET%"=="0" pause
+exit /b %EXIT_CODE%

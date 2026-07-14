@@ -1,6 +1,7 @@
 add_executable(KenshiMP.Server
     main.cpp
     server.cpp
+    authority_validator.cpp
     upnp.cpp
     game_state.cpp
     player_manager.cpp

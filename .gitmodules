@@ -1,0 +1,15 @@
+[submodule "lib/enet"]
+	path = lib/enet
+	url = https://github.com/lsalzman/enet.git
+[submodule "lib/imgui"]
+	path = lib/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "lib/json"]
+	path = lib/json
+	url = https://github.com/nlohmann/json.git
+[submodule "lib/minhook"]
+	path = lib/minhook
+	url = https://github.com/TsudaKageyu/minhook.git
+[submodule "lib/spdlog"]
+	path = lib/spdlog
+	url = https://github.com/gabime/spdlog.git

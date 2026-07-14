@@ -776,6 +776,41 @@ void SpawnManager::FindModTemplates() {
 void* SpawnManager::SpawnWithModTemplate(int playerSlot, const Vec3& position) {
     if (playerSlot < 0 || playerSlot >= MAX_MOD_TEMPLATES) return nullptr;
     void* modGD = m_modPlayerTemplates[playerSlot];
+
+    // Multi-player fallback: kenshi-online.mod currently ships with only
+    // "Player 1" and "Player 2" GameData entries (see strings inside the .mod).
+    // When >2 players are connected and the per-slot template hasn't been
+    // populated, fall back to the nearest available slot below us and finally
+    // to any captured character template. Without this, players 3-16 would
+    // simply fail to spawn for everyone else (#82).
+    if (!modGD) {
+        int templateCount = m_modTemplateCount.load();
+        if (templateCount > 0) {
+            int slot = playerSlot % templateCount;
+            if (slot >= 0 && slot < MAX_MOD_TEMPLATES) {
+                modGD = m_modPlayerTemplates[slot];
+            }
+            if (!modGD) {
+                for (int s = 0; s < MAX_MOD_TEMPLATES && !modGD; ++s) {
+                    modGD = m_modPlayerTemplates[s];
+                }
+            }
+        }
+        if (!modGD) {
+            std::lock_guard lock(m_templateMutex);
+            if (m_lastCharacterTemplate) {
+                modGD = m_lastCharacterTemplate;
+            } else if (m_characterSourcedTemplate) {
+                modGD = m_characterSourcedTemplate;
+            }
+        }
+        if (modGD) {
+            spdlog::info("SpawnManager: SpawnWithModTemplate slot={} fell back to template 0x{:X} "
+                         "(slot template missing — mod only ships Players 1-2)",
+                         playerSlot, reinterpret_cast<uintptr_t>(modGD));
+        }
+    }
+
     if (!modGD) return nullptr;
     // Only m_factory is needed — CallFactoryCreate uses its own function pointer
     // (RVA 0x583400), not m_origProcess (the process trampoline).

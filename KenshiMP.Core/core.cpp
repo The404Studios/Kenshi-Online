@@ -68,8 +68,41 @@ static void WriteBreadcrumb(const char* step, int tickNum = 0, int extra = 0) {
     if (tickNum > 50 && tickNum % 10 != 0) return; // Skip most ticks after warmup
     s_writeCount++;
 
+    // Resolve the breadcrumb path relative to the running executable so users
+    // with GOG, non-default Steam libraries, or portable installs still get
+    // crash diagnostics. Previously hardcoded to the Steam default path, which
+    // silently failed for most users.
+    static char s_breadcrumbPath[MAX_PATH] = {};
+    if (s_breadcrumbPath[0] == '\0') {
+        char exePath[MAX_PATH] = {};
+        DWORD len = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
+        if (len > 0 && len < MAX_PATH) {
+            char* lastSep = nullptr;
+            for (char* p = exePath; *p; ++p) {
+                if (*p == '\\' || *p == '/') lastSep = p;
+            }
+            if (lastSep) {
+                *lastSep = '\0';
+                sprintf_s(s_breadcrumbPath, sizeof(s_breadcrumbPath),
+                          "%s\\KenshiOnline_BREADCRUMB.txt", exePath);
+            }
+        }
+        if (s_breadcrumbPath[0] == '\0') {
+            // Fall back to the temp directory so the write doesn't fail outright.
+            char tempDir[MAX_PATH] = {};
+            DWORD tlen = GetTempPathA(MAX_PATH, tempDir);
+            if (tlen > 0 && tlen < MAX_PATH) {
+                sprintf_s(s_breadcrumbPath, sizeof(s_breadcrumbPath),
+                          "%sKenshiOnline_BREADCRUMB.txt", tempDir);
+            } else {
+                strcpy_s(s_breadcrumbPath, sizeof(s_breadcrumbPath),
+                         "KenshiOnline_BREADCRUMB.txt");
+            }
+        }
+    }
+
     FILE* f = nullptr;
-    fopen_s(&f, "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Kenshi\\KenshiOnline_BREADCRUMB.txt", "w");
+    fopen_s(&f, s_breadcrumbPath, "w");
     if (f) {
         fprintf(f, "tick=%d step=%s extra=%d charCreate=#%d writes=%d\n",
                 tickNum, step, extra, g_lastCharacterCreateNum, s_writeCount);

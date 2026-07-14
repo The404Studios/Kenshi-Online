@@ -113,8 +113,23 @@ public:
     static void Initialize() {
         Core::Get().GetClient().SetPacketCallback(
             [](const uint8_t* data, size_t size, int channel) {
-                HandlePacket(data, size, channel);
+                // SEH-guard the whole dispatch. The game runs Update() on its
+                // main thread; if a malformed packet ever triggers a fault
+                // inside a deserializer we still want the game to keep
+                // running (the player can disconnect and reconnect). MSVC
+                // forbids __try in a function with C++ unwind, so the
+                // dispatch lives in its own thunk. (#69)
+                SafeHandlePacket(data, size, channel);
             });
+    }
+
+    static void SafeHandlePacket(const uint8_t* data, size_t size, int channel) {
+        __try {
+            HandlePacket(data, size, channel);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            spdlog::error("PacketHandler: SEH caught exception during dispatch "
+                          "(channel={} size={})", channel, size);
+        }
     }
 
     // ── All Players Ready (Server → Client) ──

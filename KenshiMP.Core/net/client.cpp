@@ -1,7 +1,13 @@
 #include "client.h"
 #include <spdlog/spdlog.h>
+#include <chrono>
 
 namespace kmp {
+
+static float NowSeconds() {
+    using namespace std::chrono;
+    return duration_cast<duration<float>>(steady_clock::now().time_since_epoch()).count();
+}
 
 bool NetworkClient::Initialize() {
     if (m_initialized) return true;
@@ -40,8 +46,13 @@ bool NetworkClient::Connect(const std::string& address, uint16_t port) {
     // Blocking connect — kept for compatibility but prefer ConnectAsync()
     if (!m_initialized || m_connected) return false;
 
+    std::lock_guard lock(m_enetMutex);
+
     ENetAddress addr;
-    enet_address_set_host(&addr, address.c_str());
+    if (enet_address_set_host(&addr, address.c_str()) != 0) {
+        spdlog::error("NetworkClient: Failed to resolve host '{}'", address);
+        return false;
+    }
     addr.port = port;
 
     m_serverPeer = enet_host_connect(m_host, &addr, KMP_CHANNEL_COUNT, 0);
@@ -63,8 +74,11 @@ bool NetworkClient::Connect(const std::string& address, uint16_t port) {
         return true;
     }
 
-    enet_peer_reset(m_serverPeer);
-    m_serverPeer = nullptr;
+    // Failed to connect — drain any pending events so we don't leak state
+    if (m_serverPeer) {
+        enet_peer_reset(m_serverPeer);
+        m_serverPeer = nullptr;
+    }
     spdlog::error("NetworkClient: Connection to {}:{} timed out", address, port);
     return false;
 }
@@ -72,8 +86,13 @@ bool NetworkClient::Connect(const std::string& address, uint16_t port) {
 bool NetworkClient::ConnectAsync(const std::string& address, uint16_t port) {
     if (!m_initialized || m_connected || m_connecting) return false;
 
+    std::lock_guard lock(m_enetMutex);
+
     ENetAddress addr;
-    enet_address_set_host(&addr, address.c_str());
+    if (enet_address_set_host(&addr, address.c_str()) != 0) {
+        spdlog::error("NetworkClient: Failed to resolve host '{}' for async connect", address);
+        return false;
+    }
     addr.port = port;
 
     m_serverPeer = enet_host_connect(m_host, &addr, KMP_CHANNEL_COUNT, 0);
@@ -88,31 +107,36 @@ bool NetworkClient::ConnectAsync(const std::string& address, uint16_t port) {
     m_connecting = true;
     m_serverAddr = address;
     m_serverPort = port;
+    m_connectStartTime = NowSeconds();
     spdlog::info("NetworkClient: Async connecting to {}:{}...", address, port);
     return true;
 }
 
 void NetworkClient::Disconnect() {
+    std::lock_guard lock(m_enetMutex);
     if (m_serverPeer) {
         if (m_connected) {
             enet_peer_disconnect(m_serverPeer, 0);
 
-            // Wait briefly for disconnect acknowledgment
+            // Wait briefly for disconnect acknowledgment, bounded so the UI
+            // thread can't hang forever if the server is unresponsive.
             ENetEvent event;
             bool disconnected = false;
-            while (enet_host_service(m_host, &event, 1000) > 0) {
+            const int attempts = 3;
+            for (int i = 0; i < attempts && !disconnected; ++i) {
+                int rc = enet_host_service(m_host, &event, 500);
+                if (rc <= 0) break;
                 if (event.type == ENET_EVENT_TYPE_RECEIVE) {
                     enet_packet_destroy(event.packet);
                 } else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
                     disconnected = true;
-                    break;
                 }
             }
 
-            if (!disconnected) {
+            if (!disconnected && m_serverPeer) {
                 enet_peer_reset(m_serverPeer);
             }
-        } else {
+        } else if (m_serverPeer) {
             enet_peer_reset(m_serverPeer);
         }
     }
@@ -130,6 +154,21 @@ void NetworkClient::Update() {
     // Lock covers enet_host_service which shares internal state with enet_peer_send.
     // The 0 timeout makes this non-blocking, so lock contention is minimal.
     std::lock_guard lock(m_enetMutex);
+
+    // Detect async-connect timeout. ENet sets the peer state to DISCONNECTED
+    // internally on timeout, but it does not generate a DISCONNECT event for a
+    // peer that never finished CONNECT — so we have to time it out ourselves.
+    if (m_connecting && m_serverPeer) {
+        float elapsed = NowSeconds() - m_connectStartTime;
+        if (elapsed > (KMP_CONNECT_TIMEOUT_MS / 1000.0f) + 1.0f) {
+            spdlog::warn("NetworkClient: Async connect to {}:{} timed out after {:.1f}s",
+                         m_serverAddr, m_serverPort, elapsed);
+            enet_peer_reset(m_serverPeer);
+            m_serverPeer = nullptr;
+            m_connecting = false;
+        }
+    }
+
     while (enet_host_service(m_host, &event, 0) > 0) {
         switch (event.type) {
         case ENET_EVENT_TYPE_CONNECT:
@@ -157,6 +196,7 @@ void NetworkClient::Update() {
             m_connected = false;
             m_connecting = false;
             m_serverPeer = nullptr;
+            // Don't touch event.peer — ENet has already invalidated it.
             break;
 
         default:
@@ -166,12 +206,20 @@ void NetworkClient::Update() {
 }
 
 void NetworkClient::Send(const uint8_t* data, size_t len, int channel, uint32_t flags) {
-    if (!m_connected || !m_serverPeer) return;
-
+    // Take the lock first, then re-check connection state. The peer can be
+    // reset to nullptr by Update() running on a different thread between the
+    // check and the enet_peer_send call below — without the lock the send
+    // would touch freed memory and crash (#69).
     std::lock_guard lock(m_enetMutex);
+    if (!m_connected || !m_serverPeer || !m_host) return;
+    if (!data || len == 0) return;
+
     ENetPacket* packet = enet_packet_create(data, len, flags);
-    if (packet) {
-        enet_peer_send(m_serverPeer, channel, packet);
+    if (!packet) return;
+
+    if (enet_peer_send(m_serverPeer, channel, packet) < 0) {
+        // enet_peer_send takes ownership on success; destroy on failure.
+        enet_packet_destroy(packet);
     }
 }
 

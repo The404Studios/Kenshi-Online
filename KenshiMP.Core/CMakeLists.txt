@@ -46,6 +46,9 @@ add_library(KenshiMP.Core SHARED
     sync/interpolation.cpp
     sync/ownership.cpp
     sync/zone_interest.cpp
+    sync/authority_validator.cpp
+    sync/pending_snapshot_queue.cpp
+    sync/deferred_spawn_queue.cpp
     sync/entity_resolver.cpp
     sync/zone_engine.cpp
     sync/player_engine.cpp

@@ -13,22 +13,45 @@
 
 ## 🚀 Quick Start
 
-```bash
-# 1. Clone
-git clone https://github.com/The404Studios/Kenshi-Online.git
-cd Kenshi-Online
+### 1. Download
 
-# 2. Build
-cd build
-MSBuild.exe KenshiMP.sln /p:Configuration=Release /p:Platform=x64 /m
+Download the current Windows prerelease:
 
-# 3. Install
-copy bin\Release\KenshiMP.Core.dll "C:\Program Files (x86)\Steam\steamapps\common\Kenshi\"
-# Edit Kenshi/data/Plugins_x64.cfg, add: Plugin=../KenshiMP.Core
+- [KenshiMP v0.3.0-alpha-installer.2](https://github.com/Dedstate/Kenshi-Online/releases/tag/v0.3.0-alpha-installer.2)
+- [Direct download: KenshiMP-Install.zip](https://github.com/Dedstate/Kenshi-Online/releases/download/v0.3.0-alpha-installer.2/KenshiMP-Install.zip)
+- [SHA-256 checksums](https://github.com/Dedstate/Kenshi-Online/releases/download/v0.3.0-alpha-installer.2/SHA256SUMS.txt)
 
-# 4. Launch
-KenshiMP.Injector.exe
-```
+Extract the entire ZIP into a separate folder. Do not run the installer from
+inside the archive.
+
+### 2. Install
+
+1. Close Kenshi if it is running.
+2. Run `install.bat` from the extracted folder.
+3. The installer detects the standard Steam and GOG locations. If Kenshi is
+   installed elsewhere, enter the folder containing `kenshi_x64.exe`.
+4. If Windows denies write access to the Kenshi folder, run `install.bat` as
+   Administrator.
+5. Wait for `KenshiMP installation completed and verified`.
+
+The installer copies the plugin, server, UI layouts and multiplayer mod; adds
+`Plugin=KenshiMP.Core` to `Plugins_x64.cfg`; enables `kenshi-online` in the mod
+list; and stores backups in `<Kenshi>\.KenshiMP-install-state`.
+
+### 3. Connect
+
+The quickest method is the included launcher:
+
+1. Run `KenshiMP.Injector.exe` from the extracted folder.
+2. Confirm the Kenshi path.
+3. Enter your player name, server IP address and port (`27800` by default).
+4. Click **PLAY**.
+5. Load or start a game. The launcher enables auto-connect, so synchronization
+   begins after the world is loaded.
+
+You can also launch Kenshi normally, open **MULTIPLAYER → JOIN GAME**, enter the
+same address, port and player name, then click **CONNECT**. Press **F1** to open
+or close the multiplayer menu while in game.
 
 ---
 
@@ -110,23 +133,43 @@ MSBuild.exe KenshiMP.sln /p:Configuration=Release /p:Platform=x64 /m
 ## 🎮 How to Play
 
 ### Client
-1. Launch via `KenshiMP.Injector.exe`
-2. Load your save
-3. Press **F1** → enter server IP/port
-4. Click "Connect"
-5. Wait for "All players ready"
+
+1. Install the complete release package with `install.bat`.
+2. Launch through `KenshiMP.Injector.exe` for automatic connection, or launch
+   Kenshi normally and use **MULTIPLAYER → JOIN GAME**.
+3. Enter the host IP, UDP port and your player name.
+4. Click **CONNECT**, then load or start the world if it is not already loaded.
+5. Wait for the connection/synchronization message before playing.
+
+For a server on the same PC use `127.0.0.1:27800`. For LAN use the host's local
+IP address. For Internet play use its public IP or DNS name; the host must allow
+UDP traffic on the configured port.
 
 ### Server
-1. Edit `server.json`:
+
+1. Edit `server.json` next to `KenshiMP.Server.exe`:
    ```json
    {
      "serverName": "My Server",
-     "port": 7777,
+     "port": 27800,
      "maxPlayers": 16
    }
    ```
-2. Run `KenshiMP.Server.exe`
-3. Forward UDP port 7777
+2. Run `KenshiMP.Server.exe`, or use **MULTIPLAYER → HOST GAME**.
+3. Allow `KenshiMP.Server.exe` through Windows Firewall.
+4. For Internet hosting, forward UDP port `27800` to the server PC if UPnP does
+   not configure the router automatically.
+
+The server must remain running while clients are connected. If you change the
+`port` value, every client must use the same port.
+
+### Updating and uninstalling
+
+- To update, extract the newer complete ZIP and run its `install.bat` again.
+  Existing original backups are preserved.
+- To remove KenshiMP safely, run `uninstall.bat` from the same release package.
+- Do not delete `<Kenshi>\.KenshiMP-install-state` before uninstalling; it
+  contains the information needed to restore the original files.
 
 ---
 
@@ -179,13 +222,13 @@ MIT License - See [LICENSE](LICENSE)
 
 ## 📞 Contact
 
-- **GitHub:** [The404Studios/Kenshi-Online](https://github.com/The404Studios/Kenshi-Online)
-- **Issues:** [Report bugs](https://github.com/The404Studios/Kenshi-Online/issues)
+- **GitHub:** [Dedstate/Kenshi-Online](https://github.com/Dedstate/Kenshi-Online)
+- **Issues:** [Report bugs](https://github.com/Dedstate/Kenshi-Online/issues)
 - **Email:** the404studios@gmail.com
 
 ---
 
-**Last Updated:** 2026-06-04 | **Version:** 0.3.0-alpha | **Status:** ✅ Functional
+**Last Updated:** 2026-07-14 | **Version:** v0.3.0-alpha-installer.2 | **Status:** Prerelease
 
 <p align="center">
   <strong>Built with 🧠 by Claude AI and ❤️ by The404Studios</strong>

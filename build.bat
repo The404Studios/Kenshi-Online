@@ -30,9 +30,21 @@ if exist "%ProgramFiles%\Microsoft Visual Studio\2022" (
     goto :fail
 )
 
-:: ── Check submodules ──
-if not exist "lib\enet\CMakeLists.txt" (
-    echo [WARN] Submodules not initialized. Running git submodule update...
+:: ── Check required submodules ──
+set "NEED_SUBMODULES="
+if not exist "lib\enet\CMakeLists.txt" set "NEED_SUBMODULES=1"
+if not exist "lib\minhook\CMakeLists.txt" set "NEED_SUBMODULES=1"
+if not exist "lib\spdlog\CMakeLists.txt" set "NEED_SUBMODULES=1"
+if not exist "lib\json\CMakeLists.txt" set "NEED_SUBMODULES=1"
+
+if defined NEED_SUBMODULES (
+    echo [WARN] Required submodules are not initialized. Running git submodule update...
+    where git >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Git not found in PATH.
+        echo         Install Git or clone the repository with --recursive.
+        goto :fail
+    )
     git submodule update --init --recursive
     if errorlevel 1 (
         echo [ERROR] Failed to initialize submodules.
@@ -40,6 +52,25 @@ if not exist "lib\enet\CMakeLists.txt" (
         goto :fail
     )
 )
+
+set "MISSING_DEPENDENCIES="
+if not exist "lib\enet\CMakeLists.txt" (
+    echo [ERROR] Missing dependency: lib\enet
+    set "MISSING_DEPENDENCIES=1"
+)
+if not exist "lib\minhook\CMakeLists.txt" (
+    echo [ERROR] Missing dependency: lib\minhook
+    set "MISSING_DEPENDENCIES=1"
+)
+if not exist "lib\spdlog\CMakeLists.txt" (
+    echo [ERROR] Missing dependency: lib\spdlog
+    set "MISSING_DEPENDENCIES=1"
+)
+if not exist "lib\json\CMakeLists.txt" (
+    echo [ERROR] Missing dependency: lib\json
+    set "MISSING_DEPENDENCIES=1"
+)
+if defined MISSING_DEPENDENCIES goto :fail
 
 :: ── Configure ──
 echo.

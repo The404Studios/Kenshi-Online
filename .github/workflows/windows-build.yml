@@ -1,0 +1,113 @@
+name: Windows Release build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: windows-2022
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out pinned dependencies
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Verify clean checkout and submodule revisions
+        shell: pwsh
+        run: |
+          if (Test-Path build) {
+            throw "The checkout unexpectedly contains a pre-existing build directory."
+          }
+
+          $submodules = @(
+            "lib/enet",
+            "lib/imgui",
+            "lib/json",
+            "lib/minhook",
+            "lib/spdlog"
+          )
+
+          foreach ($path in $submodules) {
+            $entry = git ls-tree HEAD -- $path
+            if ($LASTEXITCODE -ne 0 -or -not $entry) {
+              throw "Missing gitlink for $path."
+            }
+
+            $fields = $entry -split '\s+'
+            if ($fields[1] -ne "commit") {
+              throw "$path is not recorded as a gitlink."
+            }
+
+            $expected = $fields[2]
+            $actual = git -C $path rev-parse HEAD
+            if ($LASTEXITCODE -ne 0) {
+              throw "Unable to read the checked out revision for $path."
+            }
+
+            if ($actual.Trim() -ne $expected) {
+              throw "$path is at $actual instead of pinned revision $expected."
+            }
+
+            Write-Host "$path -> $expected"
+          }
+
+      - name: Configure Release build
+        run: cmake --preset x64-release
+
+      - name: Build Release targets
+        run: cmake --build --preset release --parallel
+
+      - name: Verify required build outputs
+        shell: pwsh
+        run: |
+          $required = @(
+            "build/lib/Release/enet.lib",
+            "build/lib/Release/minhook.x64.lib",
+            "build/bin/Release/KenshiMP.Core.dll",
+            "build/bin/Release/KenshiMP.Server.exe",
+            "build/bin/Release/KenshiMP.Injector.exe",
+            "build/bin/Release/KenshiMP.UnitTest.exe"
+          )
+
+          $missing = $required | Where-Object { -not (Test-Path $_ -PathType Leaf) }
+          if ($missing) {
+            $missing | ForEach-Object { Write-Error "Missing build output: $_" }
+            throw "The Release build did not produce every required output."
+          }
+
+          Get-Item $required | Select-Object FullName, Length
+
+      - name: Run unit tests
+        run: .\build\bin\Release\KenshiMP.UnitTest.exe
+
+      - name: Upload diagnostic build outputs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            build/bin/Release/KenshiMP.Core.dll
+            build/bin/Release/KenshiMP.Core.map
+            build/bin/Release/KenshiMP.Core.pdb
+            build/bin/Release/KenshiMP.Server.exe
+            build/bin/Release/KenshiMP.Server.pdb
+            build/bin/Release/KenshiMP.Injector.exe
+            build/bin/Release/KenshiMP.Injector.pdb
+            build/bin/Release/KenshiMP.UnitTest.exe
+            build/bin/Release/KenshiMP.UnitTest.pdb
