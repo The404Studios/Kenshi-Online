@@ -1,1 +1,1 @@
-$(type KenshiMP.Core\core.cpp)
+rŠÞo®-Æ
