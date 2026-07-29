@@ -1,1 +1,1 @@
-$(git show HEAD:KenshiMP.Core/core.cpp)
+$(type KenshiMP.Core\core.cpp)
