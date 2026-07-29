@@ -1,1 +1,28 @@
-$(type .gitignore)
+# Build artifacts
+build/
+bin/
+lib/Release/
+lib/Debug/
+*.user
+*.suo
+*.opensdf
+*.sdf
+*.vcxproj.filters
+.vs/
+
+# Temp files
+*.log
+*.tmp
+*.bak
+*~
+*.json
+
+# AI session files
+AGENTS.md
+
+# Workflow scripts
+.deepx/
+
+# OS files
+.DS_Store
+Thumbs.db
