@@ -1,0 +1,1 @@
+$(git show HEAD:docs/design-combat-health-poll-2026-07-29.md)
