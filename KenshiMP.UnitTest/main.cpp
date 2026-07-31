@@ -15,6 +15,7 @@
 #include "game/game_types.h"
 #include "sync/entity_registry.h"
 #include "sync/interpolation.h"
+#include "sync/authority_validator.h"
 #include "kmp/types.h"
 #include "kmp/constants.h"
 #include "kmp/protocol.h"
@@ -743,6 +744,45 @@ static void Test_InventorySnapshotRoundTrip() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  TEST 18: Prediction reconciliation decision — ShouldSnapToServer
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_ReconcileDecision() {
+    printf("\n=== Test: Reconcile Decision (ShouldSnapToServer) ===\n");
+
+    constexpr float kThreshold = 5.0f;
+
+    // Identical positions → no snap
+    kmp::Vec3 a(10.f, 20.f, 30.f);
+    TestAssert(!kmp::AuthorityValidator::ShouldSnapToServer(a, a, kThreshold),
+               "Identical positions → no snap");
+
+    // Small divergence (within threshold) → tolerate (no snap)
+    kmp::Vec3 near1(10.f, 20.f, 30.f);
+    kmp::Vec3 near2(12.f, 20.f, 30.f); // 2m away
+    TestAssert(!kmp::AuthorityValidator::ShouldSnapToServer(near1, near2, kThreshold),
+               "2m divergence < 5m threshold → no snap");
+
+    // Exactly at threshold → no snap (strict >)
+    kmp::Vec3 edge1(0.f, 0.f, 0.f);
+    kmp::Vec3 edge2(5.f, 0.f, 0.f); // exactly 5m
+    TestAssert(!kmp::AuthorityValidator::ShouldSnapToServer(edge1, edge2, kThreshold),
+               "Exact threshold → no snap (strict)");
+
+    // Large divergence → snap
+    kmp::Vec3 far1(0.f, 0.f, 0.f);
+    kmp::Vec3 far2(50.f, 0.f, 0.f); // 50m away
+    TestAssert(kmp::AuthorityValidator::ShouldSnapToServer(far1, far2, kThreshold),
+               "50m divergence > 5m threshold → snap");
+
+    // 3D divergence
+    kmp::Vec3 far3(10.f, 10.f, 10.f);
+    TestAssert(kmp::AuthorityValidator::ShouldSnapToServer(far1, far3, kThreshold),
+               "3D divergence → snap");
+
+    printf("    Reconcile decision: snap/tolerate logic verified\n");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  MAIN
 // ═══════════════════════════════════════════════════════════════════════════
 int main() {
@@ -766,6 +806,7 @@ int main() {
     Test_MultiPlayerSession();
     Test_LimbHealthRoundTrip();
     Test_InventorySnapshotRoundTrip();
+    Test_ReconcileDecision();
     TestHostAssignmentProtocol();
     TestLoopbackDetection();
 

@@ -881,9 +881,30 @@ private:
                     break;
 
                 case SnapshotDecision::ReconcileLocal:
-                    // TODO: Implement prediction reconciliation (Phase 7)
-                    // For now, skip to prevent rubber-banding
-                    reconciledLocal++;
+                    // Phase 7: Prediction reconciliation for own entities.
+                    // The server echoes the authoritative position of OUR entity.
+                    // If local position has diverged beyond the threshold, snap to
+                    // server authority (prevents divergence). Small deltas are
+                    // tolerated — local player input is fresher than the echo.
+                    {
+                        void* gameObj = registry.GetGameObject(pos.entityId);
+                        if (gameObj) {
+                            Vec3 serverPos(pos.posX, pos.posY, pos.posZ);
+                            __try {
+                                game::CharacterAccessor accessor(gameObj);
+                                Vec3 localPos = accessor.GetPosition();
+                                if (AuthorityValidator::ShouldSnapToServer(
+                                        localPos, serverPos, KMP_RECONCILE_SNAP_DIST)) {
+                                    accessor.WritePosition(serverPos);
+                                    spdlog::debug("ReconcileLocal: entity {} snapped to server ({:.1f}m divergence)",
+                                                  pos.entityId, localPos.DistanceTo(serverPos));
+                                }
+                            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                                // Game object freed or invalid — ignore
+                            }
+                        }
+                        reconciledLocal++;
+                    }
                     break;
 
                 case SnapshotDecision::QueuePendingSpawn:

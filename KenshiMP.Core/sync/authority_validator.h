@@ -25,6 +25,12 @@ public:
         uint32_t myPlayerId,
         EntityRegistry& registry
     );
+
+    // Prediction reconciliation decision (Phase 7):
+    // Returns true when local position has diverged from the server echo by
+    // more than `threshold` units — caller should snap to server authority.
+    // Small deltas are tolerated (local player input is authoritative).
+    static bool ShouldSnapToServer(const Vec3& localPos, const Vec3& serverPos, float threshold);
 };
 
 } // namespace kmp
