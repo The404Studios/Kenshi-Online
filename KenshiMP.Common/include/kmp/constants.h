@@ -51,6 +51,9 @@ constexpr float KMP_AUTHORITY_HYSTERESIS = 64.0f;  // Units before zone authorit
 constexpr float KMP_POS_CHANGE_THRESHOLD = 0.1f;   // Minimum movement to send update
 constexpr float KMP_ROT_CHANGE_THRESHOLD = 0.01f;  // Minimum rotation change
 
+// Health polling (combat sync)
+constexpr int KMP_HEALTH_POLL_INTERVAL_MS = 200;  // 5 Hz — visible health bar changes, low bandwidth
+
 // Entity limits
 constexpr int KMP_MAX_ENTITIES_PER_ZONE  = 512;
 constexpr int KMP_MAX_SYNC_ENTITIES      = 2048;   // Total synced entities per client

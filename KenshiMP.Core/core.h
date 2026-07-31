@@ -262,6 +262,7 @@ private:
     void ApplyRemotePositions();
     void ApplyRemotePositionsDirect(); // Direct interpolation → game character (no double-buffer)
     void PollLocalPositions();
+    void PollLocalHealth();
     void SendCachedPackets();
     void HandleSpawnQueue();
     void HandleHostTeleport();
@@ -322,6 +323,9 @@ private:
     // Host teleport timer (member instead of static so it resets on reconnect)
     std::chrono::steady_clock::time_point m_hostTpTimer;
     bool              m_hostTpTimerStarted = false;
+
+    // Health polling throttle (combat health sync — sends C2S_LimbHealth at ~5Hz)
+    std::chrono::steady_clock::time_point m_lastHealthPollTime{};
 
     std::thread m_networkThread;
 

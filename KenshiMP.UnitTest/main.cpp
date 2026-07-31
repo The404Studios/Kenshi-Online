@@ -650,6 +650,41 @@ static bool TestOnly_IsLoopbackHost(uint32_t hostNetOrder) {
     return hostNetOrder == 0x0100007Fu;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 16: MsgLimbHealth packet round-trip — 7 limb health floats
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_LimbHealthRoundTrip() {
+    printf("\n=== Test: MsgLimbHealth Round-Trip ===\n");
+
+    kmp::PacketWriter writer;
+    writer.WriteHeader(kmp::MessageType::C2S_LimbHealth);
+
+    kmp::MsgLimbHealth msg{};
+    msg.entityId = 42;
+    msg.health[0] = 100.f;  // Head
+    msg.health[1] = 80.f;   // Chest
+    msg.health[2] = 90.f;   // Stomach
+    msg.health[3] = 70.f;   // LeftArm
+    msg.health[4] = 65.f;   // RightArm
+    msg.health[5] = 85.f;   // LeftLeg
+    msg.health[6] = 75.f;   // RightLeg
+    writer.WriteRaw(&msg, sizeof(msg));
+
+    kmp::PacketReader reader(writer.Data(), writer.Size());
+    kmp::PacketHeader header;
+    TestAssert(reader.ReadHeader(header), "Reads header");
+    TestAssert(header.type == kmp::MessageType::C2S_LimbHealth, "Message type is C2S_LimbHealth");
+
+    kmp::MsgLimbHealth readMsg{};
+    TestAssert(reader.ReadRaw(&readMsg, sizeof(readMsg)), "Reads MsgLimbHealth payload");
+    TestAssert(readMsg.entityId == 42, "Entity ID matches");
+    TestAssert(FloatEq(readMsg.health[0], 100.f), "Health[Head]=100");
+    TestAssert(FloatEq(readMsg.health[1], 80.f), "Health[Chest]=80");
+    TestAssert(FloatEq(readMsg.health[6], 75.f), "Health[RightLeg]=75");
+
+    printf("    LimbHealth round-trip: entity=%u health[0..6] verified\n", readMsg.entityId);
+}
+
 static void TestLoopbackDetection() {
     printf("\nLoopback detection tests:\n");
 
@@ -689,6 +724,7 @@ int main() {
     Test_SpawnPacketRoundTrip();
     Test_FullSpawnFlow();
     Test_MultiPlayerSession();
+    Test_LimbHealthRoundTrip();
     TestHostAssignmentProtocol();
     TestLoopbackDetection();
 
