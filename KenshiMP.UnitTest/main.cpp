@@ -703,6 +703,46 @@ static void TestLoopbackDetection() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  TEST 17: MsgInventorySnapshot packet round-trip — entity + N items
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_InventorySnapshotRoundTrip() {
+    printf("\n=== Test: MsgInventorySnapshot Round-Trip ===\n");
+
+    kmp::PacketWriter writer;
+    writer.WriteHeader(kmp::MessageType::C2S_InventorySnapshot);
+
+    kmp::MsgInventorySnapshot msg{};
+    msg.entityId = 7;
+    msg.itemCount = 3;
+    writer.WriteRaw(&msg, sizeof(msg));
+
+    const kmp::MsgInventorySnapshotItem items[3] = {
+        {1001, 2},
+        {1002, 1},
+        {1003, 5},
+    };
+    writer.WriteRaw(items, sizeof(items));
+
+    kmp::PacketReader reader(writer.Data(), writer.Size());
+    kmp::PacketHeader header;
+    TestAssert(reader.ReadHeader(header), "Reads header");
+    TestAssert(header.type == kmp::MessageType::C2S_InventorySnapshot, "Message type is C2S_InventorySnapshot");
+
+    kmp::MsgInventorySnapshot readMsg{};
+    TestAssert(reader.ReadRaw(&readMsg, sizeof(readMsg)), "Reads MsgInventorySnapshot header");
+    TestAssert(readMsg.entityId == 7, "Entity ID matches");
+    TestAssert(readMsg.itemCount == 3, "Item count matches");
+
+    kmp::MsgInventorySnapshotItem readItems[3]{};
+    TestAssert(reader.ReadRaw(readItems, sizeof(readItems)), "Reads item array");
+    TestAssert(readItems[0].itemTemplateId == 1001 && readItems[0].quantity == 2, "Item[0] matches");
+    TestAssert(readItems[1].itemTemplateId == 1002 && readItems[1].quantity == 1, "Item[1] matches");
+    TestAssert(readItems[2].itemTemplateId == 1003 && readItems[2].quantity == 5, "Item[2] matches");
+
+    printf("    Snapshot round-trip: entity=%u items=%u verified\n", readMsg.entityId, readMsg.itemCount);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  MAIN
 // ═══════════════════════════════════════════════════════════════════════════
 int main() {
@@ -725,6 +765,7 @@ int main() {
     Test_FullSpawnFlow();
     Test_MultiPlayerSession();
     Test_LimbHealthRoundTrip();
+    Test_InventorySnapshotRoundTrip();
     TestHostAssignmentProtocol();
     TestLoopbackDetection();
 

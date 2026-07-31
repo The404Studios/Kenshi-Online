@@ -263,6 +263,7 @@ private:
     void ApplyRemotePositionsDirect(); // Direct interpolation → game character (no double-buffer)
     void PollLocalPositions();
     void PollLocalHealth();
+    void PollLocalInventory();
     void SendCachedPackets();
     void HandleSpawnQueue();
     void HandleHostTeleport();
@@ -326,6 +327,9 @@ private:
 
     // Health polling throttle (combat health sync — sends C2S_LimbHealth at ~5Hz)
     std::chrono::steady_clock::time_point m_lastHealthPollTime{};
+
+    // Inventory snapshot throttle (full inventory sync — sends C2S_InventorySnapshot at ~0.1Hz)
+    std::chrono::steady_clock::time_point m_lastInventoryPollTime{};
 
     std::thread m_networkThread;
 

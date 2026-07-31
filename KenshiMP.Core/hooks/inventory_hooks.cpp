@@ -71,6 +71,19 @@ static uint32_t TryGetItemTemplateId(void* item) {
     return 0;
 }
 
+// SEH helper: read owner character position into drop message (avoids C2712)
+static void SEH_FillDropPosition(void* owner, MsgItemDrop& msg) {
+    __try {
+        game::CharacterAccessor accessor(owner);
+        Vec3 pos = accessor.GetPosition();
+        msg.posX = pos.x;
+        msg.posY = pos.y;
+        msg.posZ = pos.z;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        msg.posX = msg.posY = msg.posZ = 0.f;
+    }
+}
+
 // ── Hooks ──
 
 static void __fastcall Hook_ItemPickup(void* inventory, void* item, int quantity) {
@@ -148,7 +161,8 @@ static void __fastcall Hook_ItemDrop(void* inventory, void* item) {
     MsgItemDrop msg{};
     msg.entityId = netId;
     msg.itemTemplateId = TryGetItemTemplateId(item);
-    msg.posX = msg.posY = msg.posZ = 0.f;
+    // Read owner character position so remote clients see where the drop landed
+    SEH_FillDropPosition(owner, msg);
     writer.WriteRaw(&msg, sizeof(msg));
     core.GetClient().SendReliable(writer.Data(), writer.Size());
 

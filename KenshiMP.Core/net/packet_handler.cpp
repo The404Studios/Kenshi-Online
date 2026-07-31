@@ -314,6 +314,9 @@ public:
         case MessageType::S2C_InventoryUpdate:
             HandleInventoryUpdate(reader);
             break;
+        case MessageType::S2C_InventorySnapshot:
+            HandleInventorySnapshot(reader);
+            break;
 
         // ── Squad ──
         case MessageType::S2C_SquadCreated:
@@ -1578,6 +1581,63 @@ private:
             // Remove item
             inventory.RemoveItem(msg.itemTemplateId, msg.quantity);
         }
+    }
+
+    // ── SEH helper: apply a full inventory snapshot (clear + re-add) ──
+    // Separate function avoids C2712 (SEH + C++ object destructors in same scope).
+    static void SEH_ApplyInventorySnapshot(void* gameObj, const std::vector<MsgInventorySnapshotItem>& items) {
+        __try {
+            game::CharacterAccessor accessor(gameObj);
+            uintptr_t invPtr = accessor.GetInventoryPtr();
+            if (invPtr == 0) return;
+            game::InventoryAccessor inventory(invPtr);
+
+            auto& itemOffsets = game::GetOffsets().item;
+            // Zero out all existing stacks of matching template IDs
+            if (itemOffsets.templateId >= 0) {
+                int count = inventory.GetItemCount();
+                for (int i = 0; i < count; i++) {
+                    uintptr_t itemPtr = inventory.GetItem(i);
+                    if (itemPtr == 0) continue;
+                    uint32_t tid = 0;
+                    if (Memory::Read(itemPtr + itemOffsets.templateId, tid) && tid != 0) {
+                        inventory.RemoveItem(tid, 9999);
+                    }
+                }
+            }
+            // Apply snapshot stacks
+            for (const auto& it : items) {
+                inventory.AddItem(it.itemTemplateId, it.quantity);
+            }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            // Best-effort — next snapshot cycle will retry
+        }
+    }
+
+    static void HandleInventorySnapshot(PacketReader& reader) {
+        MsgInventorySnapshot msg;
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+        if (msg.itemCount > KMP_INVENTORY_SNAPSHOT_MAX_ITEMS) {
+            spdlog::warn("PacketHandler: InventorySnapshot entity {} itemCount {} too large",
+                         msg.entityId, msg.itemCount);
+            return;
+        }
+
+        std::vector<MsgInventorySnapshotItem> items(msg.itemCount);
+        if (msg.itemCount > 0 &&
+            !reader.ReadRaw(items.data(), items.size() * sizeof(MsgInventorySnapshotItem))) {
+            return;
+        }
+
+        spdlog::debug("PacketHandler: InventorySnapshot entity={} items={}",
+                      msg.entityId, msg.itemCount);
+
+        auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
+        void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
+        if (!gameObj) return;
+
+        SEH_ApplyInventorySnapshot(gameObj, items);
     }
 
     static void HandleTradeResult(PacketReader& reader) {

@@ -54,6 +54,10 @@ constexpr float KMP_ROT_CHANGE_THRESHOLD = 0.01f;  // Minimum rotation change
 // Health polling (combat sync)
 constexpr int KMP_HEALTH_POLL_INTERVAL_MS = 200;  // 5 Hz — visible health bar changes, low bandwidth
 
+// Inventory snapshot (full inventory reconciliation)
+constexpr int KMP_INVENTORY_SNAPSHOT_INTERVAL_SEC = 10;  // 0.1 Hz — slow reconciliation channel
+constexpr int KMP_INVENTORY_SNAPSHOT_MAX_ITEMS    = 512; // Sanity cap per snapshot
+
 // Entity limits
 constexpr int KMP_MAX_ENTITIES_PER_ZONE  = 512;
 constexpr int KMP_MAX_SYNC_ENTITIES      = 2048;   // Total synced entities per client
