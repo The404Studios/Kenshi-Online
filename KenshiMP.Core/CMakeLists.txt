@@ -44,8 +44,6 @@ add_library(KenshiMP.Core SHARED
     # Sync
     sync/entity_registry.cpp
     sync/interpolation.cpp
-    sync/ownership.cpp
-    sync/zone_interest.cpp
     sync/entity_resolver.cpp
     sync/zone_engine.cpp
     sync/player_engine.cpp
