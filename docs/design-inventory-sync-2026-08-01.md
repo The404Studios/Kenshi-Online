@@ -1,7 +1,7 @@
 # Design: Inventory Sync Phase 1
 
 **Date:** 2026-08-01
-**Status:** DRAFT — awaiting approval
+**Status:** IMPLEMENTED (2026-08-01, commit 1617d0d on feat/inventory-sync)
 **Related:** Phase 3 (Inventory Sync), CONTRIBUTING High Priority #3
 
 ---
