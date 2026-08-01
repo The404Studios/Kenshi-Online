@@ -18,6 +18,7 @@ Current inventory sync only covers incremental add/remove events (via `C2S_ItemP
 - NOT adding per-item instance IDs (requires message format change across all clients — architecture-level, deferred)
 - NOT adding server-side inventory state storage (transparent relay is sufficient for current scope)
 - NOT handling action=2 (modify count) — add/remove already covers stack growth via `InventoryAccessor::AddItem`
+- **KNOWN LIMITATION**: `InventoryAccessor::AddItem` can only adjust quantity of EXISTING stacks — it cannot create new item entries (game allocator required). Snapshot sync therefore reconciles *quantities of already-present items*; items the receiver never had will not appear. Full item creation is a separate capability (game allocator integration), tracked as follow-up.
 
 ## Design
 

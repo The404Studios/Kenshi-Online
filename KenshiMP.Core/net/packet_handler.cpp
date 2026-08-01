@@ -883,25 +883,36 @@ private:
                 case SnapshotDecision::ReconcileLocal:
                     // Phase 7: Prediction reconciliation for own entities.
                     // The server echoes the authoritative position of OUR entity.
-                    // If local position has diverged beyond the threshold, snap to
-                    // server authority (prevents divergence). Small deltas are
+                    // If local position has diverged beyond the threshold (or is
+                    // corrupted NaN), snap to server authority. Small deltas are
                     // tolerated — local player input is fresher than the echo.
+                    // Game memory write is ENQUEUED to the game thread
+                    // (network thread must never write game memory).
                     {
                         void* gameObj = registry.GetGameObject(pos.entityId);
                         if (gameObj) {
                             Vec3 serverPos(pos.posX, pos.posY, pos.posZ);
-                            __try {
-                                game::CharacterAccessor accessor(gameObj);
-                                Vec3 localPos = accessor.GetPosition();
-                                if (AuthorityValidator::ShouldSnapToServer(
-                                        localPos, serverPos, KMP_RECONCILE_SNAP_DIST)) {
-                                    accessor.WritePosition(serverPos);
-                                    spdlog::debug("ReconcileLocal: entity {} snapped to server ({:.1f}m divergence)",
-                                                  pos.entityId, localPos.DistanceTo(serverPos));
+                            EntityID echoEntity = pos.entityId;
+                            core.GetCommandQueue().Push({[gameObj, serverPos, echoEntity]() {
+                                auto& core = Core::Get();
+                                if (!core.IsGameLoaded()) return;
+                                __try {
+                                    game::CharacterAccessor accessor(gameObj);
+                                    Vec3 localPos = accessor.GetPosition();
+                                    bool localBad =
+                                        std::isnan(localPos.x) || std::isnan(localPos.y) || std::isnan(localPos.z) ||
+                                        std::isinf(localPos.x) || std::isinf(localPos.y) || std::isinf(localPos.z);
+                                    // Snap on divergence OR corrupted local position (self-heal)
+                                    if (localBad || AuthorityValidator::ShouldSnapToServer(
+                                            localPos, serverPos, KMP_RECONCILE_SNAP_DIST)) {
+                                        accessor.WritePosition(serverPos);
+                                        spdlog::debug("ReconcileLocal: entity {} snapped to server ({:.1f}m divergence)",
+                                                      echoEntity, localPos.DistanceTo(serverPos));
+                                    }
+                                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                                    // Game object freed or invalid — ignore
                                 }
-                            } __except (EXCEPTION_EXECUTE_HANDLER) {
-                                // Game object freed or invalid — ignore
-                            }
+                            }});
                         }
                         reconciledLocal++;
                     }
@@ -1614,7 +1625,8 @@ private:
             game::InventoryAccessor inventory(invPtr);
 
             auto& itemOffsets = game::GetOffsets().item;
-            // Zero out all existing stacks of matching template IDs
+            // Zero out all existing stacks (set quantity to 0; the item entry
+            // itself remains in the list — AddItem re-uses it for re-stacking)
             if (itemOffsets.templateId >= 0) {
                 int count = inventory.GetItemCount();
                 for (int i = 0; i < count; i++) {
@@ -1622,7 +1634,7 @@ private:
                     if (itemPtr == 0) continue;
                     uint32_t tid = 0;
                     if (Memory::Read(itemPtr + itemOffsets.templateId, tid) && tid != 0) {
-                        inventory.RemoveItem(tid, 9999);
+                        inventory.RemoveItem(tid, KMP_INVENTORY_REMOVE_ALL_QTY);
                     }
                 }
             }
@@ -1658,7 +1670,13 @@ private:
         void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
         if (!gameObj) return;
 
-        SEH_ApplyInventorySnapshot(gameObj, items);
+        // Game memory writes are ENQUEUED to the game thread (network thread
+        // must never write game memory — see GameCommandQueue contract).
+        core.GetCommandQueue().Push({[gameObj, items = std::move(items)]() {
+            auto& core = Core::Get();
+            if (!core.IsGameLoaded()) return;
+            SEH_ApplyInventorySnapshot(gameObj, items);
+        }});
     }
 
     static void HandleTradeResult(PacketReader& reader) {

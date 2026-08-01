@@ -3203,9 +3203,8 @@ void Core::PollLocalInventory() {
 
         std::vector<MsgInventorySnapshotItem> items;
         if (!SEH_ReadLocalInventory(gameObj, items)) continue;
-
-        // Guard against absurd item counts (corrupt memory)
-        if (items.size() > KMP_INVENTORY_SNAPSHOT_MAX_ITEMS) continue;
+        // Note: item count is already capped at KMP_INVENTORY_SNAPSHOT_MAX_ITEMS
+        // inside SEH_ReadLocalInventory, so no re-check needed here.
 
         MsgInventorySnapshot msg{};
         msg.entityId = netId;

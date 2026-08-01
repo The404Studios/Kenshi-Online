@@ -1016,12 +1016,13 @@ void GameServer::BroadcastPositions() {
         PacketWriter writer;
         writer.WriteHeader(MessageType::S2C_PositionUpdate);
 
-        // Collect all non-owned entities (zone filtering disabled for small
+        // Collect all entities (zone filtering disabled for small
         // player counts — 16-slot server doesn't need spatial culling, and
         // zone mismatch was preventing players from ever seeing each other).
+        // NOTE: own entities are INCLUDED (echo) so clients can run
+        // prediction reconciliation (ReconcileLocal) against server authority.
         std::vector<const ServerEntity*> nearby;
         for (auto& [entityId, entity] : m_entities) {
-            if (entity.owner == playerId) continue; // Don't send own entities back
             nearby.push_back(&entity);
         }
 
