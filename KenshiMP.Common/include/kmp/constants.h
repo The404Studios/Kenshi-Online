@@ -57,6 +57,7 @@ constexpr int KMP_HEALTH_POLL_INTERVAL_MS = 200;  // 5 Hz — visible health bar
 // Inventory snapshot (full inventory reconciliation)
 constexpr int KMP_INVENTORY_SNAPSHOT_INTERVAL_SEC = 10;  // 0.1 Hz — slow reconciliation channel
 constexpr int KMP_INVENTORY_SNAPSHOT_MAX_ITEMS    = 512; // Sanity cap per snapshot
+constexpr int KMP_INVENTORY_REMOVE_ALL_QTY        = 9999; // "Remove entire stack" sentinel for InventoryAccessor
 
 // Client prediction reconciliation
 constexpr float KMP_RECONCILE_SNAP_DIST = 5.0f;  // Divergence beyond this snaps local to server authority
