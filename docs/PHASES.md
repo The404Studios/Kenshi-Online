@@ -108,8 +108,10 @@ Each phase lists status: WORKING, PARTIAL, or DEFERRED.
 | Apply positions to game objects | core.cpp ApplyRemotePositions | WORKING |
 | WritePosition via memory | game_types.h CharacterAccessor | WORKING |
 | Zone transitions tracked | server.cpp HandlePositionUpdate | WORKING |
+| Prediction reconciliation (own entities) | authority_validator.cpp ShouldSnapToServer | WORKING (2026-08-01) |
 
 **Flow:** Local read → packet → server → zone filter → broadcast → interpolation → WritePosition → smooth movement
+**Phase 7 reconciliation:** server echo of own entity → compare vs local → snap only if divergence > 5m (KMP_RECONCILE_SNAP_DIST)
 
 ---
 
@@ -146,8 +148,11 @@ Each phase lists status: WORKING, PARTIAL, or DEFERRED.
 | HandleTradeResult | packet_handler.cpp | WORKING |
 | Inventory hooks (pickup/drop/equip) | inventory_hooks.cpp | WORKING |
 | GameInventory accessor | game/game_inventory.h | WORKING |
+| Full inventory snapshot (0x66/0x67) | core.cpp PollLocalInventory + server relay | WORKING (2026-08-01) |
+| Drop position from character | inventory_hooks.cpp SEH_FillDropPosition | WORKING (2026-08-01) |
 
 **Flow:** Equip/unequip → hook → C2S → server → S2C → write to remote character's inventory
+**Snapshot:** local inventory → C2S_InventorySnapshot (10s) → server validates owner → S2C relay → clear + re-apply remote
 
 ---
 

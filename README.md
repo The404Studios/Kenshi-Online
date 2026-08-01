@@ -36,7 +36,8 @@ KenshiMP.Injector.exe
 
 ✅ **2-16 player co-op** - Connect to dedicated server  
 ✅ **Real-time position sync** - See other players move  
-✅ **Combat sync** - Death/KO events synchronized  
+✅ **Combat sync** - Death/KO events + live health bars (limb health polling)  
+✅ **Inventory sync** - Pickup/drop events + full inventory snapshots  
 ✅ **Building/Squad/Faction sync** - World state shared  
 ✅ **Authority validation** - Prevents cheating (Phases 1-6 complete)  
 ✅ **Late join fixed** - Players joining during loading now appear correctly  

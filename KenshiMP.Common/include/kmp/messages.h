@@ -237,6 +237,17 @@ struct MsgInventoryUpdate {
     int32_t  quantity;
 };
 
+struct MsgInventorySnapshotItem {
+    uint32_t itemTemplateId;
+    int32_t  quantity;
+};
+
+struct MsgInventorySnapshot {
+    EntityID entityId;
+    uint16_t itemCount;
+    // Followed by itemCount × MsgInventorySnapshotItem
+};
+
 // ── Squad Messages ──
 
 struct MsgSquadCreate {

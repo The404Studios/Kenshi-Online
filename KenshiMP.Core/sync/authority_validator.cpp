@@ -62,4 +62,8 @@ SnapshotDecision AuthorityValidator::ValidateInboundSnapshot(
     return SnapshotDecision::RejectUnknown;
 }
 
+bool AuthorityValidator::ShouldSnapToServer(const Vec3& localPos, const Vec3& serverPos, float threshold) {
+    return localPos.DistanceTo(serverPos) > threshold;
+}
+
 } // namespace kmp
