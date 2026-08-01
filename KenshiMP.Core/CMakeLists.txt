@@ -44,14 +44,15 @@ add_library(KenshiMP.Core SHARED
     # Sync
     sync/entity_registry.cpp
     sync/interpolation.cpp
-    sync/ownership.cpp
-    sync/zone_interest.cpp
     sync/entity_resolver.cpp
     sync/zone_engine.cpp
     sync/player_engine.cpp
     sync/sync_orchestrator.cpp
     sync/pipeline_orchestrator.cpp
     sync/sync_facilitator.cpp
+    sync/pending_snapshot_queue.cpp
+    sync/authority_validator.cpp
+    sync/deferred_spawn_queue.cpp
     # SDK (polling-based game state + visual proxy)
     sdk/kenshi_sdk.cpp
     sdk/visual_proxy.cpp

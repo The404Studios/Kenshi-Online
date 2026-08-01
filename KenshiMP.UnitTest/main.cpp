@@ -15,6 +15,7 @@
 #include "game/game_types.h"
 #include "sync/entity_registry.h"
 #include "sync/interpolation.h"
+#include "sync/authority_validator.h"
 #include "kmp/types.h"
 #include "kmp/constants.h"
 #include "kmp/protocol.h"
@@ -650,6 +651,41 @@ static bool TestOnly_IsLoopbackHost(uint32_t hostNetOrder) {
     return hostNetOrder == 0x0100007Fu;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 16: MsgLimbHealth packet round-trip — 7 limb health floats
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_LimbHealthRoundTrip() {
+    printf("\n=== Test: MsgLimbHealth Round-Trip ===\n");
+
+    kmp::PacketWriter writer;
+    writer.WriteHeader(kmp::MessageType::C2S_LimbHealth);
+
+    kmp::MsgLimbHealth msg{};
+    msg.entityId = 42;
+    msg.health[0] = 100.f;  // Head
+    msg.health[1] = 80.f;   // Chest
+    msg.health[2] = 90.f;   // Stomach
+    msg.health[3] = 70.f;   // LeftArm
+    msg.health[4] = 65.f;   // RightArm
+    msg.health[5] = 85.f;   // LeftLeg
+    msg.health[6] = 75.f;   // RightLeg
+    writer.WriteRaw(&msg, sizeof(msg));
+
+    kmp::PacketReader reader(writer.Data(), writer.Size());
+    kmp::PacketHeader header;
+    TestAssert(reader.ReadHeader(header), "Reads header");
+    TestAssert(header.type == kmp::MessageType::C2S_LimbHealth, "Message type is C2S_LimbHealth");
+
+    kmp::MsgLimbHealth readMsg{};
+    TestAssert(reader.ReadRaw(&readMsg, sizeof(readMsg)), "Reads MsgLimbHealth payload");
+    TestAssert(readMsg.entityId == 42, "Entity ID matches");
+    TestAssert(FloatEq(readMsg.health[0], 100.f), "Health[Head]=100");
+    TestAssert(FloatEq(readMsg.health[1], 80.f), "Health[Chest]=80");
+    TestAssert(FloatEq(readMsg.health[6], 75.f), "Health[RightLeg]=75");
+
+    printf("    LimbHealth round-trip: entity=%u health[0..6] verified\n", readMsg.entityId);
+}
+
 static void TestLoopbackDetection() {
     printf("\nLoopback detection tests:\n");
 
@@ -665,6 +701,176 @@ static void TestLoopbackDetection() {
     // 127.0.0.2 — different loopback-range IP, should still be non-match for our exact check
     // (spec uses exact 127.0.0.1 match; other loopback IPs are rare in practice)
     TestAssert(!TestOnly_IsLoopbackHost(0x0200007Fu), "127.0.0.2 not matched (exact 127.0.0.1 only)");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 17: MsgInventorySnapshot packet round-trip — entity + N items
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_InventorySnapshotRoundTrip() {
+    printf("\n=== Test: MsgInventorySnapshot Round-Trip ===\n");
+
+    kmp::PacketWriter writer;
+    writer.WriteHeader(kmp::MessageType::C2S_InventorySnapshot);
+
+    kmp::MsgInventorySnapshot msg{};
+    msg.entityId = 7;
+    msg.itemCount = 3;
+    writer.WriteRaw(&msg, sizeof(msg));
+
+    const kmp::MsgInventorySnapshotItem items[3] = {
+        {1001, 2},
+        {1002, 1},
+        {1003, 5},
+    };
+    writer.WriteRaw(items, sizeof(items));
+
+    kmp::PacketReader reader(writer.Data(), writer.Size());
+    kmp::PacketHeader header;
+    TestAssert(reader.ReadHeader(header), "Reads header");
+    TestAssert(header.type == kmp::MessageType::C2S_InventorySnapshot, "Message type is C2S_InventorySnapshot");
+
+    kmp::MsgInventorySnapshot readMsg{};
+    TestAssert(reader.ReadRaw(&readMsg, sizeof(readMsg)), "Reads MsgInventorySnapshot header");
+    TestAssert(readMsg.entityId == 7, "Entity ID matches");
+    TestAssert(readMsg.itemCount == 3, "Item count matches");
+
+    kmp::MsgInventorySnapshotItem readItems[3]{};
+    TestAssert(reader.ReadRaw(readItems, sizeof(readItems)), "Reads item array");
+    TestAssert(readItems[0].itemTemplateId == 1001 && readItems[0].quantity == 2, "Item[0] matches");
+    TestAssert(readItems[1].itemTemplateId == 1002 && readItems[1].quantity == 1, "Item[1] matches");
+    TestAssert(readItems[2].itemTemplateId == 1003 && readItems[2].quantity == 5, "Item[2] matches");
+
+    printf("    Snapshot round-trip: entity=%u items=%u verified\n", readMsg.entityId, readMsg.itemCount);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 18: Prediction reconciliation decision — ShouldSnapToServer
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_ReconcileDecision() {
+    printf("\n=== Test: Reconcile Decision (ShouldSnapToServer) ===\n");
+
+    constexpr float kThreshold = 5.0f;
+
+    // Identical positions → no snap
+    kmp::Vec3 a(10.f, 20.f, 30.f);
+    TestAssert(!kmp::AuthorityValidator::ShouldSnapToServer(a, a, kThreshold),
+               "Identical positions → no snap");
+
+    // Small divergence (within threshold) → tolerate (no snap)
+    kmp::Vec3 near1(10.f, 20.f, 30.f);
+    kmp::Vec3 near2(12.f, 20.f, 30.f); // 2m away
+    TestAssert(!kmp::AuthorityValidator::ShouldSnapToServer(near1, near2, kThreshold),
+               "2m divergence < 5m threshold → no snap");
+
+    // Exactly at threshold → no snap (strict >)
+    kmp::Vec3 edge1(0.f, 0.f, 0.f);
+    kmp::Vec3 edge2(5.f, 0.f, 0.f); // exactly 5m
+    TestAssert(!kmp::AuthorityValidator::ShouldSnapToServer(edge1, edge2, kThreshold),
+               "Exact threshold → no snap (strict)");
+
+    // Large divergence → snap
+    kmp::Vec3 far1(0.f, 0.f, 0.f);
+    kmp::Vec3 far2(50.f, 0.f, 0.f); // 50m away
+    TestAssert(kmp::AuthorityValidator::ShouldSnapToServer(far1, far2, kThreshold),
+               "50m divergence > 5m threshold → snap");
+
+    // 3D divergence
+    kmp::Vec3 far3(10.f, 10.f, 10.f);
+    TestAssert(kmp::AuthorityValidator::ShouldSnapToServer(far1, far3, kThreshold),
+               "3D divergence → snap");
+
+    printf("    Reconcile decision: snap/tolerate logic verified\n");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 19: Authority routing — ValidateInboundSnapshot decision tree
+// ═══════════════════════════════════════════════════════════════════════════
+// Covers the ReconcileLocal / ApplyRemote / Reject / Queue branches that
+// previously had zero test coverage (reviewer finding M5; C1/I2 regressions).
+static void Test_AuthorityRouting() {
+    printf("\n=== Test: Authority Routing (ValidateInboundSnapshot) ===\n");
+
+    kmp::EntityRegistry registry;
+    constexpr uint32_t myPlayerId = 1;
+    constexpr uint32_t remotePlayerId = 5;
+
+    // Own entity registered locally (owner = myPlayerId)
+    void* myChar = reinterpret_cast<void*>(0x100000); // valid heap-ish pointer
+    kmp::EntityID myEntity = registry.Register(myChar, kmp::EntityType::NPC, myPlayerId);
+    TestAssert(myEntity != kmp::INVALID_ENTITY, "Own entity registered");
+
+    // Remote entity registered (owner = remotePlayerId)
+    kmp::Vec3 remotePos(10.f, 20.f, 30.f);
+    kmp::EntityID remoteEntity = registry.RegisterRemote(100, kmp::EntityType::NPC, remotePlayerId, remotePos);
+    TestAssert(remoteEntity == 100, "Remote entity registered");
+
+    // Case 1: own entity + sourcePlayer=0 (server echo) → ReconcileLocal (C1 fix)
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = myEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::ReconcileLocal,
+                   "Own entity + server echo (src=0) → ReconcileLocal");
+    }
+
+    // Case 2: own entity + sourcePlayer=self → ReconcileLocal
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = myEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, myPlayerId, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::ReconcileLocal,
+                   "Own entity + source=self → ReconcileLocal");
+    }
+
+    // Case 3: remote entity + sourcePlayer=0 (server broadcast) → ApplyRemote (I2 fix)
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = remoteEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::ApplyRemote,
+                   "Remote entity + server broadcast (src=0) → ApplyRemote (I2 fix)");
+    }
+
+    // Case 4: remote entity + sourcePlayer≠owner → still rejected (authority preserved)
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = remoteEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 3, myPlayerId, registry); // player 3 ≠ owner 5
+        TestAssert(d == kmp::SnapshotDecision::RejectAuthorityViolation,
+                   "Remote entity + wrong source → RejectAuthorityViolation (still enforced)");
+    }
+
+    // Case 5: unregistered entity → QueuePendingSpawn
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = 999;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::QueuePendingSpawn,
+                   "Unregistered entity → QueuePendingSpawn");
+    }
+
+    // Case 6: stale generation → rejected
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = myEntity;
+        pos.generation = 7; // mismatch (registry gen = 0)
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::RejectStaleGeneration,
+                   "Stale generation → RejectStaleGeneration");
+    }
+
+    printf("    Authority routing: 6 decision branches verified\n");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -689,6 +895,10 @@ int main() {
     Test_SpawnPacketRoundTrip();
     Test_FullSpawnFlow();
     Test_MultiPlayerSession();
+    Test_LimbHealthRoundTrip();
+    Test_InventorySnapshotRoundTrip();
+    Test_ReconcileDecision();
+    Test_AuthorityRouting();
     TestHostAssignmentProtocol();
     TestLoopbackDetection();
 

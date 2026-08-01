@@ -12,9 +12,8 @@
 
 namespace kmp::render_hooks {
 
-// Custom message for spawn queue processing — DEPRECATED.
-// ProcessSpawnQueue() consumed the queue before the in-place replay (entity_hooks)
-// could use it. The in-place replay is the ONLY safe spawn mechanism.
+// Custom message for spawn queue processing — REMOVED (2026-08-01).
+// Spawn requests are handled exclusively by the in-place replay (entity_hooks).
 static constexpr UINT WM_KMP_SPAWN = WM_USER + 100;
 
 // ── State ──
@@ -24,10 +23,6 @@ static WNDPROC               s_originalWndProc = nullptr;
 // ── Types ──
 using PresentFn = HRESULT(__stdcall*)(IDXGISwapChain*, UINT, UINT);
 static PresentFn s_originalPresent = nullptr;
-
-// ── SEH wrapper for spawn queue processing from WndProc ──
-// DISABLED: ProcessSpawnQueue() consumed requests before the in-place replay
-// (entity_hooks) could use them. In-place replay is the only safe spawn mechanism.
 
 // ── SEH wrapper for OnGameTick ──
 static void SEH_OnGameTick(float dt) {

@@ -2421,12 +2421,27 @@ void Core::OnGameTick(float deltaTime) {
         WriteBreadcrumb("poll_local_pos", s_tickCallCount, 6);
         PollLocalPositions();
 
-        g_lastTickStep = 7; g_lastStepName = "send_packets";
+        // ── Step: Poll local health ──
+        // Sends C2S_LimbHealth at ~5Hz so remote players see health bar changes
+        // during combat. combat_hooks already sends C2S_LimbHealth on death/KO
+        // events — this fills the gap for intermediate damage visibility.
+        g_lastTickStep = 7; g_lastStepName = "poll_local_health";
+        WriteBreadcrumb("poll_local_health", s_tickCallCount, 7);
+        PollLocalHealth();
+
+        // ── Step: Poll local inventory ──
+        // Sends C2S_InventorySnapshot at ~0.1Hz (10s) as a slow reconciliation
+        // channel for full inventory state; pickup/drop hooks handle the fast path.
+        g_lastTickStep = 8; g_lastStepName = "poll_local_inventory";
+        WriteBreadcrumb("poll_local_inventory", s_tickCallCount, 8);
+        PollLocalInventory();
+
+        g_lastTickStep = 9; g_lastStepName = "send_packets";
         // NOTE: SendCachedPackets() removed — PollLocalPositions() already
         // sends fresh per-entity position updates on the main thread.
         // The background thread's cached packetBytes is a duplicate; sending
         // both doubled outbound bandwidth.
-        SetLastCompletedStep(6);
+        SetLastCompletedStep(8);
 
         g_lastTickStep = 8; g_lastStepName = "loading_orch";
         WriteBreadcrumb("loading_orch_alt", s_tickCallCount, 8);
@@ -3058,6 +3073,156 @@ void Core::PollLocalPositions() {
         if (s_pollsSent <= 20 || s_pollsSent % 200 == 0) {
             spdlog::debug("Core::PollLocalPositions: sent #{} netId={} pos=({:.1f},{:.1f},{:.1f}) speed={:.1f}",
                           s_pollsSent, netId, pos.x, pos.y, pos.z, moveSpeed);
+        }
+    }
+}
+
+// ── SEH helper: read limb health (separate function required to avoid C2712) ──
+static bool SEH_ReadLimbHealth(void* gameObj, MsgLimbHealth& msg) {
+    __try {
+        game::CharacterAccessor accessor(gameObj);
+        for (int i = 0; i < 7; i++) {
+            msg.health[i] = accessor.GetHealth(static_cast<BodyPart>(i));
+        }
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+void Core::PollLocalHealth() {
+    // Only poll while connected and game is loaded
+    if (!m_connected || m_localPlayerId == 0) return;
+
+    // Throttle to ~200ms (5 Hz) — enough for visible health bar changes, low bandwidth
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastHealthPollTime);
+    if (elapsed.count() < KMP_HEALTH_POLL_INTERVAL_MS) return;
+    m_lastHealthPollTime = now;
+
+    // Iterate local entities and read limb health
+    auto localEntities = m_entityRegistry.GetPlayerEntities(m_localPlayerId);
+    if (localEntities.empty()) return;
+
+    for (EntityID netId : localEntities) {
+        void* gameObj = m_entityRegistry.GetGameObject(netId);
+        if (!gameObj) continue;
+
+        // Validate gameObj pointer range
+        uintptr_t objAddr = reinterpret_cast<uintptr_t>(gameObj);
+        if (objAddr < 0x10000 || objAddr >= 0x00007FFFFFFFFFFF || (objAddr & 0x7) != 0) {
+            continue;
+        }
+
+        // Read all 7 limb health values with SEH protection
+        MsgLimbHealth msg{};
+        msg.entityId = netId;
+
+        // SEH must be in its own function to avoid C2712 (SEH + C++ destructors conflict)
+        if (!SEH_ReadLimbHealth(gameObj, msg)) {
+            m_entityRegistry.SetGameObject(netId, nullptr);
+            continue;
+        }
+
+        // Send C2S_LimbHealth via reliable channel (Channel 0, matching combat_hooks pattern)
+        PacketWriter writer;
+        writer.WriteHeader(MessageType::C2S_LimbHealth);
+        writer.WriteRaw(&msg, sizeof(msg));
+        m_client.SendReliable(writer.Data(), writer.Size());
+
+        // Debug log (first 10 polls, then every 200th)
+        static int s_healthPollsSent = 0;
+        s_healthPollsSent++;
+        if (s_healthPollsSent <= 10 || s_healthPollsSent % 200 == 0) {
+            spdlog::debug("Core::PollLocalHealth: sent entity={} chest={:.1f} head={:.1f} (#{})",
+                          netId, msg.health[1], msg.health[0], s_healthPollsSent);
+        }
+    }
+}
+
+// ── SEH helper: read one entity's inventory into a snapshot item list ──
+static bool SEH_ReadLocalInventory(void* gameObj, std::vector<MsgInventorySnapshotItem>& items) {
+    __try {
+        game::CharacterAccessor accessor(gameObj);
+        uintptr_t invPtr = accessor.GetInventoryPtr();
+        if (invPtr == 0) return false;
+
+        game::InventoryAccessor inventory(invPtr);
+        int count = inventory.GetItemCount();
+        if (count <= 0) return true; // Empty inventory is a valid snapshot
+
+        constexpr int kMaxSnapshotItems = KMP_INVENTORY_SNAPSHOT_MAX_ITEMS;
+        if (count > kMaxSnapshotItems) count = kMaxSnapshotItems;
+
+        auto& itemOffsets = game::GetOffsets().item;
+        if (itemOffsets.templateId < 0 || itemOffsets.stackCount < 0) return false;
+
+        items.clear();
+        items.reserve(static_cast<size_t>(count));
+        for (int i = 0; i < count; i++) {
+            uintptr_t itemPtr = inventory.GetItem(i);
+            if (itemPtr == 0) continue;
+            uint32_t templateId = 0;
+            int qty = 0;
+            if (Memory::Read(itemPtr + itemOffsets.templateId, templateId) && templateId != 0 &&
+                Memory::Read(itemPtr + itemOffsets.stackCount, qty)) {
+                MsgInventorySnapshotItem it{};
+                it.itemTemplateId = templateId;
+                it.quantity = qty;
+                items.push_back(it);
+            }
+        }
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+void Core::PollLocalInventory() {
+    // Only poll while connected and game is loaded
+    if (!m_connected || m_localPlayerId == 0) return;
+
+    // Throttle to ~10s — full inventory sync is a slow reconciliation channel;
+    // incremental pickup/drop events handle the fast path.
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_lastInventoryPollTime);
+    if (elapsed.count() < KMP_INVENTORY_SNAPSHOT_INTERVAL_SEC) return;
+    m_lastInventoryPollTime = now;
+
+    auto localEntities = m_entityRegistry.GetPlayerEntities(m_localPlayerId);
+    if (localEntities.empty()) return;
+
+    for (EntityID netId : localEntities) {
+        void* gameObj = m_entityRegistry.GetGameObject(netId);
+        if (!gameObj) continue;
+
+        uintptr_t objAddr = reinterpret_cast<uintptr_t>(gameObj);
+        if (objAddr < 0x10000 || objAddr >= 0x00007FFFFFFFFFFF || (objAddr & 0x7) != 0) {
+            continue;
+        }
+
+        std::vector<MsgInventorySnapshotItem> items;
+        if (!SEH_ReadLocalInventory(gameObj, items)) continue;
+        // Note: item count is already capped at KMP_INVENTORY_SNAPSHOT_MAX_ITEMS
+        // inside SEH_ReadLocalInventory, so no re-check needed here.
+
+        MsgInventorySnapshot msg{};
+        msg.entityId = netId;
+        msg.itemCount = static_cast<uint16_t>(items.size());
+
+        PacketWriter writer;
+        writer.WriteHeader(MessageType::C2S_InventorySnapshot);
+        writer.WriteRaw(&msg, sizeof(msg));
+        if (!items.empty()) {
+            writer.WriteRaw(items.data(), items.size() * sizeof(MsgInventorySnapshotItem));
+        }
+        m_client.SendReliable(writer.Data(), writer.Size());
+
+        static int s_invPollsSent = 0;
+        s_invPollsSent++;
+        if (s_invPollsSent <= 5 || s_invPollsSent % 20 == 0) {
+            spdlog::debug("Core::PollLocalInventory: sent entity={} items={} (#{})",
+                          netId, msg.itemCount, s_invPollsSent);
         }
     }
 }

@@ -7,6 +7,7 @@ add_executable(KenshiMP.Server
     entity_manager.cpp
     zone_manager.cpp
     combat_resolver.cpp
+    authority_validator.cpp
     world_persistence.cpp
 )
 

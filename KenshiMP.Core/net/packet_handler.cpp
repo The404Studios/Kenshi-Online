@@ -314,6 +314,9 @@ public:
         case MessageType::S2C_InventoryUpdate:
             HandleInventoryUpdate(reader);
             break;
+        case MessageType::S2C_InventorySnapshot:
+            HandleInventorySnapshot(reader);
+            break;
 
         // ── Squad ──
         case MessageType::S2C_SquadCreated:
@@ -878,9 +881,41 @@ private:
                     break;
 
                 case SnapshotDecision::ReconcileLocal:
-                    // TODO: Implement prediction reconciliation (Phase 7)
-                    // For now, skip to prevent rubber-banding
-                    reconciledLocal++;
+                    // Phase 7: Prediction reconciliation for own entities.
+                    // The server echoes the authoritative position of OUR entity.
+                    // If local position has diverged beyond the threshold (or is
+                    // corrupted NaN), snap to server authority. Small deltas are
+                    // tolerated — local player input is fresher than the echo.
+                    // Game memory write is ENQUEUED to the game thread
+                    // (network thread must never write game memory).
+                    {
+                        void* gameObj = registry.GetGameObject(pos.entityId);
+                        if (gameObj) {
+                            Vec3 serverPos(pos.posX, pos.posY, pos.posZ);
+                            EntityID echoEntity = pos.entityId;
+                            core.GetCommandQueue().Push({[gameObj, serverPos, echoEntity]() {
+                                auto& core = Core::Get();
+                                if (!core.IsGameLoaded()) return;
+                                __try {
+                                    game::CharacterAccessor accessor(gameObj);
+                                    Vec3 localPos = accessor.GetPosition();
+                                    bool localBad =
+                                        std::isnan(localPos.x) || std::isnan(localPos.y) || std::isnan(localPos.z) ||
+                                        std::isinf(localPos.x) || std::isinf(localPos.y) || std::isinf(localPos.z);
+                                    // Snap on divergence OR corrupted local position (self-heal)
+                                    if (localBad || AuthorityValidator::ShouldSnapToServer(
+                                            localPos, serverPos, KMP_RECONCILE_SNAP_DIST)) {
+                                        accessor.WritePosition(serverPos);
+                                        spdlog::debug("ReconcileLocal: entity {} snapped to server ({:.1f}m divergence)",
+                                                      echoEntity, localPos.DistanceTo(serverPos));
+                                    }
+                                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                                    // Game object freed or invalid — ignore
+                                }
+                            }});
+                        }
+                        reconciledLocal++;
+                    }
                     break;
 
                 case SnapshotDecision::QueuePendingSpawn:
@@ -1566,18 +1601,89 @@ private:
         void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
         if (!gameObj) return;
 
-        game::CharacterAccessor accessor(gameObj);
-        uintptr_t invPtr = accessor.GetInventoryPtr();
-        if (invPtr == 0) return;
+        // Game memory writes are ENQUEUED to the game thread (network thread
+        // must never write game memory — see GameCommandQueue contract).
+        core.GetCommandQueue().Push({[gameObj, msg]() {
+            auto& core = Core::Get();
+            if (!core.IsGameLoaded()) return;
+            __try {
+                game::CharacterAccessor accessor(gameObj);
+                uintptr_t invPtr = accessor.GetInventoryPtr();
+                if (invPtr == 0) return;
+                game::InventoryAccessor inventory(invPtr);
+                if (msg.action == 0) {
+                    inventory.AddItem(msg.itemTemplateId, msg.quantity);
+                } else if (msg.action == 1) {
+                    inventory.RemoveItem(msg.itemTemplateId, msg.quantity);
+                }
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                // Game object freed or invalid — ignore
+            }
+        }});
+    }
 
-        game::InventoryAccessor inventory(invPtr);
-        if (msg.action == 0) {
-            // Add item - write directly to inventory memory
-            inventory.AddItem(msg.itemTemplateId, msg.quantity);
-        } else if (msg.action == 1) {
-            // Remove item
-            inventory.RemoveItem(msg.itemTemplateId, msg.quantity);
+    // ── SEH helper: apply a full inventory snapshot (clear + re-add) ──
+    // Separate function avoids C2712 (SEH + C++ object destructors in same scope).
+    static void SEH_ApplyInventorySnapshot(void* gameObj, const std::vector<MsgInventorySnapshotItem>& items) {
+        __try {
+            game::CharacterAccessor accessor(gameObj);
+            uintptr_t invPtr = accessor.GetInventoryPtr();
+            if (invPtr == 0) return;
+            game::InventoryAccessor inventory(invPtr);
+
+            auto& itemOffsets = game::GetOffsets().item;
+            // Zero out all existing stacks (set quantity to 0; the item entry
+            // itself remains in the list — AddItem re-uses it for re-stacking)
+            if (itemOffsets.templateId >= 0) {
+                int count = inventory.GetItemCount();
+                for (int i = 0; i < count; i++) {
+                    uintptr_t itemPtr = inventory.GetItem(i);
+                    if (itemPtr == 0) continue;
+                    uint32_t tid = 0;
+                    if (Memory::Read(itemPtr + itemOffsets.templateId, tid) && tid != 0) {
+                        inventory.RemoveItem(tid, KMP_INVENTORY_REMOVE_ALL_QTY);
+                    }
+                }
+            }
+            // Apply snapshot stacks
+            for (const auto& it : items) {
+                inventory.AddItem(it.itemTemplateId, it.quantity);
+            }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            // Best-effort — next snapshot cycle will retry
         }
+    }
+
+    static void HandleInventorySnapshot(PacketReader& reader) {
+        MsgInventorySnapshot msg;
+        if (!reader.ReadRaw(&msg, sizeof(msg))) return;
+        if (msg.itemCount > KMP_INVENTORY_SNAPSHOT_MAX_ITEMS) {
+            spdlog::warn("PacketHandler: InventorySnapshot entity {} itemCount {} too large",
+                         msg.entityId, msg.itemCount);
+            return;
+        }
+
+        std::vector<MsgInventorySnapshotItem> items(msg.itemCount);
+        if (msg.itemCount > 0 &&
+            !reader.ReadRaw(items.data(), items.size() * sizeof(MsgInventorySnapshotItem))) {
+            return;
+        }
+
+        spdlog::debug("PacketHandler: InventorySnapshot entity={} items={}",
+                      msg.entityId, msg.itemCount);
+
+        auto& core = Core::Get();
+        if (!core.IsGameLoaded()) return;
+        void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
+        if (!gameObj) return;
+
+        // Game memory writes are ENQUEUED to the game thread (network thread
+        // must never write game memory — see GameCommandQueue contract).
+        core.GetCommandQueue().Push({[gameObj, items = std::move(items)]() {
+            auto& core = Core::Get();
+            if (!core.IsGameLoaded()) return;
+            SEH_ApplyInventorySnapshot(gameObj, items);
+        }});
     }
 
     static void HandleTradeResult(PacketReader& reader) {

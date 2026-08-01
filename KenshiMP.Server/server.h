@@ -112,6 +112,7 @@ private:
     void HandleCombatDeath(ConnectedPlayer& player, PacketReader& reader);
     void HandleLimbHealth(ConnectedPlayer& player, PacketReader& reader);
     void HandleStatusEffect(ConnectedPlayer& player, PacketReader& reader);
+    void HandleInventorySnapshot(ConnectedPlayer& player, PacketReader& reader);
     void HandleItemTransfer(ConnectedPlayer& player, PacketReader& reader);
     void HandleDoorInteract(ConnectedPlayer& player, PacketReader& reader);
     void HandleAdminCommand(ConnectedPlayer& player, PacketReader& reader);

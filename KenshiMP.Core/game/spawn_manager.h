@@ -46,9 +46,6 @@ public:
     // Queue a spawn request (thread-safe, called from network thread)
     void QueueSpawn(const SpawnRequest& request);
 
-    // Process queued spawns (called from game thread only!)
-    void ProcessSpawnQueue();
-
     // Find a GameData template by name
     void* FindTemplate(const std::string& name) const;
 
@@ -158,12 +155,6 @@ public:
     // If desiredPosition is non-null, writes it into the struct at offset 0x20 (detected).
     // Returns the created character pointer or nullptr.
     void* SpawnCharacterDirect(const Vec3* desiredPosition = nullptr, int modSlot = 0);
-
-    // Process spawn queue from within the CharacterCreate hook.
-    // The hook has ALREADY disabled itself (HookBypass active), so we can call
-    // the factory directly. This runs on the game thread in the correct context.
-    // Returns the number of characters spawned.
-    int ProcessSpawnQueueFromHook(void* factory);
 
     // Check if there are pending spawn requests
     bool HasPendingSpawns() const {
