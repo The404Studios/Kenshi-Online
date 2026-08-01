@@ -1601,18 +1601,25 @@ private:
         void* gameObj = core.GetEntityRegistry().GetGameObject(msg.entityId);
         if (!gameObj) return;
 
-        game::CharacterAccessor accessor(gameObj);
-        uintptr_t invPtr = accessor.GetInventoryPtr();
-        if (invPtr == 0) return;
-
-        game::InventoryAccessor inventory(invPtr);
-        if (msg.action == 0) {
-            // Add item - write directly to inventory memory
-            inventory.AddItem(msg.itemTemplateId, msg.quantity);
-        } else if (msg.action == 1) {
-            // Remove item
-            inventory.RemoveItem(msg.itemTemplateId, msg.quantity);
-        }
+        // Game memory writes are ENQUEUED to the game thread (network thread
+        // must never write game memory — see GameCommandQueue contract).
+        core.GetCommandQueue().Push({[gameObj, msg]() {
+            auto& core = Core::Get();
+            if (!core.IsGameLoaded()) return;
+            __try {
+                game::CharacterAccessor accessor(gameObj);
+                uintptr_t invPtr = accessor.GetInventoryPtr();
+                if (invPtr == 0) return;
+                game::InventoryAccessor inventory(invPtr);
+                if (msg.action == 0) {
+                    inventory.AddItem(msg.itemTemplateId, msg.quantity);
+                } else if (msg.action == 1) {
+                    inventory.RemoveItem(msg.itemTemplateId, msg.quantity);
+                }
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                // Game object freed or invalid — ignore
+            }
+        }});
     }
 
     // ── SEH helper: apply a full inventory snapshot (clear + re-add) ──

@@ -738,7 +738,7 @@ void SyncOrchestrator::StageProcessSpawns() {
 
                 SpawnRequest spawnReq;
                 if (m_spawnManager.PopNextSpawn(spawnReq)) {
-                    // Map owner to mod template slot (same logic as ProcessSpawnQueueFromHook)
+                    // Map owner to mod template slot
                     int templateCount = m_spawnManager.GetModTemplateCount();
                     int modSlot = 0;
                     if (templateCount > 1 && spawnReq.owner > 0) {

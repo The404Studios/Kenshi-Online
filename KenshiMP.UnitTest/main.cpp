@@ -783,6 +783,97 @@ static void Test_ReconcileDecision() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  TEST 19: Authority routing — ValidateInboundSnapshot decision tree
+// ═══════════════════════════════════════════════════════════════════════════
+// Covers the ReconcileLocal / ApplyRemote / Reject / Queue branches that
+// previously had zero test coverage (reviewer finding M5; C1/I2 regressions).
+static void Test_AuthorityRouting() {
+    printf("\n=== Test: Authority Routing (ValidateInboundSnapshot) ===\n");
+
+    kmp::EntityRegistry registry;
+    constexpr uint32_t myPlayerId = 1;
+    constexpr uint32_t remotePlayerId = 5;
+
+    // Own entity registered locally (owner = myPlayerId)
+    void* myChar = reinterpret_cast<void*>(0x100000); // valid heap-ish pointer
+    kmp::EntityID myEntity = registry.Register(myChar, kmp::EntityType::NPC, myPlayerId);
+    TestAssert(myEntity != kmp::INVALID_ENTITY, "Own entity registered");
+
+    // Remote entity registered (owner = remotePlayerId)
+    kmp::Vec3 remotePos(10.f, 20.f, 30.f);
+    kmp::EntityID remoteEntity = registry.RegisterRemote(100, kmp::EntityType::NPC, remotePlayerId, remotePos);
+    TestAssert(remoteEntity == 100, "Remote entity registered");
+
+    // Case 1: own entity + sourcePlayer=0 (server echo) → ReconcileLocal (C1 fix)
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = myEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::ReconcileLocal,
+                   "Own entity + server echo (src=0) → ReconcileLocal");
+    }
+
+    // Case 2: own entity + sourcePlayer=self → ReconcileLocal
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = myEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, myPlayerId, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::ReconcileLocal,
+                   "Own entity + source=self → ReconcileLocal");
+    }
+
+    // Case 3: remote entity + sourcePlayer=0 (server broadcast) → ApplyRemote (I2 fix)
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = remoteEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::ApplyRemote,
+                   "Remote entity + server broadcast (src=0) → ApplyRemote (I2 fix)");
+    }
+
+    // Case 4: remote entity + sourcePlayer≠owner → still rejected (authority preserved)
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = remoteEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 3, myPlayerId, registry); // player 3 ≠ owner 5
+        TestAssert(d == kmp::SnapshotDecision::RejectAuthorityViolation,
+                   "Remote entity + wrong source → RejectAuthorityViolation (still enforced)");
+    }
+
+    // Case 5: unregistered entity → QueuePendingSpawn
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = 999;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::QueuePendingSpawn,
+                   "Unregistered entity → QueuePendingSpawn");
+    }
+
+    // Case 6: stale generation → rejected
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = myEntity;
+        pos.generation = 7; // mismatch (registry gen = 0)
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::RejectStaleGeneration,
+                   "Stale generation → RejectStaleGeneration");
+    }
+
+    printf("    Authority routing: 6 decision branches verified\n");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  MAIN
 // ═══════════════════════════════════════════════════════════════════════════
 int main() {
@@ -807,6 +898,7 @@ int main() {
     Test_LimbHealthRoundTrip();
     Test_InventorySnapshotRoundTrip();
     Test_ReconcileDecision();
+    Test_AuthorityRouting();
     TestHostAssignmentProtocol();
     TestLoopbackDetection();
 

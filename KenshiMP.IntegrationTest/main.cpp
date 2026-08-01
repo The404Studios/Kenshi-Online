@@ -66,6 +66,7 @@ struct TestClient {
     std::vector<uint32_t>         entitiesSpawned;   // entity IDs
     std::vector<uint32_t>         entitiesDespawned; // entity IDs
     int                           posUpdatesReceived = 0;
+    std::vector<uint32_t>         positionEntityIds;    // entity IDs seen in S2C_PositionUpdate (echo check)
     std::vector<std::string>      chatMessages;
     std::vector<std::string>      systemMessages;
     int                           timeSyncsReceived = 0;
@@ -323,6 +324,16 @@ struct TestClient {
         }
         case MessageType::S2C_PositionUpdate: {
             posUpdatesReceived++;
+            // Parse entity IDs so tests can verify server echo (own entities included)
+            uint32_t srcPlayer;
+            uint8_t count = 0;
+            if (r.ReadU32(srcPlayer) && r.ReadU8(count)) {
+                for (uint8_t i = 0; i < count; i++) {
+                    CharacterPosition pos;
+                    if (!r.ReadRaw(&pos, sizeof(pos))) break;
+                    positionEntityIds.push_back(pos.entityId);
+                }
+            }
             break;
         }
         case MessageType::S2C_ChatMessage: {
@@ -1219,6 +1230,41 @@ static void Test_InventorySnapshot() {
     CleanupTwoClients(c1, c2);
 }
 
+// Verifies the server echoes OWN entities back to their owner in
+// S2C_PositionUpdate (fix for review finding C1 — ReconcileLocal was
+// unreachable because BroadcastPositions skipped owner entities).
+static void Test_ServerEcho() {
+    printf("\n=== Test: Server Echo (own entity in position broadcast) ===\n");
+
+    TestClient c1, c2;
+    bool ready = SetupTwoClients(c1, c2);
+    TestAssert(ready, "Both clients connected with entities");
+    if (!ready) { CleanupTwoClients(c1, c2); return; }
+
+    // Wait for a few position update rounds, then check c1 saw its OWN entity
+    bool sawOwn = c1.PollUntil([&]() {
+        for (auto id : c1.positionEntityIds) {
+            if (id == c1.myEntityId) return true;
+        }
+        return false;
+    }, 5000);
+    c2.Poll(300);
+
+    TestAssert(sawOwn, "Client 1 received echo of its own entity (server broadcast)");
+    if (sawOwn) {
+        printf("    Echo verified: client1 entity=%u seen in S2C_PositionUpdate\n", c1.myEntityId);
+    }
+
+    // Also verify c1 sees c2's entity (remote, non-own)
+    bool sawOther = false;
+    for (auto id : c1.positionEntityIds) {
+        if (id == c2.myEntityId) { sawOther = true; break; }
+    }
+    TestAssert(sawOther, "Client 1 also sees Client 2's entity (remote)");
+
+    CleanupTwoClients(c1, c2);
+}
+
 static void Test_TradeSync() {
     printf("\n=== Test: Trade Sync ===\n");
 
@@ -1618,6 +1664,9 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_InventorySnapshot();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    Test_ServerEcho();
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_TradeSync();

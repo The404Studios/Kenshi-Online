@@ -102,6 +102,16 @@ Add to `MessageType` enum (next free values 0x66/0x67 in inventory range 0x60-0x
 4. Server log shows `HandleInventorySnapshot` relay for a connected client
 5. No new crashes (SEH protects all game memory access)
 
+### Code Review Fixes (2026-08-01, after independent review)
+
+| Finding | Fix |
+|---------|-----|
+| C1: ReconcileLocal unreachable (server never echoes own entities) | `BroadcastPositions` now includes owner entities; verified by `Test_ServerEcho` |
+| C2: AddItem cannot create new items | Documented as known limitation (see Non-Goal); full item creation deferred |
+| I1: Network thread wrote game memory | ReconcileLocal + InventorySnapshot + InventoryUpdate all enqueue via `GameCommandQueue` |
+| I2: sourcePlayer=0 rejected by client owner check | `ValidateInboundSnapshot` accepts sourcePlayer==0 (server-authoritative broadcast) |
+| M1/M3/M4 | Constants, removed redundant check, NaN self-heal in reconcile |
+
 ---
 
 ## Alternatives Considered
