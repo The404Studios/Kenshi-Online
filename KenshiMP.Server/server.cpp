@@ -457,6 +457,11 @@ void GameServer::HandlePacket(ENetPeer* peer, const uint8_t* data, size_t size, 
         if (player) HandleStatusEffect(*player, reader);
         break;
     }
+    case MessageType::C2S_InventorySnapshot: {
+        auto* player = GetPlayer(peer);
+        if (player) HandleInventorySnapshot(*player, reader);
+        break;
+    }
     case MessageType::C2S_ItemTransfer: {
         auto* player = GetPlayer(peer);
         if (player) HandleItemTransfer(*player, reader);
@@ -1011,12 +1016,13 @@ void GameServer::BroadcastPositions() {
         PacketWriter writer;
         writer.WriteHeader(MessageType::S2C_PositionUpdate);
 
-        // Collect all non-owned entities (zone filtering disabled for small
+        // Collect all entities (zone filtering disabled for small
         // player counts — 16-slot server doesn't need spatial culling, and
         // zone mismatch was preventing players from ever seeing each other).
+        // NOTE: own entities are INCLUDED (echo) so clients can run
+        // prediction reconciliation (ReconcileLocal) against server authority.
         std::vector<const ServerEntity*> nearby;
         for (auto& [entityId, entity] : m_entities) {
-            if (entity.owner == playerId) continue; // Don't send own entities back
             nearby.push_back(&entity);
         }
 
@@ -1627,6 +1633,61 @@ void GameServer::HandleItemDrop(ConnectedPlayer& player, PacketReader& reader) {
     writer.WriteRaw(&update, sizeof(update));
     BroadcastExcept(player.id, writer.Data(), writer.Size(),
                    KMP_CHANNEL_RELIABLE_UNORDERED, ENET_PACKET_FLAG_RELIABLE);
+}
+
+// ── Inventory Snapshot Handler ──
+// Client periodically reports its full inventory. Server validates ownership
+// and relays the snapshot to all other players (transparent relay, no storage).
+
+void GameServer::HandleInventorySnapshot(ConnectedPlayer& player, PacketReader& reader) {
+    MsgInventorySnapshot msg;
+    if (!reader.ReadRaw(&msg, sizeof(msg))) {
+        spdlog::error("GameServer: HandleInventorySnapshot ReadRaw failed for player '{}'", player.name);
+        return;
+    }
+
+    // Sanity-check item count before allocating
+    if (msg.itemCount > KMP_INVENTORY_SNAPSHOT_MAX_ITEMS) {
+        spdlog::warn("GameServer: HandleInventorySnapshot entity {} itemCount {} too large (player '{}')",
+                     msg.entityId, msg.itemCount, player.name);
+        return;
+    }
+
+    // Validate entity ownership
+    auto it = m_entities.find(msg.entityId);
+    if (it == m_entities.end()) {
+        spdlog::warn("GameServer: HandleInventorySnapshot entity {} not found (player '{}')",
+                     msg.entityId, player.name);
+        return;
+    }
+    if (it->second.owner != player.id) {
+        spdlog::warn("GameServer: HandleInventorySnapshot entity {} owner mismatch (player '{}')",
+                     msg.entityId, player.name);
+        return;
+    }
+
+    // Read the item array
+    std::vector<MsgInventorySnapshotItem> items(msg.itemCount);
+    if (msg.itemCount > 0) {
+        if (!reader.ReadRaw(items.data(), items.size() * sizeof(MsgInventorySnapshotItem))) {
+            spdlog::error("GameServer: HandleInventorySnapshot item array read failed (player '{}')",
+                          player.name);
+            return;
+        }
+    }
+
+    spdlog::info("GameServer: Player '{}' inventory snapshot entity {} items={} (relay)",
+                 player.name, msg.entityId, msg.itemCount);
+
+    // Relay to all other players
+    PacketWriter writer;
+    writer.WriteHeader(MessageType::S2C_InventorySnapshot);
+    writer.WriteRaw(&msg, sizeof(msg));
+    if (msg.itemCount > 0) {
+        writer.WriteRaw(items.data(), items.size() * sizeof(MsgInventorySnapshotItem));
+    }
+    BroadcastExcept(player.id, writer.Data(), writer.Size(),
+                    KMP_CHANNEL_RELIABLE_UNORDERED, ENET_PACKET_FLAG_RELIABLE);
 }
 
 void GameServer::HandleTradeRequest(ConnectedPlayer& player, PacketReader& reader) {

@@ -260,10 +260,9 @@ Handles remote player character spawning. Captures the game's RootObjectFactory,
 #### Spawn Requests
 ```cpp
 void QueueSpawn(const SpawnRequest& request);
-void ProcessSpawnQueue();
 ```
 - **QueueSpawn()**: Thread-safe. Called from network thread when `S2C_EntitySpawn` arrives.
-- **ProcessSpawnQueue()**: Called from game thread (OnGameTick). Attempts to spawn pending characters.
+- Spawn processing is handled by the in-place replay in `entity_hooks.cpp` (Hook_CharacterCreate); `ProcessSpawnQueue()` was removed in 2026-08-01 cleanup (dead code).
 
 #### Template Database
 ```cpp
@@ -285,11 +284,10 @@ int GetModTemplateCount() const;
 ```cpp
 void* SpawnCharacterDirect(const Vec3* desiredPosition = nullptr, int modSlot = 0);
 void* SpawnWithModTemplate(int playerSlot, const Vec3& position);
-int ProcessSpawnQueueFromHook(void* factory);
 ```
 - **SpawnCharacterDirect()**: Fallback spawn using saved request struct (wrong appearance but functional).
 - **SpawnWithModTemplate()**: Spawn with correct appearance using kenshi-online.mod template.
-- **ProcessSpawnQueueFromHook()**: Internal hook context spawn (bypass spawn).
+- `ProcessSpawnQueueFromHook()` was removed in 2026-08-01 cleanup (dead code).
 
 #### Readiness
 ```cpp
@@ -983,16 +981,17 @@ void MonitorLocalPlayerHealth() {
 ## Thread Safety Notes
 
 - **EntityRegistry**: All methods are thread-safe (uses `std::shared_mutex`).
-- **SpawnManager**: Queue operations are thread-safe. ProcessSpawnQueue() must be called from game thread only.
+- **SpawnManager**: Queue operations are thread-safe. Spawn execution happens on the game thread via in-place replay (entity_hooks).
 - **NetworkClient**: All ENet operations are protected by mutex. Safe to call from any thread.
 - **Core::Get()**: Singleton is thread-safe after initialization.
 - **KenshiSDK**: GetCurrentSnapshot() returns a copy (thread-safe). Update() should be called from game thread only.
+- **GameCommandQueue**: ALL game memory writes from the network thread must be enqueued here and executed on the game thread.
 
 ---
 
 ## Common Pitfalls
 
-1. **Don't call ProcessSpawnQueue() from network thread** — game object creation must happen on game thread.
+1. **Never write game memory from the network thread** — use `Core::GetCommandQueue().Push(...)` to marshal the write to the game thread (see HandlePositionUpdate / HandleInventoryUpdate).
 2. **Always check IsGameLoaded() before accessing game memory** — globals are not valid during startup/loading.
 3. **Use GetInfo() instead of storing EntityInfo pointers** — entity state can change at any time.
 4. **Don't spawn entities before OnGameLoaded() fires** — factory and templates are not ready.

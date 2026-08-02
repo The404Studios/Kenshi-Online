@@ -39,8 +39,12 @@ SnapshotDecision AuthorityValidator::ValidateInboundSnapshot(
         return SnapshotDecision::ReconcileLocal;
     }
 
-    // 4b. Source doesn't own this entity → authority violation
-    if (ownerPlayerId != sourcePlayerId) {
+    // 4b. Source doesn't own this entity → authority violation.
+    //     EXCEPT when sourcePlayer == 0 (server-authoritative broadcast):
+    //     ownership was already validated server-side, and BroadcastPositions
+    //     sends one packet mixing entities of many owners with a single
+    //     sourcePlayer field.
+    if (ownerPlayerId != sourcePlayerId && sourcePlayerId != 0) {
         spdlog::warn(
             "[AuthorityValidator] Authority violation: entity {} owned by player {} "
             "but update came from player {}",
@@ -60,6 +64,10 @@ SnapshotDecision AuthorityValidator::ValidateInboundSnapshot(
         pos.entityId, sourcePlayerId
     );
     return SnapshotDecision::RejectUnknown;
+}
+
+bool AuthorityValidator::ShouldSnapToServer(const Vec3& localPos, const Vec3& serverPos, float threshold) {
+    return localPos.DistanceTo(serverPos) > threshold;
 }
 
 } // namespace kmp

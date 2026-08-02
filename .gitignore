@@ -15,6 +15,13 @@ lib/Debug/
 *.tmp
 *.bak
 *~
+*.json
+
+# AI session files
+AGENTS.md
+
+# Workflow scripts
+.deepx/
 
 # OS files
 .DS_Store

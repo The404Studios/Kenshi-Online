@@ -67,6 +67,8 @@ enum class MessageType : uint8_t {
     S2C_InventoryUpdate   = 0x63,
     C2S_TradeRequest      = 0x64,
     S2C_TradeResult       = 0x65,
+    C2S_InventorySnapshot = 0x66,
+    S2C_InventorySnapshot = 0x67,
 
     // Buildings (Channel 0)
     C2S_BuildRequest      = 0x70,

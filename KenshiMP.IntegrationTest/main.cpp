@@ -46,6 +46,11 @@ static void TestAssert(bool condition, const char* testName) {
 //  Simple ENet Client Wrapper
 // ─────────────────────────────────────────────────
 
+struct InvSnapshotRecv {
+    MsgInventorySnapshot header;
+    std::vector<MsgInventorySnapshotItem> items;
+};
+
 struct TestClient {
     std::string name;
     ENetHost*   host = nullptr;
@@ -61,6 +66,7 @@ struct TestClient {
     std::vector<uint32_t>         entitiesSpawned;   // entity IDs
     std::vector<uint32_t>         entitiesDespawned; // entity IDs
     int                           posUpdatesReceived = 0;
+    std::vector<uint32_t>         positionEntityIds;    // entity IDs seen in S2C_PositionUpdate (echo check)
     std::vector<std::string>      chatMessages;
     std::vector<std::string>      systemMessages;
     int                           timeSyncsReceived = 0;
@@ -69,6 +75,7 @@ struct TestClient {
 
     // New system tracking
     std::vector<MsgInventoryUpdate>   inventoryUpdates;
+    std::vector<InvSnapshotRecv>      inventorySnapshots;  // full inventory snapshots
     std::vector<MsgTradeResult>       tradeResults;
     std::vector<uint32_t>             squadsCreated;     // squad net IDs
     std::vector<MsgSquadMemberUpdate> squadMemberUpdates;
@@ -181,6 +188,19 @@ struct TestClient {
         msg.itemTemplateId = itemId;
         msg.posX = x; msg.posY = y; msg.posZ = z;
         w.WriteRaw(&msg, sizeof(msg));
+        SendReliable(w.Data(), w.Size());
+    }
+
+    void SendInventorySnapshot(EntityID entityId, const std::vector<MsgInventorySnapshotItem>& items) {
+        PacketWriter w;
+        w.WriteHeader(MessageType::C2S_InventorySnapshot);
+        MsgInventorySnapshot msg{};
+        msg.entityId = entityId;
+        msg.itemCount = static_cast<uint16_t>(items.size());
+        w.WriteRaw(&msg, sizeof(msg));
+        if (!items.empty()) {
+            w.WriteRaw(items.data(), items.size() * sizeof(MsgInventorySnapshotItem));
+        }
         SendReliable(w.Data(), w.Size());
     }
 
@@ -304,6 +324,16 @@ struct TestClient {
         }
         case MessageType::S2C_PositionUpdate: {
             posUpdatesReceived++;
+            // Parse entity IDs so tests can verify server echo (own entities included)
+            uint32_t srcPlayer;
+            uint8_t count = 0;
+            if (r.ReadU32(srcPlayer) && r.ReadU8(count)) {
+                for (uint8_t i = 0; i < count; i++) {
+                    CharacterPosition pos;
+                    if (!r.ReadRaw(&pos, sizeof(pos))) break;
+                    positionEntityIds.push_back(pos.entityId);
+                }
+            }
             break;
         }
         case MessageType::S2C_ChatMessage: {
@@ -330,6 +360,19 @@ struct TestClient {
             MsgInventoryUpdate inv;
             if (r.ReadRaw(&inv, sizeof(inv))) {
                 inventoryUpdates.push_back(inv);
+            }
+            break;
+        }
+        case MessageType::S2C_InventorySnapshot: {
+            MsgInventorySnapshot snap;
+            if (r.ReadRaw(&snap, sizeof(snap))) {
+                InvSnapshotRecv recv{};
+                recv.header = snap;
+                recv.items.resize(snap.itemCount);
+                if (snap.itemCount > 0) {
+                    r.ReadRaw(recv.items.data(), recv.items.size() * sizeof(MsgInventorySnapshotItem));
+                }
+                inventorySnapshots.push_back(std::move(recv));
             }
             break;
         }
@@ -1147,6 +1190,81 @@ static void Test_InventorySync() {
     CleanupTwoClients(c1, c2);
 }
 
+static void Test_InventorySnapshot() {
+    printf("\n=== Test: Inventory Snapshot ===\n");
+
+    TestClient c1, c2;
+    bool ready = SetupTwoClients(c1, c2);
+    TestAssert(ready, "Both clients connected with entities");
+    if (!ready) { CleanupTwoClients(c1, c2); return; }
+
+    // Client 1 reports a full inventory snapshot (3 items)
+    std::vector<MsgInventorySnapshotItem> items = {
+        {1001, 2},
+        {1002, 1},
+        {1003, 5},
+    };
+    c1.SendInventorySnapshot(c1.myEntityId, items);
+
+    // Client 2 should receive the relayed snapshot from the server
+    bool c2GotSnap = c2.PollUntil([&]() {
+        return !c2.inventorySnapshots.empty();
+    }, 3000);
+    c1.Poll(200);
+
+    TestAssert(c2GotSnap, "Client 2 received inventory snapshot from Client 1");
+    if (c2GotSnap) {
+        auto& snap = c2.inventorySnapshots.back();
+        TestAssert(snap.header.entityId == c1.myEntityId, "Snapshot entity ID matches");
+        TestAssert(snap.header.itemCount == 3, "Snapshot item count matches");
+        TestAssert(snap.items.size() == 3, "Snapshot items parsed");
+        if (snap.items.size() == 3) {
+            TestAssert(snap.items[0].itemTemplateId == 1001 && snap.items[0].quantity == 2, "Item[0] matches");
+            TestAssert(snap.items[1].itemTemplateId == 1002 && snap.items[1].quantity == 1, "Item[1] matches");
+            TestAssert(snap.items[2].itemTemplateId == 1003 && snap.items[2].quantity == 5, "Item[2] matches");
+        }
+        printf("    Snapshot relayed: entity=%u items=%u verified\n",
+               snap.header.entityId, snap.header.itemCount);
+    }
+
+    CleanupTwoClients(c1, c2);
+}
+
+// Verifies the server echoes OWN entities back to their owner in
+// S2C_PositionUpdate (fix for review finding C1 — ReconcileLocal was
+// unreachable because BroadcastPositions skipped owner entities).
+static void Test_ServerEcho() {
+    printf("\n=== Test: Server Echo (own entity in position broadcast) ===\n");
+
+    TestClient c1, c2;
+    bool ready = SetupTwoClients(c1, c2);
+    TestAssert(ready, "Both clients connected with entities");
+    if (!ready) { CleanupTwoClients(c1, c2); return; }
+
+    // Wait for a few position update rounds, then check c1 saw its OWN entity
+    bool sawOwn = c1.PollUntil([&]() {
+        for (auto id : c1.positionEntityIds) {
+            if (id == c1.myEntityId) return true;
+        }
+        return false;
+    }, 5000);
+    c2.Poll(300);
+
+    TestAssert(sawOwn, "Client 1 received echo of its own entity (server broadcast)");
+    if (sawOwn) {
+        printf("    Echo verified: client1 entity=%u seen in S2C_PositionUpdate\n", c1.myEntityId);
+    }
+
+    // Also verify c1 sees c2's entity (remote, non-own)
+    bool sawOther = false;
+    for (auto id : c1.positionEntityIds) {
+        if (id == c2.myEntityId) { sawOther = true; break; }
+    }
+    TestAssert(sawOther, "Client 1 also sees Client 2's entity (remote)");
+
+    CleanupTwoClients(c1, c2);
+}
+
 static void Test_TradeSync() {
     printf("\n=== Test: Trade Sync ===\n");
 
@@ -1543,6 +1661,12 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_InventorySync();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    Test_InventorySnapshot();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    Test_ServerEcho();
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     Test_TradeSync();

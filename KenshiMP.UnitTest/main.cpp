@@ -15,6 +15,8 @@
 #include "game/game_types.h"
 #include "sync/entity_registry.h"
 #include "sync/interpolation.h"
+#include "sync/authority_validator.h"
+#include "sys/command_registry.h"
 #include "kmp/types.h"
 #include "kmp/constants.h"
 #include "kmp/protocol.h"
@@ -27,6 +29,7 @@
 #include <cstdlib>
 #include <vector>
 #include <string>
+#include <stdexcept>
 
 // ── Test framework ──
 static int g_passed = 0;
@@ -63,6 +66,14 @@ struct FakeCharacter {
     template<typename T>
     void Set(int offset, const T& val) {
         memcpy(data + offset, &val, sizeof(T));
+    }
+
+    // Read a value from an offset (templated)
+    template<typename T>
+    T Get(int offset) const {
+        T val{};
+        memcpy(&val, data + offset, sizeof(T));
+        return val;
     }
 
     // Write a Kenshi SSO string (MSVC std::string layout) at offset
@@ -650,6 +661,41 @@ static bool TestOnly_IsLoopbackHost(uint32_t hostNetOrder) {
     return hostNetOrder == 0x0100007Fu;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 16: MsgLimbHealth packet round-trip — 7 limb health floats
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_LimbHealthRoundTrip() {
+    printf("\n=== Test: MsgLimbHealth Round-Trip ===\n");
+
+    kmp::PacketWriter writer;
+    writer.WriteHeader(kmp::MessageType::C2S_LimbHealth);
+
+    kmp::MsgLimbHealth msg{};
+    msg.entityId = 42;
+    msg.health[0] = 100.f;  // Head
+    msg.health[1] = 80.f;   // Chest
+    msg.health[2] = 90.f;   // Stomach
+    msg.health[3] = 70.f;   // LeftArm
+    msg.health[4] = 65.f;   // RightArm
+    msg.health[5] = 85.f;   // LeftLeg
+    msg.health[6] = 75.f;   // RightLeg
+    writer.WriteRaw(&msg, sizeof(msg));
+
+    kmp::PacketReader reader(writer.Data(), writer.Size());
+    kmp::PacketHeader header;
+    TestAssert(reader.ReadHeader(header), "Reads header");
+    TestAssert(header.type == kmp::MessageType::C2S_LimbHealth, "Message type is C2S_LimbHealth");
+
+    kmp::MsgLimbHealth readMsg{};
+    TestAssert(reader.ReadRaw(&readMsg, sizeof(readMsg)), "Reads MsgLimbHealth payload");
+    TestAssert(readMsg.entityId == 42, "Entity ID matches");
+    TestAssert(FloatEq(readMsg.health[0], 100.f), "Health[Head]=100");
+    TestAssert(FloatEq(readMsg.health[1], 80.f), "Health[Chest]=80");
+    TestAssert(FloatEq(readMsg.health[6], 75.f), "Health[RightLeg]=75");
+
+    printf("    LimbHealth round-trip: entity=%u health[0..6] verified\n", readMsg.entityId);
+}
+
 static void TestLoopbackDetection() {
     printf("\nLoopback detection tests:\n");
 
@@ -665,6 +711,410 @@ static void TestLoopbackDetection() {
     // 127.0.0.2 — different loopback-range IP, should still be non-match for our exact check
     // (spec uses exact 127.0.0.1 match; other loopback IPs are rare in practice)
     TestAssert(!TestOnly_IsLoopbackHost(0x0200007Fu), "127.0.0.2 not matched (exact 127.0.0.1 only)");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 17: MsgInventorySnapshot packet round-trip — entity + N items
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_InventorySnapshotRoundTrip() {
+    printf("\n=== Test: MsgInventorySnapshot Round-Trip ===\n");
+
+    kmp::PacketWriter writer;
+    writer.WriteHeader(kmp::MessageType::C2S_InventorySnapshot);
+
+    kmp::MsgInventorySnapshot msg{};
+    msg.entityId = 7;
+    msg.itemCount = 3;
+    writer.WriteRaw(&msg, sizeof(msg));
+
+    const kmp::MsgInventorySnapshotItem items[3] = {
+        {1001, 2},
+        {1002, 1},
+        {1003, 5},
+    };
+    writer.WriteRaw(items, sizeof(items));
+
+    kmp::PacketReader reader(writer.Data(), writer.Size());
+    kmp::PacketHeader header;
+    TestAssert(reader.ReadHeader(header), "Reads header");
+    TestAssert(header.type == kmp::MessageType::C2S_InventorySnapshot, "Message type is C2S_InventorySnapshot");
+
+    kmp::MsgInventorySnapshot readMsg{};
+    TestAssert(reader.ReadRaw(&readMsg, sizeof(readMsg)), "Reads MsgInventorySnapshot header");
+    TestAssert(readMsg.entityId == 7, "Entity ID matches");
+    TestAssert(readMsg.itemCount == 3, "Item count matches");
+
+    kmp::MsgInventorySnapshotItem readItems[3]{};
+    TestAssert(reader.ReadRaw(readItems, sizeof(readItems)), "Reads item array");
+    TestAssert(readItems[0].itemTemplateId == 1001 && readItems[0].quantity == 2, "Item[0] matches");
+    TestAssert(readItems[1].itemTemplateId == 1002 && readItems[1].quantity == 1, "Item[1] matches");
+    TestAssert(readItems[2].itemTemplateId == 1003 && readItems[2].quantity == 5, "Item[2] matches");
+
+    printf("    Snapshot round-trip: entity=%u items=%u verified\n", readMsg.entityId, readMsg.itemCount);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 18: Prediction reconciliation decision — ShouldSnapToServer
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_ReconcileDecision() {
+    printf("\n=== Test: Reconcile Decision (ShouldSnapToServer) ===\n");
+
+    constexpr float kThreshold = 5.0f;
+
+    // Identical positions → no snap
+    kmp::Vec3 a(10.f, 20.f, 30.f);
+    TestAssert(!kmp::AuthorityValidator::ShouldSnapToServer(a, a, kThreshold),
+               "Identical positions → no snap");
+
+    // Small divergence (within threshold) → tolerate (no snap)
+    kmp::Vec3 near1(10.f, 20.f, 30.f);
+    kmp::Vec3 near2(12.f, 20.f, 30.f); // 2m away
+    TestAssert(!kmp::AuthorityValidator::ShouldSnapToServer(near1, near2, kThreshold),
+               "2m divergence < 5m threshold → no snap");
+
+    // Exactly at threshold → no snap (strict >)
+    kmp::Vec3 edge1(0.f, 0.f, 0.f);
+    kmp::Vec3 edge2(5.f, 0.f, 0.f); // exactly 5m
+    TestAssert(!kmp::AuthorityValidator::ShouldSnapToServer(edge1, edge2, kThreshold),
+               "Exact threshold → no snap (strict)");
+
+    // Large divergence → snap
+    kmp::Vec3 far1(0.f, 0.f, 0.f);
+    kmp::Vec3 far2(50.f, 0.f, 0.f); // 50m away
+    TestAssert(kmp::AuthorityValidator::ShouldSnapToServer(far1, far2, kThreshold),
+               "50m divergence > 5m threshold → snap");
+
+    // 3D divergence
+    kmp::Vec3 far3(10.f, 10.f, 10.f);
+    TestAssert(kmp::AuthorityValidator::ShouldSnapToServer(far1, far3, kThreshold),
+               "3D divergence → snap");
+
+    printf("    Reconcile decision: snap/tolerate logic verified\n");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 19: Authority routing — ValidateInboundSnapshot decision tree
+// ═══════════════════════════════════════════════════════════════════════════
+// Covers the ReconcileLocal / ApplyRemote / Reject / Queue branches that
+// previously had zero test coverage (reviewer finding M5; C1/I2 regressions).
+static void Test_AuthorityRouting() {
+    printf("\n=== Test: Authority Routing (ValidateInboundSnapshot) ===\n");
+
+    kmp::EntityRegistry registry;
+    constexpr uint32_t myPlayerId = 1;
+    constexpr uint32_t remotePlayerId = 5;
+
+    // Own entity registered locally (owner = myPlayerId)
+    void* myChar = reinterpret_cast<void*>(0x100000); // valid heap-ish pointer
+    kmp::EntityID myEntity = registry.Register(myChar, kmp::EntityType::NPC, myPlayerId);
+    TestAssert(myEntity != kmp::INVALID_ENTITY, "Own entity registered");
+
+    // Remote entity registered (owner = remotePlayerId)
+    kmp::Vec3 remotePos(10.f, 20.f, 30.f);
+    kmp::EntityID remoteEntity = registry.RegisterRemote(100, kmp::EntityType::NPC, remotePlayerId, remotePos);
+    TestAssert(remoteEntity == 100, "Remote entity registered");
+
+    // Case 1: own entity + sourcePlayer=0 (server echo) → ReconcileLocal (C1 fix)
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = myEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::ReconcileLocal,
+                   "Own entity + server echo (src=0) → ReconcileLocal");
+    }
+
+    // Case 2: own entity + sourcePlayer=self → ReconcileLocal
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = myEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, myPlayerId, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::ReconcileLocal,
+                   "Own entity + source=self → ReconcileLocal");
+    }
+
+    // Case 3: remote entity + sourcePlayer=0 (server broadcast) → ApplyRemote (I2 fix)
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = remoteEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::ApplyRemote,
+                   "Remote entity + server broadcast (src=0) → ApplyRemote (I2 fix)");
+    }
+
+    // Case 4: remote entity + sourcePlayer≠owner → still rejected (authority preserved)
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = remoteEntity;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 3, myPlayerId, registry); // player 3 ≠ owner 5
+        TestAssert(d == kmp::SnapshotDecision::RejectAuthorityViolation,
+                   "Remote entity + wrong source → RejectAuthorityViolation (still enforced)");
+    }
+
+    // Case 5: unregistered entity → QueuePendingSpawn
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = 999;
+        pos.generation = 0;
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::QueuePendingSpawn,
+                   "Unregistered entity → QueuePendingSpawn");
+    }
+
+    // Case 6: stale generation → rejected
+    {
+        kmp::CharacterPosition pos{};
+        pos.entityId = myEntity;
+        pos.generation = 7; // mismatch (registry gen = 0)
+        kmp::SnapshotDecision d = kmp::AuthorityValidator::ValidateInboundSnapshot(
+            pos, 0, myPlayerId, registry);
+        TestAssert(d == kmp::SnapshotDecision::RejectStaleGeneration,
+                   "Stale generation → RejectStaleGeneration");
+    }
+
+    printf("    Authority routing: 6 decision branches verified\n");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 20: InventoryAccessor — item list, stack add/remove
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_InventoryAccessor() {
+    printf("\n=== Test: InventoryAccessor ===\n");
+
+    auto& inv = kmp::game::GetOffsets().inventory;
+    auto& item = kmp::game::GetOffsets().item;
+
+    FakeCharacter fake;          // fake inventory object
+    FakeCharacter itemA, itemB;  // fake item objects
+    uintptr_t list[2] = { itemA.Addr(), itemB.Addr() };
+
+    fake.Set<int>(inv.itemCount, 2);
+    fake.Set<uintptr_t>(inv.items, reinterpret_cast<uintptr_t>(list));
+    fake.Set<int>(inv.width, 4);
+    fake.Set<int>(inv.height, 3);
+
+    itemA.Set<uint32_t>(item.templateId, 1001);
+    itemA.Set<int>(item.stackCount, 2);
+    itemB.Set<uint32_t>(item.templateId, 1002);
+    itemB.Set<int>(item.stackCount, 5);
+
+    kmp::game::InventoryAccessor accessor(fake.Ptr());
+    TestAssert(accessor.IsValid(), "Inventory accessor valid");
+    TestAssert(accessor.GetItemCount() == 2, "Item count reads 2");
+    TestAssert(accessor.GetWidth() == 4, "Inventory width reads 4");
+    TestAssert(accessor.GetHeight() == 3, "Inventory height reads 3");
+    TestAssert(accessor.GetItem(0) == itemA.Addr(), "GetItem(0) returns item A");
+    TestAssert(accessor.GetItem(1) == itemB.Addr(), "GetItem(1) returns item B");
+    TestAssert(accessor.GetItem(2) == 0, "GetItem out of range returns 0");
+    TestAssert(accessor.GetItem(-1) == 0, "GetItem negative index returns 0");
+
+    // AddItem: finds matching stack and increments quantity
+    TestAssert(accessor.AddItem(1001, 3), "AddItem finds existing stack");
+    TestAssert(itemA.Get<int>(item.stackCount) == 5, "AddItem incremented stack 2->5");
+    // AddItem: item type not in inventory -> false (no new item creation, C2 finding)
+    TestAssert(!accessor.AddItem(9999, 1), "AddItem missing item returns false (no creation)");
+    TestAssert(!accessor.AddItem(1001, 0), "AddItem with zero quantity rejected");
+    TestAssert(!accessor.AddItem(1001, -2), "AddItem with negative quantity rejected");
+
+    // RemoveItem: decrements stack, clamps at zero
+    TestAssert(accessor.RemoveItem(1002, 2), "RemoveItem finds existing stack");
+    TestAssert(itemB.Get<int>(item.stackCount) == 3, "RemoveItem decremented stack 5->3");
+    TestAssert(accessor.RemoveItem(1002, 99), "RemoveItem removes more than stack");
+    TestAssert(itemB.Get<int>(item.stackCount) == 0, "RemoveItem clamps quantity at 0");
+    TestAssert(!accessor.RemoveItem(9999, 1), "RemoveItem missing item returns false");
+    TestAssert(!accessor.RemoveItem(1001, 0), "RemoveItem with zero quantity rejected");
+
+    // SetEquipment: equipment offset is runtime-probed (-1 in tests) -> graceful false
+    TestAssert(!accessor.SetEquipment(kmp::EquipSlot::Hat, 1001),
+               "SetEquipment with unknown offset returns false gracefully");
+
+    // Invalid pointer -> all reads fail safely
+    kmp::game::InventoryAccessor invalid(nullptr);
+    TestAssert(!invalid.IsValid(), "Null inventory accessor invalid");
+    TestAssert(invalid.GetItemCount() == 0, "Null accessor item count is 0");
+    TestAssert(!invalid.AddItem(1001, 1), "Null accessor AddItem returns false");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 21: BuildingAccessor — name, position, health, state flags
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_BuildingAccessor() {
+    printf("\n=== Test: BuildingAccessor ===\n");
+
+    auto& b = kmp::game::GetOffsets().building;
+    FakeCharacter fake;
+    FakeCharacter factionBuf;
+
+    fake.SetSSOString(b.name, "Storm House");
+    fake.SetVec3(b.position, 100.0f, 200.0f, 300.0f);
+    fake.Set<float>(b.health, 250.0f);
+    fake.Set<float>(b.maxHealth, 1000.0f);
+    fake.Set<bool>(b.isDestroyed, false);
+    fake.Set<float>(b.buildProgress, 0.5f);
+    fake.Set<bool>(b.isConstructed, false);
+
+    kmp::game::BuildingAccessor accessor(fake.Ptr());
+    TestAssert(accessor.GetName() == "Storm House", "Building name reads correctly");
+    TestAssert(FloatEq(accessor.GetHealth(), 250.0f), "Building health reads 250");
+    TestAssert(FloatEq(accessor.GetMaxHealth(), 1000.0f), "Building max health reads 1000");
+    TestAssert(!accessor.IsDestroyed(), "Undamaged building not destroyed");
+    TestAssert(FloatEq(accessor.GetBuildProgress(), 0.5f), "Build progress reads 0.5");
+    TestAssert(!accessor.IsConstructed(), "Incomplete building not constructed");
+
+    kmp::Vec3 pos = accessor.GetPosition();
+    TestAssert(FloatEq(pos.x, 100.0f) && FloatEq(pos.y, 200.0f) && FloatEq(pos.z, 300.0f),
+               "Building position reads correctly");
+
+    // Pointer fields are sanitized (must be plausible heap pointers)
+    fake.Set<uintptr_t>(b.ownerFaction, 0x1234);
+    fake.Set<uintptr_t>(b.inventory, 0x1234);
+    TestAssert(accessor.GetOwnerFaction() == 0, "Small owner faction pointer sanitized");
+    TestAssert(accessor.GetInventoryPtr() == 0, "Small inventory pointer sanitized");
+
+    fake.Set<uintptr_t>(b.ownerFaction, factionBuf.Addr());
+    fake.Set<uintptr_t>(b.inventory, factionBuf.Addr());
+    TestAssert(accessor.GetOwnerFaction() == factionBuf.Addr(), "Owner faction pointer reads");
+    TestAssert(accessor.GetInventoryPtr() == factionBuf.Addr(), "Inventory pointer reads");
+
+    // Destroyed flag path
+    fake.Set<bool>(b.isDestroyed, true);
+    TestAssert(accessor.IsDestroyed(), "Destroyed flag reads true");
+
+    // Constructed flag path
+    fake.Set<bool>(b.isConstructed, true);
+    TestAssert(accessor.IsConstructed(), "Constructed flag reads true");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 22: FactionAccessor — name, member count, flags
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_FactionAccessor() {
+    printf("\n=== Test: FactionAccessor ===\n");
+
+    auto& f = kmp::game::GetOffsets().faction;
+    FakeCharacter fake;
+    fake.SetSSOString(f.name, "Holy Nation");
+    fake.Set<int>(f.memberCount, 3);
+    fake.Set<bool>(f.isPlayerFaction, true);
+    fake.Set<int>(f.money, 5000);
+
+    kmp::game::FactionAccessor accessor(fake.Ptr());
+    TestAssert(accessor.GetName() == "Holy Nation", "Faction name reads correctly");
+    TestAssert(accessor.GetMemberCount() == 3, "Faction member count reads 3");
+    TestAssert(accessor.IsPlayerFaction(), "Player faction flag reads true");
+    TestAssert(accessor.GetMoney() == 5000, "Faction money reads 5000");
+
+    // Sanity clamps
+    fake.Set<int>(f.memberCount, 99999);
+    TestAssert(accessor.GetMemberCount() == 0, "Unreasonable member count clamped to 0");
+    fake.Set<int>(f.memberCount, -5);
+    TestAssert(accessor.GetMemberCount() == 0, "Negative member count clamped to 0");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 23: StatsAccessor — skill reads and sanity clamp
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_StatsAccessor() {
+    printf("\n=== Test: StatsAccessor ===\n");
+
+    auto& s = kmp::game::GetOffsets().stats;
+    FakeCharacter fake;
+    fake.Set<float>(s.meleeAttack, 25.5f);
+    fake.Set<float>(s.strength, 40.0f);
+    fake.Set<float>(s.medic, 12.0f);
+    fake.Set<float>(s.meleeDefence, 5000.0f); // out of sane range -> clamped
+
+    kmp::game::StatsAccessor accessor(fake.Ptr());
+    TestAssert(FloatEq(accessor.GetMeleeAttack(), 25.5f), "Melee attack reads 25.5");
+    TestAssert(FloatEq(accessor.GetStrength(), 40.0f), "Strength reads 40");
+    TestAssert(FloatEq(accessor.GetMedic(), 12.0f), "Medic reads 12");
+    TestAssert(FloatEq(accessor.GetMeleeDefence(), 0.0f), "Out-of-range stat clamped to 0");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 24: SquadAccessor — name, members, faction, flags
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_SquadAccessor() {
+    printf("\n=== Test: SquadAccessor ===\n");
+
+    auto& sq = kmp::game::GetOffsets().squad;
+    // Name reads via SSO inline buffer. Note: memberList (0x28) overlaps the
+    // std::string capacity field (name+0x18), so only an empty squad (list=0)
+    // takes the inline read path.
+    FakeCharacter namedSquad;
+    namedSquad.SetSSOString(sq.name, "Squad Alpha");
+    namedSquad.Set<int>(sq.memberCount, 0);
+    namedSquad.Set<uintptr_t>(sq.memberList, 0);
+    kmp::game::SquadAccessor named(namedSquad.Ptr());
+    TestAssert(named.GetName() == "Squad Alpha", "Empty squad name reads correctly");
+    TestAssert(named.GetMemberCount() == 0, "Empty squad member count is 0");
+
+    FakeCharacter fake;
+    FakeCharacter memberA, memberB;
+    FakeCharacter factionBuf;
+    uintptr_t members[2] = { memberA.Addr(), memberB.Addr() };
+
+    fake.Set<int>(sq.memberCount, 2);
+    fake.Set<uintptr_t>(sq.memberList, reinterpret_cast<uintptr_t>(members));
+    fake.Set<uintptr_t>(sq.factionId, factionBuf.Addr());
+    fake.Set<bool>(sq.isPlayerSquad, true);
+
+    kmp::game::SquadAccessor accessor(fake.Ptr());
+    TestAssert(accessor.GetMemberCount() == 2, "Squad member count reads 2");
+    TestAssert(accessor.GetMember(0) == memberA.Addr(), "GetMember(0) returns member A");
+    TestAssert(accessor.GetMember(1) == memberB.Addr(), "GetMember(1) returns member B");
+    TestAssert(accessor.GetMember(2) == 0, "GetMember out of range returns 0");
+    TestAssert(accessor.GetFactionPtr() == factionBuf.Addr(), "Squad faction pointer reads");
+    TestAssert(accessor.IsPlayerSquad(), "Player squad flag reads true");
+
+    fake.Set<int>(sq.memberCount, 300);
+    TestAssert(accessor.GetMemberCount() == 0, "Unreasonable squad member count clamped to 0");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TEST 25: CommandRegistry — parse, dispatch, error handling
+// ═══════════════════════════════════════════════════════════════════════════
+static void Test_CommandRegistry() {
+    printf("\n=== Test: CommandRegistry ===\n");
+
+    auto& reg = kmp::CommandRegistry::Get();
+    reg.Register("test_echo", "Echo args", [](const kmp::CommandArgs& a) {
+        std::string out = a.command;
+        for (const auto& arg : a.args) {
+            out += "|" + arg;
+        }
+        return out;
+    });
+    reg.Register("test_fail", "Throws", [](const kmp::CommandArgs&) -> std::string {
+        throw std::runtime_error("boom");
+    });
+
+    TestAssert(reg.Execute("") == "", "Empty input returns empty string");
+    TestAssert(reg.Execute("hello") == "", "Non-slash input returns empty string");
+    TestAssert(reg.Execute("/") == "Empty command.", "Bare slash reports empty command");
+    TestAssert(reg.Execute("/test_echo a b c") == "test_echo|a|b|c",
+               "Args parsed and passed to handler");
+    TestAssert(reg.Execute("/test_echo") == "test_echo", "No-arg command works");
+
+    std::string unknown = reg.Execute("/nope");
+    TestAssert(unknown.find("Unknown command: /nope") == 0, "Unknown command reported");
+
+    std::string err = reg.Execute("/test_fail");
+    TestAssert(err.find("Command error:") == 0, "Handler exception caught and reported");
+
+    bool found = false;
+    for (const auto* def : reg.GetAll()) {
+        if (def->name == "test_echo") found = true;
+    }
+    TestAssert(found, "GetAll lists registered commands");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -689,8 +1139,18 @@ int main() {
     Test_SpawnPacketRoundTrip();
     Test_FullSpawnFlow();
     Test_MultiPlayerSession();
+    Test_LimbHealthRoundTrip();
+    Test_InventorySnapshotRoundTrip();
+    Test_ReconcileDecision();
+    Test_AuthorityRouting();
     TestHostAssignmentProtocol();
     TestLoopbackDetection();
+    Test_InventoryAccessor();
+    Test_BuildingAccessor();
+    Test_FactionAccessor();
+    Test_StatsAccessor();
+    Test_SquadAccessor();
+    Test_CommandRegistry();
 
     printf("\n======================================\n");
     printf("  Results: %d passed, %d failed\n", g_passed, g_failed);
