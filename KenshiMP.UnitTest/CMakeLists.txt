@@ -5,9 +5,15 @@ add_executable(KenshiMP.UnitTest
     # These are the SAME files that run inside Kenshi via KenshiMP.Core.dll.
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game/game_character.cpp
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game/game_offset_prober.cpp
+    ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game/game_inventory.cpp
+    ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game/game_building.cpp
+    ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game/game_faction.cpp
+    ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game/game_stats.cpp
+    ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game/game_squad.cpp
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/sync/entity_registry.cpp
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/sync/interpolation.cpp
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/sync/authority_validator.cpp
+    ${CMAKE_SOURCE_DIR}/KenshiMP.Core/sys/command_registry.cpp
 )
 
 target_include_directories(KenshiMP.UnitTest PRIVATE
@@ -15,6 +21,7 @@ target_include_directories(KenshiMP.UnitTest PRIVATE
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core          # for game/game_types.h, sync/entity_registry.h
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/game      # for game_types.h direct includes
     ${CMAKE_SOURCE_DIR}/KenshiMP.Core/sync      # for entity_registry.h, interpolation.h
+    ${CMAKE_SOURCE_DIR}/KenshiMP.Core/sys       # for command_registry.h
 )
 
 target_link_libraries(KenshiMP.UnitTest PRIVATE
